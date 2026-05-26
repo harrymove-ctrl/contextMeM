@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "name": "contextmem-hosted-namespace-mcp",
+  "workers_dev": true,
+  "preview_urls": false,
+  "compatibility_date": "2026-05-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "../src/worker.ts",
+  "d1_databases": [
+    {
+      "binding": "CONTEXTMEM_DB",
+      "database_name": "contextmem",
+      "database_id": "ea3c7195-7d59-4e6e-b9d7-eb58247208d3",
+      "migrations_dir": "../migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "CONTEXTMEM_CONTEXT_BUCKET",
+      "bucket_name": "contextmem-context"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "CONTEXTMEM_EXTRACT_QUEUE",
+        "queue": "contextmem-extractions"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "contextmem-extractions"
+      }
+    ]
+  },
+  "secrets": {
+    "required": ["CONTEXTMEM_NAMESPACE_IMPORT_TOKEN"]
+  }
+}

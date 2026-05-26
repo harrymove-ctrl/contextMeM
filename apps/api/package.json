@@ -1,0 +1,22 @@
+{
+  "name": "@contextmem/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@contextmem/core": "workspace:*",
+    "@contextmem/mcp": "workspace:*",
+    "@contextmem/memwal": "workspace:*",
+    "@contextmem/walrus": "workspace:*",
+    "@mysten/sui": "^2.9.1"
+  }
+}
