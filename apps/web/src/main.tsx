@@ -100,11 +100,29 @@ type RunCacheStats = {
   bytesWritten: number;
 };
 
+type HeadingNode = {
+  level: number;
+  text: string;
+  anchor: string;
+  children: HeadingNode[];
+};
+
+type CodeBlockEntry = {
+  language: string;
+  snippet: string;
+  pageUrl: string;
+  routePath?: string;
+  parentHeading?: string;
+  byteLength: number;
+};
+
 type ArtifactManifest = {
   runId?: string;
   target: string;
   generatedAt?: string;
-  pages: Array<{ url: string; routePath?: string; artifactPath?: string; title?: string; markdown: string; source?: { blobId?: string; resourcePath?: string } }>;
+  pages: Array<{ url: string; routePath?: string; artifactPath?: string; title?: string; markdown: string; source?: { blobId?: string; resourcePath?: string }; headings?: HeadingNode[] }>;
+  toc?: Array<{ pageUrl: string; routePath?: string; path: string[] }>;
+  codeBlocks?: CodeBlockEntry[];
   discovery?: {
     strategy: "web" | "walrus";
     profile?: BuildProfile;
@@ -1420,6 +1438,7 @@ function ShareContentTabs({ manifest, artifacts, mcpUrl, namespace, shareId }: {
     if (manifest.images?.length) tabs.push({ key: "images", label: "Images", count: manifest.images.length });
     if (manifest.brand) tabs.push({ key: "brand", label: "Brand" });
     if (manifest.designSystem || manifest.styleguide) tabs.push({ key: "design", label: "Design System" });
+    if (manifest.codeBlocks?.length) tabs.push({ key: "code", label: "Code Blocks", count: manifest.codeBlocks.length });
     if (manifest.aiQuery) tabs.push({ key: "ai", label: "AI Summary" });
     if (manifest.walrus?.resources?.length) tabs.push({ key: "walrus", label: "Walrus Resources", count: manifest.walrus.resources.length });
     tabs.push({ key: "artifacts", label: "Artifacts", count: artifacts.length });
@@ -1451,6 +1470,7 @@ function ShareContentTabs({ manifest, artifacts, mcpUrl, namespace, shareId }: {
         {active === "images" ? <ShareImagesGrid manifest={manifest} /> : null}
         {active === "brand" ? <BrandPanel data={manifest.brand} /> : null}
         {active === "design" ? <ShareDesignPreview manifest={manifest} /> : null}
+        {active === "code" ? <ShareCodeBlocks codeBlocks={manifest.codeBlocks ?? []} /> : null}
         {active === "ai" ? (
           <div className="panel">
             <div className="sectionHead"><h2>AI Summary</h2><span>{manifest.aiQuery?.usedProvider ?? "stored"}</span></div>
@@ -1523,21 +1543,112 @@ function ShareDesignPreview({ manifest }: { manifest: ArtifactManifest }) {
   if (!data && !fallback) return <div className="panel subEmpty">No design tokens captured.</div>;
   const colors = data?.tokens.colors ?? (fallback?.colors.palette ?? []).map((value, index) => ({ name: `color-${index}`, value, role: "raw" }));
   const fonts = data?.tokens.typography.fontFamilies ?? fallback?.typography.fontFamilies ?? [];
+  const spacing = data?.tokens.spacing ?? [];
+  const radii = data?.tokens.radii ?? [];
+  const cssVarCount = data ? Object.keys(data.tokens.cssVariables ?? {}).length : 0;
+  const confidence = data?.identity.confidence;
+  const confidenceLabel = typeof confidence === "number"
+    ? (confidence >= 0.66 ? "high" : confidence >= 0.33 ? "partial" : "framework-only")
+    : null;
   return (
     <div className="panel">
       <div className="sectionHead">
         <h2>Design tokens</h2>
-        <span>{colors.length} colors · {fonts.length} font families</span>
+        <span>{colors.length} colors · {fonts.length} font families{cssVarCount ? ` · ${cssVarCount} :root vars` : ""}</span>
       </div>
-      <div className="comparePalette" style={{ marginTop: 12 }}>
-        {colors.slice(0, 24).map((token) => (
-          <span key={`${token.name}-${token.value}`} style={{ background: token.value }} title={`${token.name} → ${token.value}`}>
-            <small>{token.name}</small>
-          </span>
+      {data?.framework ? (
+        <small className="frameworkBadge" title={`${data.framework.defaultsSubtracted} framework defaults filtered out`}>
+          Built on {data.framework.name} — {data.framework.defaultsSubtracted} defaults filtered
+        </small>
+      ) : null}
+      {confidenceLabel ? (
+        <div style={{ marginTop: 8 }}>
+          <small style={{ color: confidence! >= 0.66 ? "#16a34a" : confidence! >= 0.33 ? "#d97706" : "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            confidence: {Math.round((confidence ?? 0) * 100)}% · {confidenceLabel}
+          </small>
+        </div>
+      ) : null}
+      {colors.length === 0 ? (
+        <div className="tabEmptyState" style={{ marginTop: 12 }}>
+          <strong>No brand-distinct colors detected</strong>
+          <p>{data?.framework ? `This site uses ${data.framework.name}; its default tokens were filtered out and nothing brand-distinct remained.` : "Inline CSS contained only framework or system defaults."}</p>
+        </div>
+      ) : (
+        <div className="comparePalette" style={{ marginTop: 12 }}>
+          {colors.slice(0, 24).map((token) => (
+            <span key={`${token.name}-${token.value}`} style={{ background: token.value }} title={`${token.name} → ${token.value}`}>
+              <small>{token.name}</small>
+            </span>
+          ))}
+        </div>
+      )}
+      {fonts.length > 0 ? (
+        <div className="compareFonts" style={{ marginTop: 12 }}>
+          {fonts.slice(0, 8).map((font) => <code key={font}>{font}</code>)}
+        </div>
+      ) : null}
+      {spacing.length > 0 ? (
+        <div style={{ marginTop: 12 }}>
+          <strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: "#64748b" }}>Spacing (raw)</strong>
+          <div className="compareFonts" style={{ marginTop: 6 }}>
+            {spacing.slice(0, 12).map((v) => <code key={v}>{v}</code>)}
+          </div>
+        </div>
+      ) : null}
+      {radii.length > 0 ? (
+        <div style={{ marginTop: 8 }}>
+          <strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: "#64748b" }}>Radii (raw)</strong>
+          <div className="compareFonts" style={{ marginTop: 6 }}>
+            {radii.slice(0, 8).map((v, i) => <code key={`${v}-${i}`}>{v}</code>)}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ShareCodeBlocks({ codeBlocks }: { codeBlocks: CodeBlockEntry[] }) {
+  const [filter, setFilter] = useState<string>("all");
+  const languages = useMemo(() => {
+    const set = new Set<string>();
+    for (const cb of codeBlocks) set.add(cb.language || "text");
+    return Array.from(set).sort();
+  }, [codeBlocks]);
+  const filtered = filter === "all" ? codeBlocks : codeBlocks.filter((cb) => (cb.language || "text") === filter);
+  if (!codeBlocks.length) return <div className="panel subEmpty">No code blocks detected in extracted pages.</div>;
+  return (
+    <div className="panel">
+      <div className="sectionHead">
+        <h2>Code Blocks</h2>
+        <span>{codeBlocks.length} snippets across {languages.length} language{languages.length === 1 ? "" : "s"}</span>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+        <button type="button" className={filter === "all" ? "primary" : "secondary"} onClick={() => setFilter("all")}>All ({codeBlocks.length})</button>
+        {languages.map((lang) => {
+          const count = codeBlocks.filter((cb) => (cb.language || "text") === lang).length;
+          return (
+            <button key={lang} type="button" className={filter === lang ? "primary" : "secondary"} onClick={() => setFilter(lang)}>
+              {lang} ({count})
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display: "grid", gap: 12 }}>
+        {filtered.slice(0, 60).map((cb, index) => (
+          <article key={`${cb.pageUrl}-${index}`} className="page" style={{ padding: 0 }}>
+            <div style={{ padding: "8px 12px", borderBottom: "1px solid #e5eaf1", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em", color: "#0f1115" }}>{cb.language || "text"}</strong>
+                {cb.parentHeading ? <span style={{ marginLeft: 8, color: "#64748b", fontSize: 12 }}>· {cb.parentHeading}</span> : null}
+              </div>
+              <small style={{ color: "#64748b", fontSize: 11, overflowWrap: "anywhere" }}>{cb.routePath ?? cb.pageUrl}</small>
+            </div>
+            <pre style={{ margin: 0, padding: 12, background: "#0f1115", color: "#f1f5f9", overflowX: "auto", fontSize: 12, lineHeight: 1.5, maxHeight: 320 }}>
+              <code>{cb.snippet}</code>
+            </pre>
+          </article>
         ))}
-      </div>
-      <div className="compareFonts" style={{ marginTop: 12 }}>
-        {fonts.slice(0, 8).map((font) => <code key={font}>{font}</code>)}
+        {filtered.length > 60 ? <small style={{ color: "#64748b" }}>(+{filtered.length - 60} more snippets — install MCP and use list_context / read_context to access /context/code-blocks.json directly)</small> : null}
       </div>
     </div>
   );

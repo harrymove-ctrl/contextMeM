@@ -1185,16 +1185,33 @@ async function aiQueryRun(request: Request, env: WorkerEnv, runId: string): Prom
   }
   let parsedData: Record<string, unknown> = { answer: answerText.trim() };
   let confidence = 0.5;
-  const firstBrace = answerText.indexOf("{");
-  const firstNewline = answerText.indexOf("\n");
-  const jsonSlice = firstBrace === 0 && firstNewline > 0 ? answerText.slice(0, firstNewline) : null;
-  if (jsonSlice) {
+  // Strip a leading ```json ... ``` markdown code-fence if the model wrapped
+  // its JSON in one. Llama-3.1-8b does this often despite the system prompt.
+  // Capture both the JSON payload and the trailing prose after the closing fence.
+  const fenceMatch = answerText.match(/^\s*```(?:json)?\s*([\s\S]*?)\s*```([\s\S]*)$/i);
+  let jsonCandidate: string | null = null;
+  let trailingProse = "";
+  if (fenceMatch) {
+    jsonCandidate = fenceMatch[1]!.trim();
+    trailingProse = (fenceMatch[2] ?? "").trim();
+  } else {
+    // No fence — try the original first-line heuristic (raw JSON on line 1).
+    const firstBrace = answerText.indexOf("{");
+    const firstNewline = answerText.indexOf("\n");
+    if (firstBrace === 0 && firstNewline > 0) {
+      jsonCandidate = answerText.slice(0, firstNewline).trim();
+      trailingProse = answerText.slice(firstNewline).trim();
+    } else if (firstBrace === 0) {
+      // Single-line response, no newline — try the whole thing as JSON.
+      jsonCandidate = answerText.trim();
+    }
+  }
+  if (jsonCandidate) {
     try {
-      const parsed = JSON.parse(jsonSlice) as Record<string, unknown>;
+      const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
       parsedData = parsed;
       if (typeof parsed.confidence === "number") confidence = Math.max(0, Math.min(1, parsed.confidence));
-      const paragraph = answerText.slice(firstNewline).trim();
-      if (paragraph) parsedData.explanation = paragraph;
+      if (trailingProse) parsedData.explanation = trailingProse;
     } catch {
       parsedData = { answer: answerText.trim() };
     }
@@ -1788,12 +1805,13 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
       return {
         url: link.url.toString(),
         title: extractTitle(page.text) ?? link.label ?? link.url.pathname,
-        text: htmlToText(page.text).slice(0, 25000)
+        text: htmlToText(page.text).slice(0, 25000),
+        html: page.text
       };
     })
   );
   const fetchedPages = pageResults
-    .filter((result): result is PromiseFulfilledResult<{ url: string; title: string; text: string }> => result.status === "fulfilled")
+    .filter((result): result is PromiseFulfilledResult<{ url: string; title: string; text: string; html: string }> => result.status === "fulfilled")
     .map((result) => result.value);
   const manifest = {
     runId: job.id,
@@ -1807,7 +1825,7 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     description,
     metadata,
     walrusHeaders: Object.keys(walrusHeaders).length ? walrusHeaders : undefined,
-    pages: [{ url: target.toString(), title, routePath: "/", artifactPath: "/site/index.md", markdown: htmlToText(home.text).slice(0, 40000) }, ...fetchedPages.map((page, index) => ({ url: page.url, title: page.title, routePath: new URL(page.url).pathname, artifactPath: `/site/page-${index + 1}.md`, markdown: page.text }))],
+    pages: [{ url: target.toString(), title, routePath: "/", artifactPath: "/site/index.md", markdown: htmlToText(home.text).slice(0, 40000), headings: [] as HeadingNode[] }, ...fetchedPages.map((page, index) => ({ url: page.url, title: page.title, routePath: new URL(page.url).pathname, artifactPath: `/site/page-${index + 1}.md`, markdown: page.text, headings: [] as HeadingNode[] }))],
     images: imageResources.map((resource) => ({
       src: resource.url.toString(),
       absoluteUrl: resource.url.toString(),
@@ -1818,7 +1836,7 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
       ? {
           site: {
             network: "mainnet",
-            siteObjectId: walrusHeaders["x-walrus-site-object-id"] ?? "unknown",
+            siteObjectId: walrusHeaders["x-walrus-site-object-id"] ?? extractWalrusSiteObjectIdFromHtml(home.text) ?? "unknown",
             aggregatorUrl: target.toString()
           },
           resources: walrusResources
@@ -1878,6 +1896,54 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
   }));
   if (brand.confidence > (dsIdentity.confidence as number ?? 0)) dsIdentity.confidence = brand.confidence;
   (manifest as Record<string, unknown>).designSystem = designSystem;
+
+  // T2: per-page heading outline tree + flat TOC + code-block index.
+  // We extract from the raw HTML, not the stripped markdown, because
+  // htmlToText() drops <h>, <pre>, and other structural tags.
+  const manifestPages = (manifest as Record<string, unknown>).pages as Array<{ url: string; title?: string; routePath?: string; markdown: string; headings?: HeadingNode[] }>;
+  const pageHtmlByUrl = new Map<string, string>();
+  pageHtmlByUrl.set(target.toString(), home.text);
+  for (const fp of fetchedPages) pageHtmlByUrl.set(fp.url, fp.html);
+  const tocFlat: Array<{ pageUrl: string; routePath?: string; path: string[] }> = [];
+  const codeBlocks: CodeBlockEntry[] = [];
+  for (const page of manifestPages) {
+    const pageHtml = pageHtmlByUrl.get(page.url) ?? "";
+    const headings = extractHeadingTreeFromHtml(pageHtml);
+    page.headings = headings;
+    for (const headingPath of flattenHeadingPaths(headings)) {
+      tocFlat.push({ pageUrl: page.url, routePath: page.routePath, path: headingPath });
+    }
+    for (const block of extractCodeBlocksFromHtml(pageHtml, page.url, page.routePath)) {
+      codeBlocks.push(block);
+    }
+  }
+  (manifest as Record<string, unknown>).toc = tocFlat.slice(0, 500);
+  (manifest as Record<string, unknown>).codeBlocks = codeBlocks.slice(0, 300);
+
+  // T2: llms-full.txt — concatenated markdown of all pages with section headers.
+  // This is the agent-consumption format. We keep llms.txt as the index.
+  const llmsFullContent = [
+    `# ${title}`,
+    "",
+    description || `Context bundle extracted from ${target.toString()}`,
+    "",
+    `Source: ${target.toString()}`,
+    `Generated: ${fetchedAt}`,
+    `Pages: ${manifestPages.length}`,
+    "",
+    "---",
+    "",
+    ...manifestPages.flatMap((page) => [
+      `## ${page.title || page.url}`,
+      page.url,
+      "",
+      page.markdown.slice(0, 30000),
+      "",
+      "---",
+      ""
+    ])
+  ].join("\n");
+
   const llms = [
     `# ${title}`,
     "",
@@ -1902,6 +1968,7 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
 
   const files: NamespaceImportInput["files"] = [
     { path: "/llms.txt", contentType: "text/plain; charset=utf-8", encoding: "utf8", content: llms },
+    { path: "/llms-full.txt", contentType: "text/plain; charset=utf-8", encoding: "utf8", content: llmsFullContent },
     { path: "/index.html", contentType: home.contentType, encoding: "utf8", content: home.text.slice(0, 500_000) },
     { path: "/site/index.md", contentType: "text/markdown; charset=utf-8", encoding: "utf8", content: `# ${title}\n\n${htmlToText(home.text).slice(0, 12000)}` },
     { path: "/context/manifest.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest, null, 2) },
@@ -1909,6 +1976,8 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     { path: "/context/site-structure.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(siteStructure, null, 2) },
     { path: "/context/brand.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(brand, null, 2) },
     { path: "/context/design-system.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(designSystem, null, 2) },
+    { path: "/context/toc.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(tocFlat.slice(0, 500), null, 2) },
+    { path: "/context/code-blocks.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(codeBlocks.slice(0, 300), null, 2) },
     { path: "/context/resources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(resources.map((resource) => ({ url: resource.url.toString(), label: resource.label, kind: resource.kind })), null, 2) }
   ];
   fetchedPages.forEach((page, index) => {
@@ -1996,6 +2065,221 @@ function responseHeaderMap(headers: Headers): Record<string, string> {
 
 function extractWalrusHeaders(headers: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(headers).filter(([key]) => key.startsWith("x-resource-") || key.startsWith("x-wal-") || key === "x-unix-time-cached"));
+}
+
+// Best-effort Walrus site object ID extraction from HTML when headers don't
+// expose it. .wal.app gateway pages sometimes embed it as a meta tag or in a
+// canonical/og link pointing at walrus.site/0x... or include a raw Sui object
+// ID hex (0x + 64 hex chars) in the page.
+function extractWalrusSiteObjectIdFromHtml(html: string): string | undefined {
+  // 1. Meta tag with walrus-related name/property
+  const metaRegex = /<meta\b[^>]*(?:name|property)=["']([^"']*walrus[^"']*(?:object|site)[^"']*)["'][^>]*content=["']([^"']+)["']/gi;
+  let metaMatch: RegExpExecArray | null;
+  while ((metaMatch = metaRegex.exec(html))) {
+    const value = metaMatch[2]!.trim();
+    if (/^0x[0-9a-f]{64}$/i.test(value)) return value.toLowerCase();
+  }
+  // 2. Reverse meta order: content first, name after
+  const metaRegex2 = /<meta\b[^>]*content=["']([^"']+)["'][^>]*(?:name|property)=["']([^"']*walrus[^"']*(?:object|site)[^"']*)["']/gi;
+  let metaMatch2: RegExpExecArray | null;
+  while ((metaMatch2 = metaRegex2.exec(html))) {
+    const value = metaMatch2[1]!.trim();
+    if (/^0x[0-9a-f]{64}$/i.test(value)) return value.toLowerCase();
+  }
+  // 3. Any walrus.site URL containing /0x.../
+  const urlMatch = /https?:\/\/[^"']*walrus\.site\/(0x[0-9a-f]{64})\b/i.exec(html);
+  if (urlMatch?.[1]) return urlMatch[1].toLowerCase();
+  // 4. Raw Sui object ID hex in head (rough). Only match in <head> to reduce
+  //    false positives from in-content code samples.
+  const headMatch = /<head\b[\s\S]{0,12000}<\/head>/i.exec(html);
+  if (headMatch) {
+    const hexMatch = /\b(0x[0-9a-f]{64})\b/i.exec(headMatch[0]);
+    if (hexMatch?.[1]) return hexMatch[1].toLowerCase();
+  }
+  return undefined;
+}
+
+type HeadingNode = {
+  level: number;
+  text: string;
+  anchor: string;
+  children: HeadingNode[];
+};
+
+type CodeBlockEntry = {
+  language: string;
+  snippet: string;
+  pageUrl: string;
+  routePath?: string;
+  parentHeading?: string;
+  byteLength: number;
+};
+
+// Build a nested heading tree from markdown.
+// ATX style: # H1, ## H2, ### H3, etc. Setext-style (=== / ---) ignored.
+function extractHeadingTree(markdown: string): HeadingNode[] {
+  if (!markdown) return [];
+  const flat: HeadingNode[] = [];
+  const headingRegex = /^(#{1,6})\s+(.+?)\s*#*\s*$/gm;
+  let match: RegExpExecArray | null;
+  const slugCount = new Map<string, number>();
+  while ((match = headingRegex.exec(markdown))) {
+    const level = match[1]!.length;
+    const text = match[2]!.trim();
+    if (!text) continue;
+    let slug = text.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 80);
+    if (!slug) slug = `h${flat.length + 1}`;
+    const n = slugCount.get(slug) ?? 0;
+    slugCount.set(slug, n + 1);
+    const anchor = n === 0 ? slug : `${slug}-${n}`;
+    flat.push({ level, text, anchor, children: [] });
+  }
+  // Stack-based nesting
+  const root: HeadingNode = { level: 0, text: "", anchor: "", children: [] };
+  const stack: HeadingNode[] = [root];
+  for (const node of flat) {
+    while (stack.length > 1 && stack[stack.length - 1]!.level >= node.level) stack.pop();
+    stack[stack.length - 1]!.children.push(node);
+    stack.push(node);
+  }
+  return root.children;
+}
+
+function flattenHeadingPaths(nodes: HeadingNode[], prefix: string[] = [], out: string[][] = []): string[][] {
+  for (const node of nodes) {
+    const path = [...prefix, node.text];
+    out.push(path);
+    if (node.children.length) flattenHeadingPaths(node.children, path, out);
+  }
+  return out;
+}
+
+// HTML-based heading extractor: walks <h1>-<h6> tags in document order, strips
+// inner markup. Use this when the source is HTML, not markdown (our extractor
+// stores stripped text in pages, not markdown ATX).
+function extractHeadingTreeFromHtml(html: string): HeadingNode[] {
+  if (!html) return [];
+  const flat: HeadingNode[] = [];
+  const headingRegex = /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi;
+  const slugCount = new Map<string, number>();
+  let match: RegExpExecArray | null;
+  while ((match = headingRegex.exec(html))) {
+    const level = Number(match[1]);
+    const raw = match[2] ?? "";
+    const text = (decodeHtml(raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()) ?? "").trim();
+    if (!text || text.length > 200) continue;
+    let slug = text.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 80);
+    if (!slug) slug = `h${flat.length + 1}`;
+    const n = slugCount.get(slug) ?? 0;
+    slugCount.set(slug, n + 1);
+    const anchor = n === 0 ? slug : `${slug}-${n}`;
+    flat.push({ level, text, anchor, children: [] });
+  }
+  const root: HeadingNode = { level: 0, text: "", anchor: "", children: [] };
+  const stack: HeadingNode[] = [root];
+  for (const node of flat) {
+    while (stack.length > 1 && stack[stack.length - 1]!.level >= node.level) stack.pop();
+    stack[stack.length - 1]!.children.push(node);
+    stack.push(node);
+  }
+  return root.children;
+}
+
+// HTML-based code-block extractor. Handles <pre><code class="language-X">...
+// and the Prism/Shiki/Docusaurus pattern <pre class="... language-X ...">.
+// Tracks the most recent preceding heading by walking HTML linearly.
+function extractCodeBlocksFromHtml(html: string, pageUrl: string, routePath: string | undefined, snippetCap = 1200): CodeBlockEntry[] {
+  if (!html) return [];
+  const out: CodeBlockEntry[] = [];
+  // Walk HTML linearly to track heading context as we encounter code blocks.
+  // Pattern: matches both <h>...</h> and <pre>...</pre> in document order.
+  const interleavedRegex = /<(h[1-6])\b[^>]*>([\s\S]*?)<\/\1>|<pre\b([^>]*)>([\s\S]*?)<\/pre>/gi;
+  let lastHeading: string | undefined;
+  let match: RegExpExecArray | null;
+  while ((match = interleavedRegex.exec(html))) {
+    if (match[1]) {
+      // It's a heading
+      const raw = match[2] ?? "";
+      const text = (decodeHtml(raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()) ?? "").trim();
+      if (text && text.length <= 200) lastHeading = text;
+    } else if (match[4] !== undefined) {
+      // It's a <pre> block
+      const attrs = match[3] ?? "";
+      const body = match[4] ?? "";
+      const langMatch = /language-([a-zA-Z0-9_+\-]+)/i.exec(attrs);
+      const language = langMatch ? langMatch[1]!.toLowerCase() : "text";
+      // Strip inner tags (<code>, <span>, <br>, etc.) while preserving newlines.
+      const cleaned = decodeHtml(
+        body
+          .replace(/<br\s*\/?>/gi, "\n")
+          .replace(/<\/(div|p|li)>/gi, "\n")
+          .replace(/<[^>]+>/g, "")
+      ) ?? "";
+      const snippet = cleaned.trim();
+      if (snippet.length < 2 || snippet.length > 40000) continue;
+      out.push({
+        language,
+        snippet: snippet.length > snippetCap ? `${snippet.slice(0, snippetCap)}…` : snippet,
+        pageUrl,
+        routePath,
+        parentHeading: lastHeading,
+        byteLength: snippet.length
+      });
+    }
+  }
+  return out;
+}
+
+// Extract fenced code blocks from markdown. Tracks current heading context.
+function extractCodeBlocks(markdown: string, pageUrl: string, routePath: string | undefined, snippetCap = 1200): CodeBlockEntry[] {
+  if (!markdown) return [];
+  const out: CodeBlockEntry[] = [];
+  const fenceRegex = /(?:^|\n)(#{1,6}\s+.+?\n[\s\S]*?)?(?:^|\n)```([a-zA-Z0-9_+\-]*)\s*\n([\s\S]*?)(?:^|\n)```/g;
+  // Track heading state by scanning sequentially
+  let lastHeading: string | undefined;
+  const lines = markdown.split("\n");
+  let inFence = false;
+  let fenceLang = "";
+  let fenceBuf: string[] = [];
+  for (const line of lines) {
+    if (!inFence) {
+      const heading = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+      if (heading) {
+        lastHeading = heading[2]!.trim();
+        continue;
+      }
+      const open = /^```([a-zA-Z0-9_+\-]*)\s*$/.exec(line);
+      if (open) {
+        inFence = true;
+        fenceLang = open[1] || "text";
+        fenceBuf = [];
+        continue;
+      }
+    } else {
+      if (/^```\s*$/.test(line)) {
+        // End of fence
+        const snippet = fenceBuf.join("\n");
+        if (snippet.trim().length >= 2) {
+          out.push({
+            language: fenceLang,
+            snippet: snippet.length > snippetCap ? `${snippet.slice(0, snippetCap)}…` : snippet,
+            pageUrl,
+            routePath,
+            parentHeading: lastHeading,
+            byteLength: snippet.length
+          });
+        }
+        inFence = false;
+        fenceLang = "";
+        fenceBuf = [];
+      } else {
+        fenceBuf.push(line);
+      }
+    }
+  }
+  // Quiet unused-var (template covers both regex strategies)
+  void fenceRegex;
+  return out;
 }
 
 function isHtmlFallback(contentType: string, text: string): boolean {
