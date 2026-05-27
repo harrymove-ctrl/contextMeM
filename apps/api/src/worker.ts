@@ -1825,9 +1825,27 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     ]
   };
   (manifest as Record<string, unknown>).siteStructure = siteStructure;
-  const brand = buildBrandProfile({ html: home.text, target, title, description, metadata, walrusHeaders });
+  const styleBundle = await collectAllStyles(home.text, target).catch(() => collectInlineStyles(home.text));
+  const brand = buildBrandProfile({ html: home.text, target, title, description, metadata, walrusHeaders, css: styleBundle });
   (manifest as Record<string, unknown>).brand = brand;
-  const designSystem = await buildDesignSystem({ html: home.text, target });
+  const designSystem = await buildDesignSystem({ html: home.text, target, css: styleBundle });
+  // Cross-pollinate: surface brand identity + logo assets in the design system tab.
+  const dsRecord = designSystem as Record<string, unknown>;
+  const dsIdentity = dsRecord.identity as Record<string, unknown>;
+  if (brand.name) dsIdentity.name = brand.name;
+  if (brand.description) dsIdentity.description = brand.description;
+  const favicon = brand.logos.find((logo) => logo.role === "favicon" || logo.role === "apple-touch-icon");
+  const ogImage = brand.logos.find((logo) => logo.role === "og-image");
+  if (favicon) dsIdentity.favicon = { url: favicon.absoluteUrl };
+  if (ogImage) dsIdentity.primaryLogo = { url: ogImage.absoluteUrl };
+  dsRecord.assets = brand.logos.map((logo) => ({
+    kind: logo.type ?? "image",
+    label: logo.role ?? "logo",
+    url: logo.absoluteUrl,
+    contentType: logo.contentType,
+    alt: logo.alt
+  }));
+  if (brand.confidence > (dsIdentity.confidence as number ?? 0)) dsIdentity.confidence = brand.confidence;
   (manifest as Record<string, unknown>).designSystem = designSystem;
   const llms = [
     `# ${title}`,
@@ -3027,6 +3045,48 @@ function collectInlineStyles(html: string): string {
   return combined;
 }
 
+const FONT_CSS_HOSTS = new Set(["fonts.googleapis.com", "fonts.bunny.net", "use.typekit.net", "rsms.me"]);
+
+async function collectAllStyles(html: string, target: URL): Promise<string> {
+  let combined = collectInlineStyles(html);
+  const cssLinks: URL[] = [];
+  const linkRegex = /<link\b[^>]*>/gi;
+  let tagMatch: RegExpExecArray | null;
+  while ((tagMatch = linkRegex.exec(html))) {
+    const tag = tagMatch[0]!;
+    const attrs = extractTagAttributes(tag);
+    const rel = (attrs.rel ?? "").toLowerCase();
+    const href = attrs.href;
+    if (!href) continue;
+    const isStyle = rel.includes("stylesheet") || (rel.includes("preload") && (attrs.as ?? "").toLowerCase() === "style");
+    if (!isStyle) continue;
+    try {
+      const url = new URL(href, target);
+      if (!/^https?:$/.test(url.protocol)) continue;
+      if (url.origin !== target.origin && !FONT_CSS_HOSTS.has(url.hostname)) continue;
+      cssLinks.push(url);
+    } catch { /* ignore */ }
+    if (cssLinks.length >= 5) break;
+  }
+  if (!cssLinks.length) return combined;
+  const fetched = await Promise.allSettled(cssLinks.map(async (url) => {
+    const response = await fetch(url.toString(), {
+      headers: { "user-agent": "ContextMCP Cloudflare Extractor/0.1 (+https://contextmem.ai)" }
+    });
+    if (!response.ok) return "";
+    const length = Number(response.headers.get("content-length") ?? 0);
+    if (length > 800_000) return "";
+    const text = await response.text();
+    return text.slice(0, 500_000);
+  }));
+  fetched.forEach((result, index) => {
+    if (result.status === "fulfilled" && result.value) {
+      combined += `\n/* ${cssLinks[index]!.toString()} */\n${result.value}`;
+    }
+  });
+  return combined;
+}
+
 function extractHexColors(text: string): string[] {
   const freq = new Map<string, number>();
   const regex = /#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
@@ -3065,7 +3125,7 @@ function extractCssVariables(css: string): Record<string, string> {
   return out;
 }
 
-function buildBrandProfile(input: { html: string; target: URL; title?: string; description?: string; metadata: Record<string, string>; walrusHeaders: Record<string, string> }): {
+function buildBrandProfile(input: { html: string; target: URL; title?: string; description?: string; metadata: Record<string, string>; walrusHeaders: Record<string, string>; css?: string }): {
   name?: string;
   domain?: string;
   description?: string;
@@ -3075,9 +3135,9 @@ function buildBrandProfile(input: { html: string; target: URL; title?: string; d
   socials: string[];
   confidence: number;
 } {
-  const { html, target, title, description, metadata } = input;
+  const { html, target, title, description, metadata, css } = input;
   const siteName = metadata["og:site_name"] || metadata["application-name"] || (title ? title.split("|")[0]!.trim() : undefined);
-  const inlineStyles = collectInlineStyles(html);
+  const inlineStyles = css ?? collectInlineStyles(html);
   const fontFamilies = extractCssValues(inlineStyles, "font-family")
     .flatMap((value) => value.split(",").map((token) => token.trim().replace(/^["']|["']$/g, "")))
     .filter((font) => font && !/^(inherit|initial|unset|revert)$/i.test(font));
@@ -3127,9 +3187,9 @@ function buildBrandProfile(input: { html: string; target: URL; title?: string; d
   };
 }
 
-async function buildDesignSystem(input: { html: string; target: URL }): Promise<Record<string, unknown>> {
-  const { html, target } = input;
-  const inlineStyles = collectInlineStyles(html);
+async function buildDesignSystem(input: { html: string; target: URL; css?: string }): Promise<Record<string, unknown>> {
+  const { html, target, css } = input;
+  const inlineStyles = css ?? collectInlineStyles(html);
   const fontFamiliesRaw = extractCssValues(inlineStyles, "font-family")
     .flatMap((value) => value.split(",").map((token) => token.trim().replace(/^["']|["']$/g, "")))
     .filter((font) => font && !/^(inherit|initial|unset|revert)$/i.test(font));
