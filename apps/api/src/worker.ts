@@ -3113,17 +3113,42 @@ type FrameworkFingerprint = {
 
 const FRAMEWORK_DEFAULTS: Record<Exclude<DocsFramework, null>, FrameworkFingerprint> = {
   docusaurus: {
-    // Infima neutral ramp + common defaults observed across Docusaurus 2/3.
+    // Infima neutral ramp + alert state palette (info/success/warning/danger
+    // content + background ramps) + common defaults observed across
+    // Docusaurus 2/3. Anything in this set will be filtered from brand output.
     colors: new Set([
       "#ffffff", "#000000",
+      // Neutral ramp (light + dark)
       "#fbffea", "#e0e2e6", "#d0d7de", "#ebedf0", "#eef2f5", "#f5f6f7", "#f6f8fa", "#fafbfc",
-      "#1c1e21", "#18191a", "#242526", "#2b2d2f", "#0f0f0f",
-      "#3578e5", "#25c2a0", "#606770"
+      "#1c1e21", "#18191a", "#242526", "#2b2d2f", "#0f0f0f", "#303846", "#343940", "#444444", "#474748",
+      "#fdfdfe",
+      // Primary blue/teal defaults
+      "#3578e5", "#25c2a0", "#606770",
+      // Alert / state palette (info)
+      "#eef9fd", "#193c47", "#ebf2fc", "#102445",
+      // Alert (success)
+      "#e6f6e6", "#003100",
+      // Alert (warning)
+      "#fff8e6", "#4d3800",
+      // Alert (danger)
+      "#ffebec", "#4b1113",
+      // Misc Infima accents that show up in default themes
+      "#9fffc0"
     ]),
     fonts: new Set([
-      "system-ui", "-apple-system", "blinkmacsystemfont", "segoe ui", "helvetica neue", "arial",
-      "sans-serif", "ui-monospace", "sfmono-regular", "menlo", "monaco", "consolas",
-      "liberation mono", "courier new", "monospace", "noto sans", "noto color emoji", "apple color emoji"
+      // Apple system stack
+      "system-ui", "-apple-system", "blinkmacsystemfont", "apple color emoji",
+      // Windows
+      "segoe ui", "segoe ui emoji", "segoe ui symbol",
+      // GNOME / Ubuntu / Android fallback
+      "roboto", "ubuntu", "cantarell", "oxygen", "oxygen sans", "fira sans", "droid sans",
+      // Generic
+      "helvetica neue", "helvetica", "arial", "sans-serif",
+      // Mono
+      "ui-monospace", "sfmono-regular", "menlo", "monaco", "consolas",
+      "liberation mono", "courier new", "monospace",
+      // Noto family
+      "noto sans", "noto color emoji"
     ]),
     fontFamilyPrefixes: [],
     varPrefixes: ["--ifm-", "--docusaurus-", "--docsearch-"]
@@ -3321,9 +3346,12 @@ function buildBrandProfile(input: { html: string; target: URL; title?: string; d
   const fonts = fontsBeforeFilter.filter((font) => !isFrameworkFont(font, framework)).slice(0, 12);
   const fontsSubtracted = fontsBeforeFilter.length - fonts.length;
   const rawColors = extractHexColors(inlineStyles);
-  const colorsBeforeFilter = rawColors.slice(0, 32);
-  const colors = colorsBeforeFilter.filter((hex) => !isFrameworkColor(hex, framework)).slice(0, 16);
-  const colorsSubtracted = colorsBeforeFilter.length - colors.length;
+  // Filter framework defaults FIRST, then slice — otherwise a stylesheet whose
+  // top 32 colors are all framework defaults produces an empty brand palette
+  // even when real brand colors exist further down the frequency list.
+  const colorsAfterFilter = rawColors.filter((hex) => !isFrameworkColor(hex, framework));
+  const colors = colorsAfterFilter.slice(0, 16);
+  const colorsSubtracted = rawColors.length - colorsAfterFilter.length;
   const defaultsSubtracted = colorsSubtracted + fontsSubtracted;
   if (metadata["theme-color"] && /^#?[0-9a-fA-F]{3,6}$/.test(metadata["theme-color"])) {
     const themeHex = metadata["theme-color"].startsWith("#") ? metadata["theme-color"].toLowerCase() : `#${metadata["theme-color"].toLowerCase()}`;
@@ -3414,12 +3442,17 @@ async function buildDesignSystem(input: { html: string; target: URL; css?: strin
     .map((value) => isVarUnresolved(value) ? resolveCssVarRef(value, varMap) : value)
     .filter((value) => !isVarUnresolved(value))
     .slice(0, 6);
-  const paletteRaw = extractHexColors(inlineStyles).slice(0, 24);
-  const palette = paletteRaw.filter((hex) => !isFrameworkColor(hex, framework)).slice(0, 14);
-  const paletteSubtracted = paletteRaw.length - palette.length;
+  // Same "filter before slice" discipline as buildBrandProfile.
+  const paletteRaw = extractHexColors(inlineStyles);
+  const paletteAfterFilter = paletteRaw.filter((hex) => !isFrameworkColor(hex, framework));
+  const palette = paletteAfterFilter.slice(0, 14);
+  const paletteSubtracted = paletteRaw.length - paletteAfterFilter.length;
   // Drop framework-prefix custom properties from the surfaced css var snapshot.
   // The user sees only brand-distinct custom properties.
-  const cssVariablesAll = extractCssVariables(inlineStyles);
+  // Use the scoped :root / [data-theme] var map (not extractCssVariables, which
+  // matches --name: value anywhere including inside button selectors and dumps
+  // garbage). Prefer the resolved varMap passed in; rebuild from CSS otherwise.
+  const cssVariablesAll = Object.keys(varMap).length ? varMap : buildCssVarMap(inlineStyles);
   const frameworkVarPrefixes = framework ? FRAMEWORK_DEFAULTS[framework].varPrefixes : [];
   const cssVariables: Record<string, string> = {};
   for (const [name, value] of Object.entries(cssVariablesAll)) {
@@ -3433,15 +3466,21 @@ async function buildDesignSystem(input: { html: string; target: URL; css?: strin
   }));
   const tailwindThemePartial = palette.length ? `// tailwind palette (top ${palette.length}, framework defaults subtracted)\ncolors: {\n${palette.map((hex, index) => `  brand${index + 1}: "${hex}"`).join(",\n")}\n}` : "";
   const tokensCss = Object.entries(cssVariables).slice(0, 40).map(([name, value]) => `${name}: ${value};`).join("\n");
-  // Honest confidence: based on signals that survived subtraction.
-  // 0 if the entire token set is framework defaults.
+  // Honest confidence. Raw value count post-subtraction is a weak signal —
+  // a Docusaurus alert ramp can still ship 8+ colors that pass the blocklist.
+  // We weight HARDER signals (custom CSS vars in the site's own prefix space,
+  // many post-subtraction colors, a brand-distinct font that isn't a system
+  // fallback) and divide by a higher denominator so the score gradients down.
   let signals = 0;
-  if (palette.length >= 2) signals += 1;
-  if (fontFamilies.length >= 1) signals += 1;
-  if (Object.keys(cssVariables).length >= 1) signals += 0.5;
-  if (spacing.length >= 3) signals += 0.5;
-  if (radii.length >= 1) signals += 0.5;
-  const identityConfidence = Math.min(1, Number((signals / 3).toFixed(2)));
+  if (palette.length >= 4) signals += 1; // raised threshold
+  if (palette.length >= 8) signals += 0.5;
+  if (fontFamilies.length >= 1) signals += 0.5;
+  if (fontFamilies.length >= 3) signals += 0.5; // multiple distinct fonts = real brand
+  if (Object.keys(cssVariables).length >= 4) signals += 0.5; // real :root vars (not garbage)
+  if (spacing.length >= 4) signals += 0.5;
+  if (radii.length >= 2) signals += 0.5;
+  // Cap at 4 so a "high confidence" demands at least primary palette + font + vars + spacing.
+  const identityConfidence = Math.min(1, Number((signals / 4).toFixed(2)));
   return {
     identity: {
       name: undefined,
