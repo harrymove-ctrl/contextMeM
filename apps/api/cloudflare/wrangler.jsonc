@@ -33,6 +33,9 @@
       }
     ]
   },
+  "triggers": {
+    "crons": ["*/30 * * * *"]
+  },
   "secrets": {
     "required": ["CONTEXTMEM_NAMESPACE_IMPORT_TOKEN"]
   }

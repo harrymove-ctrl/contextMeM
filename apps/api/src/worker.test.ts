@@ -248,6 +248,157 @@ describe("ContextMeM hosted namespace Worker", () => {
       restoreFetch();
     }
   });
+
+  it("runs public demo extraction with quota, event status, and clear target validation", async () => {
+    const env = createTestEnv();
+    const restoreFetch = mockFetch({
+      "https://example.com/": "<html><head><title>Demo Site</title></head><body><a href=\"/about\">About</a></body></html>",
+      "https://example.com/about": "<html><head><title>About</title></head><body>Demo about page</body></html>",
+      "https://example.com/robots.txt": "User-agent: *\nAllow: /",
+      "https://example.com/sitemap.xml": "<urlset></urlset>"
+    });
+    try {
+      const { handleWorkerRequest } = await worker();
+      const first = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/demo/extractions", {
+          method: "POST",
+          headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.10" },
+          body: JSON.stringify({ target: "https://example.com/" })
+        }),
+        env
+      );
+      expect(first.status).toBe(202);
+      const firstBody = (await first.json()) as { job: { id: string; status: string; result?: { share?: { id: string } } } };
+      expect(firstBody.job.status).toBe("completed");
+      expect(firstBody.job.result?.share?.id).toMatch(/^shr_/);
+
+      const events = await handleWorkerRequest(new Request(`https://contextmem.test/api/demo/extractions/${firstBody.job.id}/events`), env);
+      expect(events.status).toBe(200);
+      expect(await events.text()).toContain("event: done");
+
+      const second = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/demo/extractions", {
+          method: "POST",
+          headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.10" },
+          body: JSON.stringify({ target: "https://example.com/" })
+        }),
+        env
+      );
+      expect(second.status).toBe(429);
+
+      const rejected = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/demo/extractions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ target: "http://localhost:5174/" })
+        }),
+        env
+      );
+      expect(rejected.status).toBe(400);
+      expect(await rejected.text()).toContain("localhost");
+
+      const objectId = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/demo/extractions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ target: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" })
+        }),
+        env
+      );
+      expect(objectId.status).toBe(400);
+      expect(await objectId.text()).toContain("public http(s) URLs");
+    } finally {
+      restoreFetch();
+    }
+  });
+
+  it("stores feedback and creates redacted public share links", async () => {
+    const env = createTestEnv();
+    const { handleWorkerRequest, CloudflareNamespaceStore } = await worker();
+    const feedback = await handleWorkerRequest(
+      new Request("https://contextmem.test/api/feedback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sentiment: "positive", message: "The DEV onboarding path is clear.", pageUrl: "https://contextmem.test/" })
+      }),
+      env
+    );
+    expect(feedback.status).toBe(201);
+    expect((env.CONTEXTMEM_DB as MemoryD1Database).feedback.size).toBe(1);
+
+    const share = await handleWorkerRequest(
+      new Request("https://contextmem.test/api/share-links", {
+        method: "POST",
+        headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+        body: JSON.stringify({
+          ownerId: "acct_share",
+          target: "https://example.com/",
+          title: "Shareable Example",
+          manifest: { target: "https://example.com/", env: "OPENAI_API_KEY=sk-secret-value" },
+          files: [
+            {
+              path: "/context/manifest.json",
+              contentType: "application/json; charset=utf-8",
+              encoding: "utf8",
+              content: JSON.stringify({ target: "https://example.com/", token: "VITE_CONTEXTMEM_DEV_AUTH=true" })
+            },
+            {
+              path: "/llms.txt",
+              contentType: "text/plain; charset=utf-8",
+              encoding: "utf8",
+              content: "PUBLIC_URL=https://example.com\nSECRET_KEY=abc123"
+            }
+          ]
+        })
+      }),
+      env
+    );
+    expect(share.status).toBe(201);
+    const shareBody = (await share.json()) as { share: { id: string; namespace: string } };
+
+    const publicShare = await handleWorkerRequest(new Request(`https://contextmem.test/api/share-links/${shareBody.share.id}`), env);
+    expect(publicShare.status).toBe(200);
+    expect(JSON.stringify(await publicShare.json())).toContain("[REDACTED]");
+
+    const storedManifest = await new CloudflareNamespaceStore(env).readArtifact(shareBody.share.namespace, "/context/manifest.json");
+    expect(storedManifest?.content).toContain("[REDACTED]");
+    expect(storedManifest?.content).not.toContain("VITE_CONTEXTMEM_DEV_AUTH=true");
+  });
+
+  it("runs due schedules, stores alerts, and records webhook delivery metadata", async () => {
+    const env = createTestEnv();
+    const restoreFetch = mockFetch({
+      "https://example.com/": "<html><head><title>Scheduled Site</title></head><body>Scheduled run</body></html>",
+      "https://example.com/robots.txt": "User-agent: *\nAllow: /",
+      "https://example.com/sitemap.xml": "<urlset></urlset>",
+      "https://webhook.test/hook": "ok"
+    });
+    try {
+      const { handleWorkerRequest, processDueSchedules } = await worker();
+      const create = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/schedules", {
+          method: "POST",
+          headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+          body: JSON.stringify({ ownerId: "acct_sched", target: "https://example.com/", intervalHours: 1, webhookUrl: "https://webhook.test/hook", webhookSecret: "test-secret" })
+        }),
+        env
+      );
+      expect(create.status).toBe(201);
+      const schedule = [...(env.CONTEXTMEM_DB as MemoryD1Database).schedules.values()][0]!;
+      schedule.next_run_at = "2000-01-01T00:00:00.000Z";
+
+      await processDueSchedules(env);
+      const run = [...(env.CONTEXTMEM_DB as MemoryD1Database).scheduleRuns.values()][0]!;
+      const alert = [...(env.CONTEXTMEM_DB as MemoryD1Database).alerts.values()][0]!;
+      const delivery = [...(env.CONTEXTMEM_DB as MemoryD1Database).webhookDeliveries.values()][0]!;
+      expect(run.status).toBe("completed");
+      expect(alert.title).toBe("Context changed");
+      expect(delivery.status).toBe("sent");
+      expect(delivery.status_code).toBe(200);
+    } finally {
+      restoreFetch();
+    }
+  });
 });
 
 async function importFixtureNamespace(env: WorkerEnv, visibility: "private" | "public", options: Record<string, unknown> = {}) {
@@ -345,6 +496,13 @@ class MemoryD1Database {
   versions = new Map<string, Record<string, unknown>>();
   tokens = new Map<string, Record<string, unknown>>();
   extractionJobs = new Map<string, Record<string, unknown>>();
+  feedback = new Map<string, Record<string, unknown>>();
+  demoLimits = new Map<string, Record<string, unknown>>();
+  shareLinks = new Map<string, Record<string, unknown>>();
+  schedules = new Map<string, Record<string, unknown>>();
+  scheduleRuns = new Map<string, Record<string, unknown>>();
+  alerts = new Map<string, Record<string, unknown>>();
+  webhookDeliveries = new Map<string, Record<string, unknown>>();
   artifacts: Array<Record<string, unknown>> = [];
 
   prepare(query: string) {
@@ -370,6 +528,15 @@ class MemoryD1Statement {
     const query = normalizeSql(this.query);
     if (query.includes("from contextmem_extraction_jobs") && query.includes("where id = ?")) {
       return (this.db.extractionJobs.get(String(this.values[0])) as T | undefined) ?? null;
+    }
+    if (query.includes("from contextmem_demo_limits") && query.includes("where bucket_key = ?")) {
+      return (this.db.demoLimits.get(String(this.values[0])) as T | undefined) ?? null;
+    }
+    if (query.includes("from contextmem_share_links") && query.includes("where id = ?")) {
+      return (this.db.shareLinks.get(String(this.values[0])) as T | undefined) ?? null;
+    }
+    if (query.includes("from contextmem_schedules") && query.includes("where id = ?")) {
+      return (this.db.schedules.get(String(this.values[0])) as T | undefined) ?? null;
     }
     if (query.includes("from contextmem_namespaces") && query.includes("where namespace = ?")) {
       return (this.db.namespaces.get(String(this.values[0])) as T | undefined) ?? null;
@@ -411,6 +578,21 @@ class MemoryD1Statement {
       const current = this.db.namespaces.get(namespace)?.current_version_id;
       const results = this.db.artifacts.filter((artifact) => artifact.namespace === namespace && artifact.version_id === current).sort((a, b) => String(a.path).localeCompare(String(b.path))) as T[];
       return { results };
+    }
+    if (query.includes("from contextmem_schedules")) {
+      let results = [...this.db.schedules.values()];
+      if (query.includes("where owner_id = ?")) {
+        const ownerId = String(this.values[0]);
+        results = results.filter((schedule) => schedule.owner_id === ownerId);
+      } else if (query.includes("where active = 1")) {
+        const now = String(this.values[0]);
+        results = results.filter((schedule) => Boolean(schedule.active) && String(schedule.next_run_at) <= now);
+      }
+      return { results: results as T[] };
+    }
+    if (query.includes("from contextmem_alerts")) {
+      const ownerId = String(this.values[0]);
+      return { results: [...this.db.alerts.values()].filter((alert) => alert.owner_id === ownerId) as T[] };
     }
     return { results: [] as T[] };
   }
@@ -460,6 +642,58 @@ class MemoryD1Statement {
         if (query.includes("status = 'running'")) Object.assign(job, { status: "running", updated_at: this.values[0] });
         else if (query.includes("status = 'completed'")) Object.assign(job, { status: "completed", result_json: this.values[0], updated_at: this.values[1], completed_at: this.values[2] });
         else if (query.includes("status = 'failed'")) Object.assign(job, { status: "failed", error: this.values[0], updated_at: this.values[1] });
+      }
+    } else if (query.startsWith("insert into contextmem_feedback")) {
+      const [id, owner_id, page_url, sentiment, message, contact, user_agent, created_at] = this.values;
+      this.db.feedback.set(String(id), { id, owner_id, page_url, sentiment, message, contact, user_agent, created_at });
+    } else if (query.startsWith("insert into contextmem_demo_limits")) {
+      const [bucket_key, ip_hash, day, updated_at] = this.values;
+      const existing = this.db.demoLimits.get(String(bucket_key));
+      this.db.demoLimits.set(String(bucket_key), { bucket_key, ip_hash, day, count: Number(existing?.count ?? 0) + 1, updated_at });
+    } else if (query.startsWith("insert into contextmem_share_links")) {
+      const [id, namespace, target, title, description, source_run_id, version_id, artifact_count, byte_length, created_at, updated_at] = this.values;
+      this.db.shareLinks.set(String(id), { id, namespace, target, title, description, source_run_id, version_id, artifact_count, byte_length, created_at, updated_at });
+    } else if (query.startsWith("insert into contextmem_schedules")) {
+      const [id, owner_id, namespace, target, interval_hours, webhook_url, webhook_secret, active, next_run_at, created_at, updated_at] = this.values;
+      this.db.schedules.set(String(id), { id, owner_id, namespace, target, interval_hours, webhook_url, webhook_secret, active, last_run_at: null, next_run_at, created_at, updated_at });
+    } else if (query.startsWith("update contextmem_schedules")) {
+      const id = String(this.values[this.values.length - 1]);
+      const schedule = this.db.schedules.get(id);
+      if (schedule && query.includes("last_run_at")) {
+        const [last_run_at, next_run_at, updated_at] = this.values;
+        Object.assign(schedule, { last_run_at, next_run_at, updated_at });
+      } else if (schedule) {
+        const [interval_hours, webhook_url, webhook_secret, active, next_run_at, updated_at] = this.values;
+        Object.assign(schedule, { interval_hours, webhook_url, webhook_secret, active, next_run_at, updated_at });
+      }
+    } else if (query.startsWith("insert into contextmem_schedule_runs")) {
+      const [id, schedule_id, created_at] = this.values;
+      this.db.scheduleRuns.set(String(id), { id, schedule_id, status: "running", created_at });
+    } else if (query.startsWith("update contextmem_schedule_runs")) {
+      const id = String(this.values[this.values.length - 1]);
+      const run = this.db.scheduleRuns.get(id);
+      if (run && query.includes("status = 'completed'")) {
+        const [extraction_job_id, diff_json, completed_at] = this.values;
+        Object.assign(run, { extraction_job_id, status: "completed", diff_json, completed_at });
+      } else if (run && query.includes("status = 'failed'")) {
+        const [error, completed_at] = this.values;
+        Object.assign(run, { status: "failed", error, completed_at });
+      }
+    } else if (query.startsWith("insert into contextmem_alerts")) {
+      const [id, owner_id, schedule_id, namespace, target, title, message, diff_json, created_at] = this.values;
+      this.db.alerts.set(String(id), { id, owner_id, schedule_id, namespace, target, title, message, diff_json, read_at: null, created_at });
+    } else if (query.startsWith("insert into contextmem_webhook_deliveries")) {
+      const [id, alert_id, webhook_url, created_at, updated_at] = this.values;
+      this.db.webhookDeliveries.set(String(id), { id, alert_id, webhook_url, status: "queued", attempts: 0, created_at, updated_at });
+    } else if (query.startsWith("update contextmem_webhook_deliveries")) {
+      const id = String(this.values[this.values.length - 1]);
+      const delivery = this.db.webhookDeliveries.get(id);
+      if (delivery && query.includes("status_code")) {
+        const [status, status_code, updated_at] = this.values;
+        Object.assign(delivery, { status, status_code, attempts: 1, updated_at });
+      } else if (delivery) {
+        const [error, updated_at] = this.values;
+        Object.assign(delivery, { status: "failed", error, attempts: 1, updated_at });
       }
     }
     return { success: true };

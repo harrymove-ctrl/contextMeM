@@ -111,7 +111,7 @@ export default function Navigation10({
               </div>
 
               <div className="rbNav10Socials">
-                <a href="https://x.com/MemWal_" target="_blank" rel="noreferrer" aria-label="MemWal on X">
+                <a href="https://x.com/harry_phan06" target="_blank" rel="noreferrer" aria-label="Harry Phan on X">
                   <Twitter size={16} />
                 </a>
                 <a href="https://github.com/MystenLabs/walrus-sites" target="_blank" rel="noreferrer" aria-label="Walrus Sites on GitHub">

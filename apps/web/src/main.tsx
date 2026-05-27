@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AlertCircle, ArrowDownRight, Boxes, Brain, CheckCircle2, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, MessageSquare, Palette, Play, Search, Server, Settings, ShieldCheck, Sparkles, UserCheck, Zap } from "lucide-react";
+import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, MessageSquare, Palette, Play, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, Zap } from "lucide-react";
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
 import "./styles.css";
@@ -258,10 +258,12 @@ type HostedNamespaceImportResponse = {
   gatewayMcpUrl?: string;
   readToken: string;
   snippets: {
+    claudeDesktop?: unknown;
+    cursor?: unknown;
+    codex?: unknown;
     generic: unknown;
     contextMcpGateway?: unknown;
     mcpRemote: unknown;
-    cursor: unknown;
   };
 };
 
@@ -301,6 +303,65 @@ type HostedExtractionJob = {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
+};
+
+type ShareLinkResponse = {
+  share: {
+    id: string;
+    namespace: string;
+    target: string;
+    title?: string;
+    description?: string;
+    sourceRunId?: string;
+    versionId: string;
+    artifactCount: number;
+    byteLength: number;
+    url: string;
+    mcpUrl: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  manifest?: ArtifactManifest;
+};
+
+type VisualDiff = {
+  baseRunId: string;
+  compareRunId?: string;
+  generatedAt: string;
+  pages: Array<{
+    routePath: string;
+    status: "added" | "removed" | "changed" | "unchanged";
+    beforeScreenshot?: string;
+    afterScreenshot?: string;
+    boxes: Array<{ x: number; y: number; width: number; height: number; label: string; tone: "added" | "removed" | "changed" }>;
+    markdownDiff?: { added: string[]; removed: string[] };
+  }>;
+};
+
+type HostedSchedule = {
+  id: string;
+  ownerId: string;
+  namespace: string;
+  target: string;
+  intervalHours: number;
+  webhookUrl?: string;
+  active: boolean;
+  lastRunAt?: string;
+  nextRunAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ContextAlert = {
+  id: string;
+  scheduleId?: string;
+  namespace: string;
+  target: string;
+  title: string;
+  message: string;
+  diffSummary?: SiteSnapshotDiff["summary"];
+  createdAt: string;
+  readAt?: string;
 };
 
 type ScreenshotArtifact = {
@@ -387,7 +448,7 @@ type MemWalNotice = {
 };
 
 const API_BASE = import.meta.env.VITE_CONTEXTMEM_API_BASE ?? "http://localhost:8791";
-const showDevMemWalAuth = import.meta.env.VITE_CONTEXTMEM_DEV_AUTH === "true" || new URLSearchParams(window.location.search).get("devAuth") === "1";
+const showDevMemWalAuth = !import.meta.env.PROD && (import.meta.env.VITE_CONTEXTMEM_DEV_AUTH === "true" || new URLSearchParams(window.location.search).get("devAuth") === "1");
 const buildProfileDefaults: Record<BuildProfile, string[]> = {
   fast: ["markdown", "sitemap"],
   balanced: ["markdown", "images", "brand", "styleguide", "sitemap"],
@@ -739,6 +800,25 @@ function ContextMemExperience() {
   }
 
   async function waitForRun(runId: string): Promise<RunResponse["manifest"]> {
+    try {
+      const streamed = await streamRunEvents(runId, sessionToken, (event) => {
+        setRun((current) => {
+          if (!current || current.manifest.runId !== runId) return current;
+          return {
+            manifest: {
+              ...current.manifest,
+              status: event.status,
+              progress: event.progress ?? current.manifest.progress,
+              updatedAt: event.updatedAt ?? current.manifest.updatedAt
+            }
+          };
+        });
+      });
+      if (streamed.status === "completed") return streamed;
+      if (streamed.status === "failed") throw new Error(streamed.errors?.[0] ?? "Context build failed.");
+    } catch {
+      // Older dev servers may not expose SSE yet; polling keeps the build usable.
+    }
     for (;;) {
       await delay(650);
       const response = await fetch(`${API_BASE}/api/runs/${runId}`, { headers: authHeaders(sessionToken) });
@@ -778,11 +858,46 @@ function ContextMemExperience() {
 
   async function startRunFromLanding() {
     if (!hasMemWalDelegate) {
-      openApp("/app");
+      if (isLocalApiBase(API_BASE)) {
+        openApp("/app");
+        return;
+      }
+      await startDemoExtraction();
       return;
     }
     openApp("/app");
     await startRun();
+  }
+
+  async function startDemoExtraction() {
+    setBusy(true);
+    setError(null);
+    setAuthHint("");
+    try {
+      const response = await fetch(`${API_BASE}/api/demo/extractions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ target: target.trim() || undefined, sample: !target.trim() })
+      });
+      if (!response.ok) throw new Error(await readResponseError(response));
+      let body = (await response.json()) as { job: HostedExtractionJob; demo?: { remainingToday?: number } };
+      for (let attempt = 0; attempt < 20 && (body.job.status === "queued" || body.job.status === "running"); attempt += 1) {
+        await delay(800);
+        const status = await fetch(`${API_BASE}/api/demo/extractions/${encodeURIComponent(body.job.id)}`);
+        if (!status.ok) throw new Error(await readResponseError(status));
+        body = (await status.json()) as { job: HostedExtractionJob };
+      }
+      const shareId = (body.job.result as { share?: { id?: string } } | undefined)?.share?.id;
+      if (!shareId) throw new Error(body.job.error ?? "Demo extraction finished without a share page.");
+      navigate(`/share/${shareId}`);
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setAuthHint(message);
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   const statusLabel = hasMemWalDelegate ? "MemWal ready" : "SDK import needed";
@@ -851,7 +966,8 @@ function ContextMemExperience() {
   }
 
   return (
-    <Routes>
+    <>
+      <Routes>
       <Route
         path="/"
         element={
@@ -879,13 +995,14 @@ function ContextMemExperience() {
           />
         }
       />
+      <Route path="/share/:shareId" element={<SharePage />} />
       <Route path="/app" element={renderShell("Build console", "Resolve a Walrus Site, verify resources, then generate a context package.", buildPage)} />
       <Route
         path="/app/artifacts"
         element={renderShell(
           "Artifacts",
           "Browse generated markdown, manifests, screenshots, and file previews for the selected run.",
-          <ArtifactsAppPage stats={stats} run={run} artifact={artifact} authToken={sessionToken} />
+          <ArtifactsAppPage stats={stats} run={run} artifact={artifact} authToken={sessionToken} setArtifact={setArtifact} />
         )}
       />
       <Route
@@ -928,7 +1045,9 @@ function ContextMemExperience() {
         )}
       />
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+      <FeedbackWidget ownerId={me.account?.id} />
+    </>
   );
 }
 
@@ -954,6 +1073,193 @@ const buildTabs = [
   ["AI Query", MessageSquare],
   ["Walrus Resources", Boxes]
 ] as const;
+
+function SharePage() {
+  const { shareId = "" } = useParams();
+  const [data, setData] = useState<ShareLinkResponse | null>(null);
+  const [artifacts, setArtifacts] = useState<ArtifactFileRecord[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!shareId) return;
+    void loadShare();
+  }, [shareId]);
+
+  async function loadShare() {
+    setError(null);
+    try {
+      const [shareResponse, artifactResponse] = await Promise.all([fetch(`${API_BASE}/api/share-links/${encodeURIComponent(shareId)}`), fetch(`${API_BASE}/api/share-links/${encodeURIComponent(shareId)}/artifacts`)]);
+      if (!shareResponse.ok) throw new Error(await readResponseError(shareResponse));
+      if (!artifactResponse.ok) throw new Error(await readResponseError(artifactResponse));
+      setData((await shareResponse.json()) as ShareLinkResponse);
+      setArtifacts(((await artifactResponse.json()) as { artifacts: ArtifactFileRecord[] }).artifacts ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  const manifest = data?.manifest;
+  const share = data?.share;
+  const pages = manifest?.pages ?? [];
+  const resources = manifest?.walrus?.resources ?? [];
+  const screenshots = manifest?.screenshots?.filter((screenshot) => screenshot.status === "captured") ?? [];
+
+  return (
+    <main className="sharePage">
+      <header className="shareTopbar">
+        <Link className="appBrand" to="/">
+          <span className="appBrandMark">
+            <Server size={18} />
+          </span>
+          <span>
+            <strong>ContextMeM</strong>
+            <small>Public context share</small>
+          </span>
+        </Link>
+        <Link className="heroGhost" to="/">
+          <Home size={16} />
+          Home
+        </Link>
+      </header>
+
+      {error ? (
+        <section className="shareHero panel errorState">
+          <AlertCircle size={24} />
+          <h1>Share not available</h1>
+          <p>{error}</p>
+        </section>
+      ) : !data || !share ? (
+        <section className="shareHero panel">
+          <LoaderCircle size={24} />
+          <h1>Loading shared context</h1>
+        </section>
+      ) : (
+        <>
+          <section className="shareHero">
+            <div>
+              <span>Shareable run</span>
+              <h1>{share.title ?? compactTarget(share.target)}</h1>
+              <p>{share.description ?? "Redacted public ContextMeM package with artifacts, screenshots, and an MCP entrypoint for agents."}</p>
+              <div className="shareActions">
+                <a href={share.mcpUrl} target="_blank" rel="noreferrer">
+                  <Server size={16} />
+                  MCP endpoint
+                </a>
+                <button onClick={() => navigator.clipboard.writeText(share.mcpUrl)}>
+                  <Clipboard size={15} />
+                  Copy MCP URL
+                </button>
+              </div>
+            </div>
+            <aside>
+              <div><span>pages</span><strong>{pages.length}</strong></div>
+              <div><span>artifacts</span><strong>{share.artifactCount}</strong></div>
+              <div><span>resources</span><strong>{resources.length}</strong></div>
+              <div><span>screenshots</span><strong>{screenshots.length}</strong></div>
+            </aside>
+          </section>
+
+          <section className="shareGrid">
+            <article className="panel shareCard">
+              <div className="sectionHead">
+                <h2>AI Summary</h2>
+                <span>{manifest?.aiQuery ? "persisted" : "package"}</span>
+              </div>
+              {manifest?.aiQuery ? <AiResultData data={manifest.aiQuery.data} /> : <p>{pages.slice(0, 3).map((page) => page.title ?? page.routePath ?? page.url).join(" · ") || "No summary available yet."}</p>}
+            </article>
+            <article className="panel shareCard">
+              <div className="sectionHead">
+                <h2>Artifacts</h2>
+                <span>{artifacts.length} files</span>
+              </div>
+              <div className="shareArtifactList">
+                {artifacts.slice(0, 12).map((artifact) => (
+                  <div key={artifact.path}>
+                    <FileText size={14} />
+                    <code>{artifact.path}</code>
+                    <span>{artifact.kind}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </section>
+
+          <section className="shareGrid">
+            <article className="panel shareCard wide">
+              <div className="sectionHead">
+                <h2>Pages</h2>
+                <span>{pages.length} extracted</span>
+              </div>
+              <div className="sharePageList">
+                {pages.slice(0, 8).map((page) => (
+                  <a key={page.url} href={page.url} target="_blank" rel="noreferrer">
+                    <strong>{page.title ?? page.routePath ?? page.url}</strong>
+                    <span>{page.routePath ?? page.url}</span>
+                  </a>
+                ))}
+              </div>
+            </article>
+            <article className="panel shareCard">
+              <div className="sectionHead">
+                <h2>MCP CTA</h2>
+                <span>read-only</span>
+              </div>
+              <pre>{JSON.stringify({ url: share.mcpUrl, namespace: share.namespace }, null, 2)}</pre>
+            </article>
+          </section>
+        </>
+      )}
+    </main>
+  );
+}
+
+function FeedbackWidget({ ownerId }: { ownerId?: string }) {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function sendFeedback() {
+    if (!message.trim()) return;
+    setBusy(true);
+    try {
+      await fetch(`${API_BASE}/api/feedback`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ownerId, message: message.trim(), pageUrl: window.location.href, sentiment: "neutral" })
+      });
+      setSent(true);
+      setMessage("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={`feedbackWidget ${open ? "open" : ""}`}>
+      {open ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void sendFeedback();
+          }}
+        >
+          <div className="sectionHead">
+            <h2>Feedback</h2>
+            <button type="button" onClick={() => setOpen(false)}>Close</button>
+          </div>
+          {sent ? <p>Thanks, saved.</p> : <textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="What felt confusing or valuable?" />}
+          {!sent ? <button type="submit" disabled={busy || !message.trim()}>{busy ? "Sending" : "Send feedback"}</button> : null}
+        </form>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)}>
+          <MessageSquare size={16} />
+          Feedback
+        </button>
+      )}
+    </div>
+  );
+}
 
 function AppShell({
   pageTitle,
@@ -1412,7 +1718,7 @@ function BuildConsolePage({
   );
 }
 
-function ArtifactsAppPage({ stats, run, artifact, authToken }: { stats: MetricItem[]; run: RunResponse | null; artifact: ArtifactManifest | null; authToken: string }) {
+function ArtifactsAppPage({ stats, run, artifact, authToken, setArtifact }: { stats: MetricItem[]; run: RunResponse | null; artifact: ArtifactManifest | null; authToken: string; setArtifact: React.Dispatch<React.SetStateAction<ArtifactManifest | null>> }) {
   return (
     <section className="appPanelStack">
       <div className="stats">
@@ -1427,6 +1733,7 @@ function ArtifactsAppPage({ stats, run, artifact, authToken }: { stats: MetricIt
           );
         })}
       </div>
+      {artifact && run ? <AiQueryPanel artifact={artifact} run={run} setArtifact={setArtifact} authToken={authToken} /> : null}
       {artifact ? <ArtifactViewerPanel run={run} authToken={authToken} /> : <div className="panel subEmpty">No artifact package selected yet. Build or reopen a run to inspect generated files.</div>}
     </section>
   );
@@ -1562,6 +1869,7 @@ function SettingsAppPage({
             <h2>Developer auth fallback</h2>
             <span>local MCP</span>
           </div>
+          <div className="devOnlyBanner">Dev only. This panel is hidden in production builds and delegate keys stay server-side.</div>
           <button className="secondary" onClick={onAttachLocalMemWal} disabled={authBusy || !me.authenticated}>
             Use local MCP credentials
           </button>
@@ -2057,6 +2365,11 @@ function AiQueryPanel({ artifact, run, setArtifact, authToken }: { artifact: Art
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const result = artifact.aiQuery;
+  const prompts = [
+    "What changed since the previous public version?",
+    "What should a developer agent remember before editing this site?",
+    "Summarize the API, docs, and install path for a DEV user."
+  ];
 
   async function runQuery() {
     if (!run) return;
@@ -2082,6 +2395,13 @@ function AiQueryPanel({ artifact, run, setArtifact, authToken }: { artifact: Art
   return (
     <div className="panel queryPanel">
       <section className="queryComposer">
+        <div className="memoryQuickPrompts aiPrompts">
+          {prompts.map((prompt) => (
+            <button key={prompt} type="button" onClick={() => setQuestion(prompt)}>
+              {prompt}
+            </button>
+          ))}
+        </div>
         <label>
           <span>Question</span>
           <textarea value={question} onChange={(event) => setQuestion(event.target.value)} />
@@ -2196,6 +2516,18 @@ function formatAiFieldLabel(value: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function formatSnippetLabel(value: string): string {
+  const labels: Record<string, string> = {
+    claudeDesktop: "Claude Desktop",
+    contextMcpGateway: "Gateway",
+    mcpRemote: "mcp-remote",
+    generic: "Generic MCP",
+    cursor: "Cursor",
+    codex: "Codex"
+  };
+  return labels[value] ?? formatAiFieldLabel(value);
+}
+
 function ArtifactViewerPanel({ run, authToken }: { run: RunResponse | null; authToken: string }) {
   const [files, setFiles] = useState<ArtifactFileRecord[]>([]);
   const [selected, setSelected] = useState<ArtifactFileRecord | null>(null);
@@ -2303,6 +2635,8 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
   const [hostedBusy, setHostedBusy] = useState(false);
   const [hostedError, setHostedError] = useState<string | null>(null);
   const [hostedResult, setHostedResult] = useState<HostedNamespaceImportResponse | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareResult, setShareResult] = useState<{ share: ShareLinkResponse["share"]; url: string } | null>(null);
 
   useEffect(() => {
     if (!run) return;
@@ -2344,6 +2678,25 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
       setHostedError(err instanceof Error ? err.message : String(err));
     } finally {
       setHostedBusy(false);
+    }
+  }
+
+  async function createShareLink() {
+    if (!run) return;
+    setShareBusy(true);
+    setHostedError(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/runs/${run.manifest.runId}/share`, {
+        method: "POST",
+        headers: authHeaders(authToken, { "content-type": "application/json" }),
+        body: JSON.stringify({ title: hostedDisplayName || defaultDisplayName(run.manifest.target), description: hostedDescription || undefined })
+      });
+      if (!response.ok) throw new Error(await readResponseError(response));
+      setShareResult((await response.json()) as { share: ShareLinkResponse["share"]; url: string });
+    } catch (err) {
+      setHostedError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setShareBusy(false);
     }
   }
 
@@ -2446,8 +2799,22 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
             <Server size={15} />
             {hostedBusy ? "Publishing" : "Publish MCP namespace"}
           </button>
+          <button className="secondary" onClick={createShareLink} disabled={shareBusy}>
+            <Share2 size={15} />
+            {shareBusy ? "Creating" : "Create share page"}
+          </button>
         </div>
         {hostedError ? <div className="error">{hostedError}</div> : null}
+        {shareResult ? (
+          <label className="shareResultLink">
+            <span>Share URL</span>
+            <code>{shareResult.url}</code>
+            <button onClick={() => navigator.clipboard.writeText(shareResult.url)}>
+              <Clipboard size={14} />
+              Copy
+            </button>
+          </label>
+        ) : null}
         {hostedResult ? (
           <div className="namespaceResult">
             <div className="namespaceMeta">
@@ -2489,36 +2856,20 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
               </button>
             </label>
             <div className="snippetGrid">
-              <article>
-                <div className="sectionHead">
-                  <h2>Generic MCP</h2>
-                  <button onClick={() => navigator.clipboard.writeText(JSON.stringify(hostedResult.snippets.generic, null, 2))}>
-                    <Clipboard size={14} />
-                    Copy
-                  </button>
-                </div>
-                <pre>{JSON.stringify(hostedResult.snippets.generic, null, 2)}</pre>
-              </article>
-              <article>
-                <div className="sectionHead">
-                  <h2>Gateway</h2>
-                  <button onClick={() => navigator.clipboard.writeText(JSON.stringify(hostedResult.snippets.contextMcpGateway, null, 2))}>
-                    <Clipboard size={14} />
-                    Copy
-                  </button>
-                </div>
-                <pre>{JSON.stringify(hostedResult.snippets.contextMcpGateway, null, 2)}</pre>
-              </article>
-              <article>
-                <div className="sectionHead">
-                  <h2>mcp-remote</h2>
-                  <button onClick={() => navigator.clipboard.writeText(JSON.stringify(hostedResult.snippets.mcpRemote, null, 2))}>
-                    <Clipboard size={14} />
-                    Copy
-                  </button>
-                </div>
-                <pre>{JSON.stringify(hostedResult.snippets.mcpRemote, null, 2)}</pre>
-              </article>
+              {Object.entries(hostedResult.snippets)
+                .filter(([, snippet]) => Boolean(snippet))
+                .map(([label, snippet]) => (
+                  <article key={label}>
+                    <div className="sectionHead">
+                      <h2>{formatSnippetLabel(label)}</h2>
+                      <button onClick={() => navigator.clipboard.writeText(JSON.stringify(snippet, null, 2))}>
+                        <Clipboard size={14} />
+                        Copy
+                      </button>
+                    </div>
+                    <pre>{JSON.stringify(snippet, null, 2)}</pre>
+                  </article>
+                ))}
             </div>
           </div>
         ) : null}
@@ -2537,14 +2888,23 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
   const [extractTarget, setExtractTarget] = useState("https://example.com/");
   const [extractNamespace, setExtractNamespace] = useState("");
   const [extractJob, setExtractJob] = useState<HostedExtractionJob | null>(null);
+  const [schedules, setSchedules] = useState<HostedSchedule[]>([]);
+  const [alerts, setAlerts] = useState<ContextAlert[]>([]);
+  const [scheduleTarget, setScheduleTarget] = useState("https://example.com/");
+  const [scheduleNamespace, setScheduleNamespace] = useState("");
+  const [scheduleInterval, setScheduleInterval] = useState(24);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = async () => {
     setError(null);
-    const [ownedResponse, directoryResponse] = await Promise.all([
+    const [ownedResponse, directoryResponse, schedulesResponse, alertsResponse] = await Promise.all([
       fetch(`${API_BASE}/api/hosted/namespaces`, { headers: authHeaders(authToken) }),
-      fetch(`${API_BASE}/api/hosted/directory`, { headers: authHeaders(authToken) })
+      fetch(`${API_BASE}/api/hosted/directory`, { headers: authHeaders(authToken) }),
+      fetch(`${API_BASE}/api/hosted/schedules`, { headers: authHeaders(authToken) }),
+      fetch(`${API_BASE}/api/hosted/alerts`, { headers: authHeaders(authToken) })
     ]);
     if (!ownedResponse.ok) throw new Error(await readResponseError(ownedResponse));
     if (!directoryResponse.ok) throw new Error(await readResponseError(directoryResponse));
@@ -2552,6 +2912,8 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
     const publicDirectory = (await directoryResponse.json()) as { namespaces: HostedNamespaceSummary[] };
     setNamespaces(owned.namespaces ?? []);
     setDirectory(publicDirectory.namespaces ?? []);
+    if (schedulesResponse.ok) setSchedules(((await schedulesResponse.json()) as { schedules: HostedSchedule[] }).schedules ?? []);
+    if (alertsResponse.ok) setAlerts(((await alertsResponse.json()) as { alerts: ContextAlert[] }).alerts ?? []);
     setSelected((current) => (current ? owned.namespaces.find((item) => item.namespace === current.namespace) ?? current : owned.namespaces[0] ?? null));
   };
 
@@ -2629,6 +2991,50 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
       if (!response.ok) throw new Error(await readResponseError(response));
       const body = (await response.json()) as { job: HostedExtractionJob };
       setExtractJob(body.job);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function createSchedule() {
+    setBusy("schedule");
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/hosted/schedules`, {
+        method: "POST",
+        headers: authHeaders(authToken, { "content-type": "application/json" }),
+        body: JSON.stringify({
+          target: scheduleTarget,
+          namespace: scheduleNamespace || undefined,
+          intervalHours: scheduleInterval,
+          webhookUrl: webhookUrl || undefined,
+          webhookSecret: webhookSecret || undefined,
+          active: true
+        })
+      });
+      if (!response.ok) throw new Error(await readResponseError(response));
+      setWebhookSecret("");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function toggleSchedule(schedule: HostedSchedule) {
+    setBusy(schedule.id);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/hosted/schedules/${encodeURIComponent(schedule.id)}`, {
+        method: "PATCH",
+        headers: authHeaders(authToken, { "content-type": "application/json" }),
+        body: JSON.stringify({ active: !schedule.active })
+      });
+      if (!response.ok) throw new Error(await readResponseError(response));
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -2731,6 +3137,72 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
 
       <section className="namespacePanel">
         <div className="sectionHead">
+          <h2>Scheduled Re-scrape</h2>
+          <span>{schedules.length} schedules</span>
+        </div>
+        <div className="namespaceForm">
+          <label className="wide">
+            <span>Target URL</span>
+            <input value={scheduleTarget} onChange={(event) => setScheduleTarget(event.target.value)} />
+          </label>
+          <label>
+            <span>Namespace</span>
+            <input value={scheduleNamespace} onChange={(event) => setScheduleNamespace(event.target.value)} placeholder="optional" />
+          </label>
+          <label>
+            <span>Every hours</span>
+            <input type="number" min={1} max={720} value={scheduleInterval} onChange={(event) => setScheduleInterval(Number(event.target.value) || 24)} />
+          </label>
+          <label className="wide">
+            <span>Webhook URL</span>
+            <input value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} placeholder="optional https://..." />
+          </label>
+          <label>
+            <span>Webhook secret</span>
+            <input value={webhookSecret} onChange={(event) => setWebhookSecret(event.target.value)} placeholder="optional signing secret" />
+          </label>
+        </div>
+        <button className="secondary" onClick={createSchedule} disabled={busy === "schedule"}>
+          <CalendarClock size={15} />
+          {busy === "schedule" ? "Scheduling" : "Create schedule"}
+        </button>
+        <div className="scheduleList">
+          {schedules.map((schedule) => (
+            <article key={schedule.id}>
+              <div>
+                <strong>{schedule.namespace}</strong>
+                <span>{schedule.target}</span>
+                <small>next {formatDateTime(schedule.nextRunAt)} · every {schedule.intervalHours}h</small>
+              </div>
+              <button onClick={() => void toggleSchedule(schedule)} disabled={busy === schedule.id}>{schedule.active ? "Pause" : "Resume"}</button>
+            </article>
+          ))}
+          {!schedules.length ? <div className="subEmpty">No scheduled re-scrapes yet.</div> : null}
+        </div>
+      </section>
+
+      <section className="namespacePanel">
+        <div className="sectionHead">
+          <h2>Alerts</h2>
+          <span>{alerts.length} recent</span>
+        </div>
+        <div className="alertList">
+          {alerts.map((alert) => (
+            <article key={alert.id}>
+              <Bell size={15} />
+              <div>
+                <strong>{alert.title}</strong>
+                <span>{alert.message}</span>
+                <small>{formatDateTime(alert.createdAt)} · {alert.namespace}</small>
+              </div>
+            </article>
+          ))}
+          {!alerts.length ? <div className="subEmpty">No alerts yet. Scheduled runs will appear here after cron creates a diff.</div> : null}
+        </div>
+      </section>
+
+      <section className="namespacePanel">
+        <div className="sectionHead">
           <h2>Public Directory</h2>
           <span>{directory.length} public</span>
         </div>
@@ -2769,6 +3241,7 @@ function MemWalPanel({
   const [recall, setRecall] = useState<unknown>(null);
   const [memoryAnswer, setMemoryAnswer] = useState<unknown>(null);
   const [diff, setDiff] = useState<SiteSnapshotDiff | null>(null);
+  const [visualDiff, setVisualDiff] = useState<VisualDiff | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<MemoryChatMessage[]>(() => [buildInitialMemoryMessage(artifact, run)]);
@@ -2852,8 +3325,15 @@ function MemWalPanel({
         body: JSON.stringify({ compareToRunId })
       });
       if (response.ok) setDiff((await response.json()) as SiteSnapshotDiff);
+      const visualResponse = await fetch(`${API_BASE}/api/runs/${run.manifest.runId}/visual-diff`, {
+        method: "POST",
+        headers: authHeaders(authToken, { "content-type": "application/json" }),
+        body: JSON.stringify({ compareToRunId })
+      });
+      if (visualResponse.ok) setVisualDiff((await visualResponse.json()) as VisualDiff);
     } catch {
       setDiff(null);
+      setVisualDiff(null);
     }
   }
 
@@ -2962,6 +3442,13 @@ function MemWalPanel({
             ))}
             {!previousRuns.length ? <p>No prior local snapshot for this namespace.</p> : null}
           </div>
+        </section>
+        <section>
+          <div className="sectionHead">
+            <h2>Visual Diff</h2>
+            <span>{visualDiff?.pages.length ?? 0} pages</span>
+          </div>
+          {visualDiff && run ? <VisualDiffPanel diff={visualDiff} run={run} authToken={authToken} /> : <div className="subEmpty">No visual diff generated yet.</div>}
         </section>
         <section>
           <div className="sectionHead">
@@ -3074,6 +3561,37 @@ function DiffSummary({ diff }: { diff: SiteSnapshotDiff }) {
           <span>-{counts.removed}</span>
           <span>~{counts.changed}</span>
           <span>{counts.unchanged} same</span>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function VisualDiffPanel({ diff, run, authToken }: { diff: VisualDiff; run: RunResponse; authToken: string }) {
+  const changedPages = diff.pages.filter((page) => page.status !== "unchanged").slice(0, 4);
+  if (!changedPages.length) return <div className="memoryEmptyResult">No changed page screenshots.</div>;
+  return (
+    <div className="visualDiffList">
+      {changedPages.map((page) => (
+        <article key={page.routePath} className={`visualDiffCard ${page.status}`}>
+          <div className="visualDiffHead">
+            <strong>{page.routePath}</strong>
+            <span>{page.status}</span>
+          </div>
+          <div className="visualPair">
+            {page.beforeScreenshot ? <img src={artifactFileUrl(diff.compareRunId, page.beforeScreenshot, authToken)} alt={`${page.routePath} before`} /> : <div>new</div>}
+            {page.afterScreenshot ? <img src={artifactFileUrl(run.manifest.runId, page.afterScreenshot, authToken)} alt={`${page.routePath} after`} /> : <div>removed</div>}
+          </div>
+          {page.markdownDiff ? (
+            <div className="markdownMiniDiff">
+              {page.markdownDiff.added.slice(0, 3).map((line) => (
+                <p key={`add-${line}`}>+ {line}</p>
+              ))}
+              {page.markdownDiff.removed.slice(0, 3).map((line) => (
+                <p key={`remove-${line}`} className="removed">- {line}</p>
+              ))}
+            </div>
+          ) : null}
         </article>
       ))}
     </div>
@@ -3577,6 +4095,40 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+async function streamRunEvents(runId: string, token: string, onProgress: (event: { status: string; progress?: RunProgress; updatedAt?: string }) => void): Promise<RunResponse["manifest"]> {
+  const response = await fetch(`${API_BASE}/api/runs/${runId}/events`, { headers: authHeaders(token) });
+  if (!response.ok || !response.body) throw new Error(response.ok ? "Run event stream unavailable." : await readResponseError(response));
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let eventName = "message";
+  let eventData = "";
+
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (value) buffer += decoder.decode(value, { stream: !done });
+    let separator = buffer.indexOf("\n\n");
+    while (separator >= 0) {
+      const raw = buffer.slice(0, separator);
+      buffer = buffer.slice(separator + 2);
+      eventName = "message";
+      eventData = "";
+      for (const line of raw.split(/\n/)) {
+        if (line.startsWith("event:")) eventName = line.slice("event:".length).trim();
+        if (line.startsWith("data:")) eventData += line.slice("data:".length).trim();
+      }
+      if (eventData) {
+        const parsed = JSON.parse(eventData);
+        if (eventName === "progress") onProgress(parsed);
+        if (eventName === "done") return parsed as RunResponse["manifest"];
+      }
+      separator = buffer.indexOf("\n\n");
+    }
+    if (done) break;
+  }
+  throw new Error("Run event stream closed before completion.");
+}
+
 function flattenStructure(nodes: SiteStructureNode[]): SiteStructureNode[] {
   return nodes.flatMap((node) => [node, ...flattenStructure(node.children ?? [])]);
 }
@@ -3638,6 +4190,15 @@ function artifactFileUrl(runId: string | undefined, artifactPath: string, access
 
 function authHeaders(token: string, base: Record<string, string> = {}): Record<string, string> {
   return token ? { ...base, authorization: `Bearer ${token}` } : base;
+}
+
+function isLocalApiBase(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1";
+  } catch {
+    return false;
+  }
 }
 
 function isUnavailableMessage(message: string): boolean {

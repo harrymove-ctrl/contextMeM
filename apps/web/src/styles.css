@@ -4674,6 +4674,353 @@ textarea {
   font-weight: 780;
 }
 
+.sharePage {
+  min-height: 100vh;
+  padding: 18px;
+  background: #eef2f6;
+}
+
+.shareTopbar,
+.shareHero,
+.shareGrid {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.shareTopbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.shareHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 18px;
+  align-items: stretch;
+  padding: 24px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(16, 24, 40, 0.08);
+}
+
+.shareHero h1 {
+  margin: 8px 0;
+  font-size: clamp(32px, 5vw, 58px);
+  line-height: 0.98;
+}
+
+.shareHero p {
+  max-width: 760px;
+  color: #536173;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.shareHero > aside {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.shareHero > aside > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.shareHero > aside span,
+.shareHero > div > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.shareHero > aside strong {
+  color: #101820;
+  font-size: 26px;
+}
+
+.shareActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.shareActions a,
+.shareActions button,
+.shareTopbar .heroGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #101820;
+  color: #ffffff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.shareActions button,
+.shareTopbar .heroGhost {
+  background: #ffffff;
+  color: #101820;
+}
+
+.shareGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.65fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.shareCard {
+  min-width: 0;
+}
+
+.shareCard.wide {
+  min-height: 280px;
+}
+
+.shareArtifactList,
+.sharePageList {
+  display: grid;
+  gap: 8px;
+}
+
+.shareArtifactList > div,
+.sharePageList > a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #152033;
+  text-decoration: none;
+}
+
+.shareArtifactList code,
+.sharePageList span,
+.shareCard pre {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.feedbackWidget {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 50;
+}
+
+.feedbackWidget > button,
+.feedbackWidget form > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid #cbd3df;
+  border-radius: 8px;
+  background: #101820;
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 14px 34px rgba(16, 24, 40, 0.18);
+}
+
+.feedbackWidget form {
+  width: min(360px, calc(100vw - 28px));
+  padding: 14px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 56px rgba(16, 24, 40, 0.18);
+}
+
+.feedbackWidget textarea {
+  width: 100%;
+  min-height: 118px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #cbd3df;
+  border-radius: 8px;
+  resize: vertical;
+}
+
+.feedbackWidget .sectionHead button {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.devOnlyBanner {
+  padding: 10px;
+  border: 1px solid #a3e635;
+  border-radius: 8px;
+  background: #f1f8df;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.shareResultLink,
+.namespaceResult label.shareResultLink {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.shareResultLink code {
+  overflow-wrap: anywhere;
+}
+
+.scheduleList,
+.alertList,
+.visualDiffList {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.scheduleList article,
+.alertList article,
+.visualDiffCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.scheduleList article > div,
+.alertList article > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.scheduleList span,
+.scheduleList small,
+.alertList span,
+.alertList small {
+  min-width: 0;
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
+.scheduleList button {
+  border: 1px solid #cbd3df;
+  border-radius: 8px;
+  background: #f8fafc;
+  min-height: 36px;
+  padding: 0 12px;
+  font-weight: 800;
+}
+
+.alertList article {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.visualDiffCard {
+  grid-template-columns: 1fr;
+}
+
+.visualDiffHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.visualDiffHead strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.visualDiffHead span {
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: #eef6ff;
+  color: #164e63;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.visualDiffCard.added .visualDiffHead span,
+.markdownMiniDiff p {
+  background: #ecfdf3;
+  color: #166534;
+}
+
+.visualDiffCard.removed .visualDiffHead span,
+.markdownMiniDiff p.removed {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.visualPair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.visualPair img,
+.visualPair div {
+  width: 100%;
+  min-height: 88px;
+  max-height: 150px;
+  object-fit: cover;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.visualPair div {
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.markdownMiniDiff {
+  display: grid;
+  gap: 4px;
+}
+
+.markdownMiniDiff p {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .blurredDemo {
   position: absolute;
   inset: 16px;
@@ -5117,6 +5464,27 @@ textarea:focus {
 
   .memoryContextRail {
     grid-template-columns: 1fr;
+    position: static;
+    max-height: none;
+  }
+
+  .shareHero,
+  .shareGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .shareHero {
+    padding: 18px;
+  }
+
+  .shareTopbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .feedbackWidget {
+    right: 10px;
+    bottom: 10px;
   }
 
   .runRow {
@@ -5363,6 +5731,22 @@ textarea:focus {
 
   .memoryComposerActions button {
     width: 100%;
+  }
+
+  .shareHero > aside,
+  .visualPair,
+  .scheduleList article {
+    grid-template-columns: 1fr;
+  }
+
+  .shareActions a,
+  .shareActions button,
+  .shareResultLink {
+    width: 100%;
+  }
+
+  .shareResultLink {
+    grid-template-columns: 1fr;
   }
 
   .brandline {

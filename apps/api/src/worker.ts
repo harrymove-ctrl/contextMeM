@@ -19,6 +19,8 @@ export type WorkerEnv = {
   CONTEXTMEM_EXTRACT_QUEUE?: QueueLike;
   CONTEXTMEM_NAMESPACE_IMPORT_TOKEN?: string;
   CONTEXTMEM_WORKER_BASE_URL?: string;
+  CONTEXTMEM_DEMO_SAMPLE_TARGET?: string;
+  CONTEXTMEM_WEBHOOK_SECRET?: string;
   MEMWAL_MCP_URL?: string;
   MEMWAL_AUTHORIZATION?: string;
   MEMWAL_BEARER?: string;
@@ -122,6 +124,48 @@ type ExtractionJobRow = {
   completed_at?: string | null;
 };
 
+type ShareLinkRow = {
+  id: string;
+  namespace: string;
+  target: string;
+  title?: string | null;
+  description?: string | null;
+  source_run_id?: string | null;
+  version_id: string;
+  artifact_count: number;
+  byte_length: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type ScheduleRow = {
+  id: string;
+  owner_id: string;
+  namespace: string;
+  target: string;
+  interval_hours: number;
+  webhook_url?: string | null;
+  webhook_secret?: string | null;
+  active: number | boolean;
+  last_run_at?: string | null;
+  next_run_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type AlertRow = {
+  id: string;
+  owner_id: string;
+  schedule_id?: string | null;
+  namespace: string;
+  target: string;
+  title: string;
+  message: string;
+  diff_json?: string | null;
+  read_at?: string | null;
+  created_at: string;
+};
+
 const namespaceImportSchema = z.object({
   namespace: z.string().min(3).max(300),
   visibility: z.enum(["private", "public"]).default("private"),
@@ -175,6 +219,47 @@ const extractionCreateSchema = z.object({
 });
 
 type ExtractionCreateInput = z.infer<typeof extractionCreateSchema>;
+
+const demoExtractionCreateSchema = z.object({
+  target: z.string().min(1).max(500).optional(),
+  sample: z.boolean().default(false)
+});
+
+const feedbackCreateSchema = z.object({
+  ownerId: z.string().min(1).max(200).optional(),
+  pageUrl: z.string().max(500).optional(),
+  sentiment: z.enum(["positive", "neutral", "negative"]).optional(),
+  message: z.string().min(1).max(4000),
+  contact: z.string().max(200).optional()
+});
+
+const shareLinkCreateSchema = z.object({
+  ownerId: z.string().min(1).max(200).default("anonymous"),
+  target: z.string().min(1),
+  title: z.string().max(160).optional(),
+  description: z.string().max(600).optional(),
+  sourceRunId: z.string().max(160).optional(),
+  manifest: z.unknown(),
+  files: namespaceImportSchema.shape.files
+});
+
+const scheduleCreateSchema = z.object({
+  ownerId: z.string().min(1).max(200).default("anonymous"),
+  namespace: z.string().min(3).max(300).optional(),
+  target: z.string().url(),
+  intervalHours: z.number().int().min(1).max(24 * 30).default(24),
+  webhookUrl: z.string().url().optional(),
+  webhookSecret: z.string().min(8).max(200).optional(),
+  active: z.boolean().default(true)
+});
+
+const scheduleUpdateSchema = z.object({
+  ownerId: z.string().min(1).max(200).optional(),
+  intervalHours: z.number().int().min(1).max(24 * 30).optional(),
+  webhookUrl: z.string().url().nullable().optional(),
+  webhookSecret: z.string().min(8).max(200).nullable().optional(),
+  active: z.boolean().optional()
+});
 
 export class CloudflareNamespaceStore implements HostedNamespaceStore {
   constructor(private readonly env: WorkerEnv) {}
@@ -278,6 +363,11 @@ export default {
   async fetch(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<Response> {
     return handleWorkerRequest(request, env, ctx);
   },
+  async scheduled(_event: unknown, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<void> {
+    const work = processDueSchedules(env, ctx);
+    if (ctx.waitUntil) ctx.waitUntil(work);
+    else await work;
+  },
   async queue(batch: { messages: Array<{ body: unknown; ack?: () => void; retry?: () => void }> }, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<void> {
     for (const message of batch.messages) {
       const body = message.body as { jobId?: string };
@@ -325,6 +415,25 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
       }
     });
   }
+  if (request.method === "POST" && url.pathname === "/api/demo/extractions") {
+    return createDemoExtraction(request, env, ctx);
+  }
+  if (request.method === "GET" && url.pathname.startsWith("/api/demo/extractions/")) {
+    return getDemoExtraction(request, env, decodeURIComponent(url.pathname.slice("/api/demo/extractions/".length)));
+  }
+  if (request.method === "POST" && url.pathname === "/api/feedback") {
+    return createFeedback(request, env);
+  }
+  if (request.method === "POST" && url.pathname === "/api/share-links") {
+    const auth = requireImportAuthorization(request, env);
+    if (!auth.ok) return json({ error: auth.message }, auth.status);
+    return createShareLink(request, env);
+  }
+  if (request.method === "GET" && url.pathname.startsWith("/api/share-links/")) {
+    const suffix = decodeURIComponent(url.pathname.slice("/api/share-links/".length));
+    if (suffix.endsWith("/artifacts")) return getShareLinkArtifacts(request, env, suffix.slice(0, -"/artifacts".length));
+    return getShareLink(request, env, suffix);
+  }
   if (request.method === "POST" && url.pathname === "/api/namespaces/import") {
     const auth = requireImportAuthorization(request, env);
     if (!auth.ok) return json({ error: auth.message }, auth.status);
@@ -363,6 +472,26 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     const auth = requireImportAuthorization(request, env);
     if (!auth.ok) return json({ error: auth.message }, auth.status);
     return getExtraction(request, env, decodeURIComponent(url.pathname.slice("/api/extractions/".length)));
+  }
+  if (request.method === "POST" && url.pathname === "/api/schedules") {
+    const auth = requireImportAuthorization(request, env);
+    if (!auth.ok) return json({ error: auth.message }, auth.status);
+    return createSchedule(request, env);
+  }
+  if (request.method === "GET" && url.pathname === "/api/schedules") {
+    const auth = requireImportAuthorization(request, env);
+    if (!auth.ok) return json({ error: auth.message }, auth.status);
+    return listSchedules(request, env);
+  }
+  if (request.method === "PATCH" && url.pathname.startsWith("/api/schedules/")) {
+    const auth = requireImportAuthorization(request, env);
+    if (!auth.ok) return json({ error: auth.message }, auth.status);
+    return updateSchedule(request, env, decodeURIComponent(url.pathname.slice("/api/schedules/".length)));
+  }
+  if (request.method === "GET" && url.pathname === "/api/alerts") {
+    const auth = requireImportAuthorization(request, env);
+    if (!auth.ok) return json({ error: auth.message }, auth.status);
+    return listAlerts(request, env);
   }
   if (request.method === "GET" && url.pathname.startsWith("/api/namespaces/")) {
     const namespace = decodeURIComponent(url.pathname.slice("/api/namespaces/".length));
@@ -559,6 +688,156 @@ async function importNamespace(request: Request, env: WorkerEnv): Promise<Respon
   return json(result, 201);
 }
 
+async function createDemoExtraction(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<Response> {
+  const input = demoExtractionCreateSchema.parse(await request.json().catch(() => ({})));
+  const target = validatePublicDemoTarget(input.sample ? demoSampleTarget(env) : input.target ?? demoSampleTarget(env));
+  const sample = input.sample || !input.target;
+  if (!sample) await consumeDemoQuota(request, env);
+  const namespace = normalizeNamespace(`demo:${slugNamespace(target.hostname)}:${createShortId()}`);
+  const jobInput: ExtractionCreateInput = {
+    ownerId: demoOwnerId(request),
+    target: target.toString(),
+    namespace,
+    visibility: "public",
+    displayName: displayNameFromTarget(target.toString()),
+    description: "Public ContextMeM demo extraction",
+    tags: ["demo", target.hostname.endsWith(".wal.app") ? "walrus" : "web"],
+    directoryEnabled: false
+  };
+  const job = await createExtractionJob(jobInput, env, ctx);
+  return json({ job, demo: { sample, target: target.toString(), remainingToday: sample ? 1 : 0 } }, 202);
+}
+
+async function getDemoExtraction(request: Request, env: WorkerEnv, rawJobId: string): Promise<Response> {
+  if (rawJobId.endsWith("/events")) {
+    const jobId = rawJobId.slice(0, -"/events".length);
+    const job = await getExtractionJob(env, jobId);
+    if (!job || !String(job.ownerId).startsWith("demo:")) return json({ error: "Demo extraction not found." }, 404);
+    return sse([{ event: "status", data: job }, ...(job.status === "completed" || job.status === "failed" ? [{ event: "done", data: job }] : [])]);
+  }
+  const job = await getExtractionJob(env, rawJobId);
+  if (!job || !String(job.ownerId).startsWith("demo:")) return json({ error: "Demo extraction not found." }, 404);
+  return json({ job });
+}
+
+async function createFeedback(request: Request, env: WorkerEnv): Promise<Response> {
+  const input = feedbackCreateSchema.parse(await request.json());
+  const id = `fb_${cryptoRandomId(12)}`;
+  const now = new Date().toISOString();
+  await env.CONTEXTMEM_DB.prepare(
+    `INSERT INTO contextmem_feedback (id, owner_id, page_url, sentiment, message, contact, user_agent, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(id, input.ownerId ?? null, input.pageUrl ?? null, input.sentiment ?? null, input.message, input.contact ?? null, request.headers.get("user-agent") ?? null, now)
+    .run();
+  return json({ ok: true, id, createdAt: now }, 201);
+}
+
+async function createShareLink(request: Request, env: WorkerEnv): Promise<Response> {
+  const input = shareLinkCreateSchema.parse(await request.json());
+  const shareId = `shr_${cryptoRandomId(10)}`;
+  const namespace = normalizeNamespace(`share:${shareId}`);
+  const files = redactImportFiles(input.files);
+  const imported = await storeNamespaceImport(
+    {
+      namespace,
+      visibility: "public",
+      ownerId: input.ownerId,
+      displayName: input.title ?? displayNameFromTarget(input.target),
+      description: input.description,
+      tags: ["share", "contextmem"],
+      sourceType: "import",
+      directoryEnabled: false,
+      target: input.target,
+      sourceRunId: input.sourceRunId,
+      manifest: redactUnknown(input.manifest),
+      files
+    },
+    request,
+    env
+  );
+  const now = new Date().toISOString();
+  await env.CONTEXTMEM_DB.prepare(
+    `INSERT INTO contextmem_share_links (id, namespace, target, title, description, source_run_id, version_id, artifact_count, byte_length, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(shareId, namespace, input.target, input.title ?? null, input.description ?? null, input.sourceRunId ?? null, imported.versionId, imported.artifactCount, imported.byteLength, now, now)
+    .run();
+  return json({ share: shareLinkFromImport(shareId, namespace, input, imported, now), url: `${workerBaseUrl(request, env)}/share/${shareId}` }, 201);
+}
+
+async function getShareLink(request: Request, env: WorkerEnv, shareId: string): Promise<Response> {
+  const share = await getShareLinkRow(env, shareId);
+  if (!share) return json({ error: "Share link not found." }, 404);
+  const store = new CloudflareNamespaceStore(env);
+  const manifest = await store.readArtifact(share.namespace, "/context/manifest.json").catch(() => undefined);
+  return json({ share: publicShareLink(share, request, env), manifest: manifest?.encoding === "utf8" ? safeJsonParse(manifest.content) : undefined });
+}
+
+async function getShareLinkArtifacts(request: Request, env: WorkerEnv, shareId: string): Promise<Response> {
+  const share = await getShareLinkRow(env, shareId);
+  if (!share) return json({ error: "Share link not found." }, 404);
+  return json({ share: publicShareLink(share, request, env), artifacts: await new CloudflareNamespaceStore(env).listArtifacts(share.namespace) });
+}
+
+async function createSchedule(request: Request, env: WorkerEnv): Promise<Response> {
+  const input = scheduleCreateSchema.parse(await request.json());
+  const schedule = await insertSchedule(input, env);
+  return json({ schedule }, 201);
+}
+
+async function listSchedules(request: Request, env: WorkerEnv): Promise<Response> {
+  const ownerId = new URL(request.url).searchParams.get("ownerId")?.trim() || "anonymous";
+  const result = await env.CONTEXTMEM_DB.prepare(
+    `SELECT id, owner_id, namespace, target, interval_hours, webhook_url, webhook_secret, active, last_run_at, next_run_at, created_at, updated_at
+     FROM contextmem_schedules
+     WHERE owner_id = ?
+     ORDER BY updated_at DESC`
+  )
+    .bind(ownerId)
+    .all<ScheduleRow>();
+  return json({ schedules: allResults(result).map(publicSchedule) });
+}
+
+async function updateSchedule(request: Request, env: WorkerEnv, scheduleId: string): Promise<Response> {
+  const input = scheduleUpdateSchema.parse(await request.json());
+  const current = await getScheduleRow(env, scheduleId, input.ownerId);
+  if (!current) return json({ error: "Schedule not found." }, 404);
+  const intervalHours = input.intervalHours ?? Number(current.interval_hours);
+  const now = new Date().toISOString();
+  const nextRunAt = new Date(Date.now() + intervalHours * 60 * 60 * 1000).toISOString();
+  await env.CONTEXTMEM_DB.prepare(
+    `UPDATE contextmem_schedules
+     SET interval_hours = ?, webhook_url = ?, webhook_secret = ?, active = ?, next_run_at = ?, updated_at = ?
+     WHERE id = ?`
+  )
+    .bind(
+      intervalHours,
+      input.webhookUrl === undefined ? current.webhook_url ?? null : input.webhookUrl,
+      input.webhookSecret === undefined ? current.webhook_secret ?? null : input.webhookSecret,
+      input.active === undefined ? (current.active ? 1 : 0) : input.active ? 1 : 0,
+      nextRunAt,
+      now,
+      scheduleId
+    )
+    .run();
+  return json({ schedule: publicSchedule((await getScheduleRow(env, scheduleId))!) });
+}
+
+async function listAlerts(request: Request, env: WorkerEnv): Promise<Response> {
+  const ownerId = new URL(request.url).searchParams.get("ownerId")?.trim() || "anonymous";
+  const result = await env.CONTEXTMEM_DB.prepare(
+    `SELECT id, owner_id, schedule_id, namespace, target, title, message, diff_json, read_at, created_at
+     FROM contextmem_alerts
+     WHERE owner_id = ?
+     ORDER BY created_at DESC
+     LIMIT 100`
+  )
+    .bind(ownerId)
+    .all<AlertRow>();
+  return json({ alerts: allResults(result).map(publicAlert) });
+}
+
 async function storeNamespaceImport(input: NamespaceImportInput, request: Request, env: WorkerEnv) {
   const namespace = normalizeNamespace(input.namespace);
   const now = new Date().toISOString();
@@ -671,6 +950,11 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
 
 async function createExtraction(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<Response> {
   const input = extractionCreateSchema.parse(await request.json());
+  const job = await createExtractionJob(input, env, ctx);
+  return json({ job }, 202);
+}
+
+async function createExtractionJob(input: ExtractionCreateInput, env: WorkerEnv, ctx: WorkerExecutionContext) {
   const target = new URL(input.target);
   const namespace = normalizeNamespace(input.namespace ?? namespaceForExtractTarget(target));
   const jobId = createJobId();
@@ -690,7 +974,7 @@ async function createExtraction(request: Request, env: WorkerEnv, ctx: WorkerExe
     else await work;
   }
 
-  return json({ job: await getExtractionJob(env, jobId) }, 202);
+  return getExtractionJob(env, jobId);
 }
 
 async function getExtraction(request: Request, env: WorkerEnv, jobId: string): Promise<Response> {
@@ -726,12 +1010,13 @@ export async function processExtractionJob(jobId: string, env: WorkerEnv, reques
       new Request("https://contextmem.worker/internal-extraction"),
       env
     );
+    const share = job.owner_id.startsWith("demo:") ? await createShareForExtraction(job, importResult, env) : undefined;
     await env.CONTEXTMEM_DB.prepare(
       `UPDATE contextmem_extraction_jobs
        SET status = 'completed', result_json = ?, updated_at = ?, completed_at = ?
        WHERE id = ?`
     )
-      .bind(JSON.stringify(importResult), new Date().toISOString(), new Date().toISOString(), jobId)
+      .bind(JSON.stringify(share ? { ...importResult, share } : importResult), new Date().toISOString(), new Date().toISOString(), jobId)
       .run();
   } catch (error) {
     await env.CONTEXTMEM_DB.prepare(
@@ -744,6 +1029,31 @@ export async function processExtractionJob(jobId: string, env: WorkerEnv, reques
     throw error;
   }
   void requestContext;
+}
+
+async function createShareForExtraction(job: ExtractionJobRow, imported: Awaited<ReturnType<typeof storeNamespaceImport>>, env: WorkerEnv) {
+  const shareId = `shr_${cryptoRandomId(10)}`;
+  const now = new Date().toISOString();
+  const title = job.display_name ?? displayNameFromTarget(job.target);
+  await env.CONTEXTMEM_DB.prepare(
+    `INSERT INTO contextmem_share_links (id, namespace, target, title, description, source_run_id, version_id, artifact_count, byte_length, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(shareId, job.namespace, job.target, title, job.description ?? null, job.id, imported.versionId, imported.artifactCount, imported.byteLength, now, now)
+    .run();
+  return {
+    id: shareId,
+    namespace: job.namespace,
+    target: job.target,
+    title,
+    description: job.description ?? undefined,
+    sourceRunId: job.id,
+    versionId: imported.versionId,
+    artifactCount: imported.artifactCount,
+    byteLength: imported.byteLength,
+    createdAt: now,
+    updatedAt: now
+  };
 }
 
 async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: Record<string, unknown>; files: NamespaceImportInput["files"] }> {
@@ -853,8 +1163,11 @@ async function fetchText(url: string): Promise<{ text: string; contentType: stri
     }
   });
   if (!response.ok) throw new Error(`Fetch failed ${response.status} for ${url}`);
+  const length = Number(response.headers.get("content-length") ?? 0);
+  if (length > 1_500_000) throw new Error(`Fetch response is too large for demo extraction: ${url}`);
   const contentType = response.headers.get("content-type") ?? "text/html; charset=utf-8";
   const text = await response.text();
+  if (text.length > 1_500_000) throw new Error(`Fetch response is too large for demo extraction: ${url}`);
   return { text, contentType };
 }
 
@@ -918,6 +1231,27 @@ function buildImportResponse(
     gatewayMcpUrl,
     readToken,
     snippets: {
+      claudeDesktop: {
+        mcpServers: {
+          [serverName]: {
+            command: "npx",
+            args: ["mcp-remote", mcpUrl, "--header", `Authorization: ${authorization}`]
+          }
+        }
+      },
+      cursor: {
+        mcpServers: {
+          [serverName]: {
+            url: mcpUrl,
+            headers: {
+              Authorization: authorization
+            }
+          }
+        }
+      },
+      codex: {
+        command: `codex mcp add ${serverName} -- npx -y mcp-remote ${mcpUrl} --header "Authorization: ${authorization}"`
+      },
       generic: {
         mcpServers: {
           [serverName]: {
@@ -944,16 +1278,6 @@ function buildImportResponse(
       mcpRemote: {
         command: "npx",
         args: ["mcp-remote", mcpUrl, "--header", `Authorization: ${authorization}`]
-      },
-      cursor: {
-        mcpServers: {
-          [serverName]: {
-            url: mcpUrl,
-            headers: {
-              Authorization: authorization
-            }
-          }
-        }
       }
     }
   };
@@ -1019,6 +1343,360 @@ async function getExtractionJob(env: WorkerEnv, jobId: string) {
     updatedAt: row.updated_at,
     completedAt: row.completed_at ?? undefined
   };
+}
+
+async function insertSchedule(input: z.infer<typeof scheduleCreateSchema>, env: WorkerEnv) {
+  const target = validatePublicDemoTarget(input.target);
+  const now = new Date().toISOString();
+  const id = `sch_${cryptoRandomId(10)}`;
+  const namespace = normalizeNamespace(input.namespace ?? namespaceForExtractTarget(target));
+  const nextRunAt = new Date(Date.now() + input.intervalHours * 60 * 60 * 1000).toISOString();
+  await env.CONTEXTMEM_DB.prepare(
+    `INSERT INTO contextmem_schedules (id, owner_id, namespace, target, interval_hours, webhook_url, webhook_secret, active, next_run_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(id, input.ownerId, namespace, target.toString(), input.intervalHours, input.webhookUrl ?? null, input.webhookSecret ?? null, input.active ? 1 : 0, nextRunAt, now, now)
+    .run();
+  return publicSchedule((await getScheduleRow(env, id))!);
+}
+
+async function getScheduleRow(env: WorkerEnv, scheduleId: string, ownerId?: string): Promise<ScheduleRow | undefined> {
+  const row = await env.CONTEXTMEM_DB.prepare(
+    `SELECT id, owner_id, namespace, target, interval_hours, webhook_url, webhook_secret, active, last_run_at, next_run_at, created_at, updated_at
+     FROM contextmem_schedules
+     WHERE id = ?`
+  )
+    .bind(scheduleId)
+    .first<ScheduleRow>();
+  if (!row || (ownerId && row.owner_id !== ownerId)) return undefined;
+  return row;
+}
+
+export async function processDueSchedules(env: WorkerEnv, ctx: WorkerExecutionContext = {}): Promise<void> {
+  const now = new Date();
+  const result = await env.CONTEXTMEM_DB.prepare(
+    `SELECT id, owner_id, namespace, target, interval_hours, webhook_url, webhook_secret, active, last_run_at, next_run_at, created_at, updated_at
+     FROM contextmem_schedules
+     WHERE active = 1
+       AND next_run_at <= ?
+     ORDER BY next_run_at ASC
+     LIMIT 10`
+  )
+    .bind(now.toISOString())
+    .all<ScheduleRow>();
+  for (const schedule of allResults(result)) {
+    await runSchedule(schedule, env, ctx).catch(() => undefined);
+  }
+}
+
+async function runSchedule(schedule: ScheduleRow, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<void> {
+  const runId = `sr_${cryptoRandomId(10)}`;
+  const now = new Date().toISOString();
+  await env.CONTEXTMEM_DB.prepare(
+    `INSERT INTO contextmem_schedule_runs (id, schedule_id, status, created_at)
+     VALUES (?, ?, 'running', ?)`
+  )
+    .bind(runId, schedule.id, now)
+    .run();
+  try {
+    const job = await createExtractionJob(
+      {
+        ownerId: schedule.owner_id,
+        target: schedule.target,
+        namespace: schedule.namespace,
+        visibility: "private",
+        displayName: displayNameFromTarget(schedule.target),
+        tags: ["schedule", "context"],
+        directoryEnabled: false
+      },
+      env,
+      ctx
+    );
+    const summary = diffSummaryForNamespace(env, schedule.namespace);
+    await env.CONTEXTMEM_DB.prepare(
+      `UPDATE contextmem_schedule_runs
+       SET extraction_job_id = ?, status = 'completed', diff_json = ?, completed_at = ?
+       WHERE id = ?`
+    )
+      .bind(job?.id ?? null, JSON.stringify(summary), new Date().toISOString(), runId)
+      .run();
+    await createAlertForSchedule(schedule, summary, env);
+    const nextRunAt = new Date(Date.now() + Number(schedule.interval_hours) * 60 * 60 * 1000).toISOString();
+    await env.CONTEXTMEM_DB.prepare(
+      `UPDATE contextmem_schedules
+       SET last_run_at = ?, next_run_at = ?, updated_at = ?
+       WHERE id = ?`
+    )
+      .bind(new Date().toISOString(), nextRunAt, new Date().toISOString(), schedule.id)
+      .run();
+  } catch (error) {
+    await env.CONTEXTMEM_DB.prepare(
+      `UPDATE contextmem_schedule_runs
+       SET status = 'failed', error = ?, completed_at = ?
+       WHERE id = ?`
+    )
+      .bind(error instanceof Error ? error.message : String(error), new Date().toISOString(), runId)
+      .run();
+    throw error;
+  }
+}
+
+async function createAlertForSchedule(schedule: ScheduleRow, diffSummary: unknown, env: WorkerEnv): Promise<void> {
+  const alertId = `al_${cryptoRandomId(10)}`;
+  const now = new Date().toISOString();
+  const message = `Scheduled ContextMeM re-scrape completed for ${schedule.target}.`;
+  await env.CONTEXTMEM_DB.prepare(
+    `INSERT INTO contextmem_alerts (id, owner_id, schedule_id, namespace, target, title, message, diff_json, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(alertId, schedule.owner_id, schedule.id, schedule.namespace, schedule.target, "Context changed", message, JSON.stringify(diffSummary), now)
+    .run();
+  if (schedule.webhook_url) await deliverWebhook(alertId, schedule, diffSummary, env);
+}
+
+async function deliverWebhook(alertId: string, schedule: ScheduleRow, diffSummary: unknown, env: WorkerEnv): Promise<void> {
+  if (!schedule.webhook_url) return;
+  const deliveryId = `wh_${cryptoRandomId(10)}`;
+  const now = new Date().toISOString();
+  const body = JSON.stringify({
+    type: "contextmem.schedule.completed",
+    alertId,
+    scheduleId: schedule.id,
+    namespace: schedule.namespace,
+    target: schedule.target,
+    diffSummary,
+    createdAt: now
+  });
+  const signature = await signWebhookPayload(body, schedule.webhook_secret ?? env.CONTEXTMEM_WEBHOOK_SECRET ?? "contextmem-dev-webhook-secret");
+  await env.CONTEXTMEM_DB.prepare(
+    `INSERT INTO contextmem_webhook_deliveries (id, alert_id, webhook_url, status, attempts, created_at, updated_at)
+     VALUES (?, ?, ?, 'queued', 0, ?, ?)`
+  )
+    .bind(deliveryId, alertId, schedule.webhook_url, now, now)
+    .run();
+  try {
+    const response = await fetch(schedule.webhook_url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-contextmem-signature": signature
+      },
+      body
+    });
+    await env.CONTEXTMEM_DB.prepare(
+      `UPDATE contextmem_webhook_deliveries
+       SET status = ?, status_code = ?, attempts = 1, updated_at = ?
+       WHERE id = ?`
+    )
+      .bind(response.ok ? "sent" : "failed", response.status, new Date().toISOString(), deliveryId)
+      .run();
+  } catch (error) {
+    await env.CONTEXTMEM_DB.prepare(
+      `UPDATE contextmem_webhook_deliveries
+       SET status = 'failed', error = ?, attempts = 1, updated_at = ?
+       WHERE id = ?`
+    )
+      .bind(error instanceof Error ? error.message : String(error), new Date().toISOString(), deliveryId)
+      .run();
+  }
+}
+
+async function signWebhookPayload(body: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+  return `sha256=${[...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function diffSummaryForNamespace(_env: WorkerEnv, _namespace: string) {
+  return {
+    pages: { added: 0, removed: 0, changed: 1, unchanged: 0 },
+    resources: { added: 0, removed: 0, changed: 0, unchanged: 0 },
+    images: { added: 0, removed: 0, changed: 0, unchanged: 0 },
+    designTokens: { added: 0, removed: 0, changed: 0, unchanged: 0 }
+  };
+}
+
+async function getShareLinkRow(env: WorkerEnv, shareId: string): Promise<ShareLinkRow | undefined> {
+  const row = await env.CONTEXTMEM_DB.prepare(
+    `SELECT id, namespace, target, title, description, source_run_id, version_id, artifact_count, byte_length, created_at, updated_at
+     FROM contextmem_share_links
+     WHERE id = ?`
+  )
+    .bind(shareId)
+    .first<ShareLinkRow>();
+  return row ?? undefined;
+}
+
+function publicSchedule(row: ScheduleRow) {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    namespace: row.namespace,
+    target: row.target,
+    intervalHours: Number(row.interval_hours),
+    webhookUrl: row.webhook_url ?? undefined,
+    webhookConfigured: Boolean(row.webhook_url),
+    active: Boolean(row.active),
+    lastRunAt: row.last_run_at ?? undefined,
+    nextRunAt: row.next_run_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function publicAlert(row: AlertRow) {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    scheduleId: row.schedule_id ?? undefined,
+    namespace: row.namespace,
+    target: row.target,
+    title: row.title,
+    message: row.message,
+    diffSummary: row.diff_json ? safeJsonParse(row.diff_json) : undefined,
+    readAt: row.read_at ?? undefined,
+    createdAt: row.created_at
+  };
+}
+
+function publicShareLink(row: ShareLinkRow, request: Request, env: WorkerEnv) {
+  return {
+    id: row.id,
+    namespace: row.namespace,
+    target: row.target,
+    title: row.title ?? undefined,
+    description: row.description ?? undefined,
+    sourceRunId: row.source_run_id ?? undefined,
+    versionId: row.version_id,
+    artifactCount: Number(row.artifact_count),
+    byteLength: Number(row.byte_length),
+    url: `${workerBaseUrl(request, env)}/share/${row.id}`,
+    mcpUrl: `${workerBaseUrl(request, env)}/mcp/${encodeURIComponent(row.namespace)}`,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function shareLinkFromImport(shareId: string, namespace: string, input: z.infer<typeof shareLinkCreateSchema>, imported: Awaited<ReturnType<typeof storeNamespaceImport>>, now: string) {
+  return {
+    id: shareId,
+    namespace,
+    target: input.target,
+    title: input.title,
+    description: input.description,
+    sourceRunId: input.sourceRunId,
+    versionId: imported.versionId,
+    artifactCount: imported.artifactCount,
+    byteLength: imported.byteLength,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function validatePublicDemoTarget(value: string): URL {
+  if (/^0x[0-9a-f]{32,}$/i.test(value.trim())) {
+    throw statusError("Hosted demo accepts public http(s) URLs. Random Sui object IDs need the full local Walrus run flow.", 400);
+  }
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw statusError("Demo target must be a full http(s) URL.", 400);
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") throw statusError("Demo target must use http or https.", 400);
+  if (url.username || url.password) throw statusError("Demo target may not include credentials.", 400);
+  const host = url.hostname.toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".local")) throw statusError("Demo target must be public, not localhost.", 400);
+  if (isPrivateIpv4(host)) throw statusError("Demo target must be public, not a private IP.", 400);
+  url.hash = "";
+  return url;
+}
+
+function isPrivateIpv4(host: string): boolean {
+  const parts = host.split(".").map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  const a = parts[0] ?? 0;
+  const b = parts[1] ?? 0;
+  return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || a === 0;
+}
+
+async function consumeDemoQuota(request: Request, env: WorkerEnv): Promise<void> {
+  const ip = clientIp(request);
+  const day = new Date().toISOString().slice(0, 10);
+  const ipHash = await sha256Hex(ip);
+  const key = `${day}:${ipHash}`;
+  const existing = await env.CONTEXTMEM_DB.prepare(`SELECT bucket_key, count FROM contextmem_demo_limits WHERE bucket_key = ?`).bind(key).first<{ bucket_key: string; count: number }>();
+  if (existing && Number(existing.count) >= 1) throw statusError("Demo limit reached for today. Import credentials for unlimited local runs.", 429);
+  const now = new Date().toISOString();
+  await env.CONTEXTMEM_DB.prepare(
+    `INSERT INTO contextmem_demo_limits (bucket_key, ip_hash, day, count, updated_at)
+     VALUES (?, ?, ?, 1, ?)
+     ON CONFLICT(bucket_key) DO UPDATE SET count = count + 1, updated_at = excluded.updated_at`
+  )
+    .bind(key, ipHash, day, now)
+    .run();
+}
+
+function clientIp(request: Request): string {
+  return request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "127.0.0.1";
+}
+
+function demoOwnerId(request: Request): string {
+  return `demo:${clientIp(request).replace(/[^a-zA-Z0-9_.:-]/g, "_")}`;
+}
+
+function demoSampleTarget(env: WorkerEnv): string {
+  return env.CONTEXTMEM_DEMO_SAMPLE_TARGET ?? "https://example.com/";
+}
+
+function redactImportFiles(files: NamespaceImportInput["files"]): NamespaceImportInput["files"] {
+  return files.map((file) => (file.encoding === "utf8" ? { ...file, content: redactSecrets(file.content) } : file));
+}
+
+function redactUnknown(value: unknown): unknown {
+  if (typeof value === "string") return redactSecrets(value);
+  if (Array.isArray(value)) return value.map(redactUnknown);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, /secret|token|key|authorization|bearer/i.test(key) ? "[REDACTED]" : redactUnknown(item)]));
+  }
+  return value;
+}
+
+function redactSecrets(value: string): string {
+  return value
+    .replace(/\b(?:[A-Z0-9_]*(?:SECRET|TOKEN|API_KEY|PRIVATE_KEY|AUTHORIZATION|BEARER)[A-Z0-9_]*|(?:VITE|NEXT_PUBLIC|REACT_APP|CF|AWS)_[A-Z0-9_]+)\s*[:=]\s*["']?[^"'\s<>{}]+/gi, (match) => match.replace(/[:=].*$/, "=[REDACTED]"))
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{12,}/g, "Bearer [REDACTED]")
+    .replace(/\bctxm_[A-Za-z0-9_-]{16,}/g, "ctxm_[REDACTED]");
+}
+
+function safeJsonParse(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function sse(events: Array<{ event: string; data: unknown }>): Response {
+  const body = events.map((event) => `event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`).join("");
+  return cors(
+    new Response(body, {
+      headers: {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "no-store"
+      }
+    })
+  );
+}
+
+function createShortId(): string {
+  return cryptoRandomId(5);
+}
+
+function cryptoRandomId(bytesLength: number): string {
+  const bytes = new Uint8Array(bytesLength);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64Url(bytes);
 }
 
 function publicToken(row: TokenRow) {

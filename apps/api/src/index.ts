@@ -35,7 +35,11 @@ import {
   type RunCacheStats,
   type RunManifest,
   type RunProgress,
+  type PageArtifact,
+  type ScreenshotArtifact,
+  type SiteSnapshotDiffEntry,
   type TargetMode,
+  type VisualDiff,
   type WalrusPackageManifest
 } from "@contextmem/core";
 import { MemWalMcpClient, summarizeSnapshot, type SiteSnapshot } from "@contextmem/memwal";
@@ -75,7 +79,7 @@ const app = Fastify({ logger: true });
 
 app.addHook("onRequest", async (_req, reply) => {
   reply.header("access-control-allow-origin", "*");
-  reply.header("access-control-allow-methods", "GET,POST,OPTIONS");
+  reply.header("access-control-allow-methods", "GET,POST,PATCH,OPTIONS");
   reply.header("access-control-allow-headers", "content-type, authorization");
 });
 
@@ -445,6 +449,35 @@ app.get("/api/runs/:id", async (request) => {
   return readRunManifest(runsDir, id);
 });
 
+app.get("/api/runs/:id/events", async (request, reply) => {
+  const id = (request.params as { id: string }).id;
+  await requireRunAccess(request.headers.authorization, id);
+  reply.raw.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-store",
+    connection: "keep-alive",
+    "access-control-allow-origin": "*"
+  });
+  for (let attempt = 0; attempt < 90; attempt += 1) {
+    const manifest = await readRunManifest(runsDir, id).catch(() => undefined);
+    if (manifest) {
+      writeSse(reply, "progress", {
+        runId: id,
+        status: manifest.status,
+        progress: manifest.progress,
+        updatedAt: manifest.updatedAt
+      });
+      if (manifest.status === "completed" || manifest.status === "failed") {
+        writeSse(reply, "done", manifest);
+        break;
+      }
+    }
+    await delay(750);
+  }
+  reply.raw.end();
+  return reply;
+});
+
 app.get("/api/runs/:id/artifacts", async (request) => {
   const id = (request.params as { id: string }).id;
   await requireRunAccess(request.headers.authorization, id);
@@ -520,6 +553,35 @@ app.post("/api/runs/:id/hosted/import", async (request) => {
   });
   if (!response.ok) throw new Error(`Hosted namespace import failed (${response.status}): ${await response.text()}`);
   return response.json();
+});
+
+app.post("/api/runs/:id/share", async (request) => {
+  const id = (request.params as { id: string }).id;
+  const auth = await requireRunAccess(request.headers.authorization, id);
+  const input = z
+    .object({
+      title: z.string().max(160).optional(),
+      description: z.string().max(600).optional()
+    })
+    .parse(request.body ?? {});
+  if (!hostedApiUrl || !hostedImportToken) {
+    return badRequest("Share links require CONTEXTMEM_HOSTED_API_URL and CONTEXTMEM_HOSTED_IMPORT_TOKEN.");
+  }
+
+  const artifact = await readContextManifest(runsDir, id);
+  const files = await collectHostedNamespaceFiles(path.join(runsDir, id));
+  return hostedWorkerJson("/api/share-links", {
+    method: "POST",
+    body: JSON.stringify({
+      ownerId: auth.account.id,
+      target: artifact.target,
+      title: input.title ?? displayNameFromTarget(artifact.target),
+      description: input.description,
+      sourceRunId: id,
+      manifest: artifact,
+      files
+    })
+  });
 });
 
 app.get("/api/hosted/namespaces", async (request) => {
@@ -599,6 +661,51 @@ app.get("/api/hosted/extractions/:jobId", async (request) => {
   return hostedWorkerJson(`/api/extractions/${encodeURIComponent(jobId)}?ownerId=${encodeURIComponent(auth.account.id)}`);
 });
 
+app.post("/api/hosted/schedules", async (request) => {
+  const auth = await requireAuth(request.headers.authorization);
+  const input = z
+    .object({
+      namespace: z.string().min(3).max(300).optional(),
+      target: z.string().url(),
+      intervalHours: z.number().int().min(1).max(24 * 30).default(24),
+      webhookUrl: z.string().url().optional(),
+      webhookSecret: z.string().min(8).max(200).optional(),
+      active: z.boolean().default(true)
+    })
+    .parse(request.body ?? {});
+  return hostedWorkerJson("/api/schedules", {
+    method: "POST",
+    body: JSON.stringify({ ...input, ownerId: auth.account.id })
+  });
+});
+
+app.get("/api/hosted/schedules", async (request) => {
+  const auth = await requireAuth(request.headers.authorization);
+  return hostedWorkerJson(`/api/schedules?ownerId=${encodeURIComponent(auth.account.id)}`);
+});
+
+app.patch("/api/hosted/schedules/:id", async (request) => {
+  const auth = await requireAuth(request.headers.authorization);
+  const id = (request.params as { id: string }).id;
+  const input = z
+    .object({
+      intervalHours: z.number().int().min(1).max(24 * 30).optional(),
+      webhookUrl: z.string().url().nullable().optional(),
+      webhookSecret: z.string().min(8).max(200).nullable().optional(),
+      active: z.boolean().optional()
+    })
+    .parse(request.body ?? {});
+  return hostedWorkerJson(`/api/schedules/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ...input, ownerId: auth.account.id })
+  });
+});
+
+app.get("/api/hosted/alerts", async (request) => {
+  const auth = await requireAuth(request.headers.authorization);
+  return hostedWorkerJson(`/api/alerts?ownerId=${encodeURIComponent(auth.account.id)}`);
+});
+
 app.get("/api/runs/:id/walrus/history", async (request) => {
   const id = (request.params as { id: string }).id;
   await requireRunAccess(request.headers.authorization, id);
@@ -634,6 +741,16 @@ app.post("/api/runs/:id/diff", async (request) => {
   if (body.compareToRunId) await requireRunAccess(request.headers.authorization, body.compareToRunId);
   const compareToRunId = body.compareToRunId ?? (await findOwnedPreviousRunId(auth.account.id, id));
   return diffRunSnapshots(runsDir, id, compareToRunId);
+});
+
+app.post("/api/runs/:id/visual-diff", async (request) => {
+  const id = (request.params as { id: string }).id;
+  const auth = await requireRunAccess(request.headers.authorization, id);
+  const body = z.object({ compareToRunId: z.string().optional() }).default({}).parse(request.body ?? {});
+  if (body.compareToRunId) await requireRunAccess(request.headers.authorization, body.compareToRunId);
+  const compareToRunId = body.compareToRunId ?? (await findOwnedPreviousRunId(auth.account.id, id));
+  const diff = await diffRunSnapshots(runsDir, id, compareToRunId);
+  return buildVisualDiff(id, compareToRunId, diff.pages);
 });
 
 app.post("/api/runs/:id/ai-query", async (request) => {
@@ -814,6 +931,14 @@ function namespaceForArtifact(artifact: WalrusPackageManifest): string {
   return namespaceForTarget(artifact.target, artifact.walrus ? "walrus" : "web", artifact.walrus?.site?.network, artifact.walrus?.site?.siteObjectId);
 }
 
+function displayNameFromTarget(target: string): string {
+  try {
+    return new URL(target).hostname.replace(/^www\./, "");
+  } catch {
+    return target.slice(0, 80);
+  }
+}
+
 async function collectHostedNamespaceFiles(runDir: string): Promise<Array<{ path: string; contentType: string; encoding: "utf8"; content: string }>> {
   const maxFileBytes = 2 * 1024 * 1024;
   const textKinds = new Set(["json", "markdown", "html", "css", "text"]);
@@ -832,6 +957,87 @@ async function collectHostedNamespaceFiles(runDir: string): Promise<Array<{ path
   return payload;
 }
 
+async function buildVisualDiff(runId: string, compareToRunId: string | undefined, pageEntries: SiteSnapshotDiffEntry[]): Promise<VisualDiff> {
+  const current = await readContextManifest(runsDir, runId);
+  const previous = compareToRunId ? await readContextManifest(runsDir, compareToRunId).catch(() => undefined) : undefined;
+  const beforeScreenshots = mapScreenshots(previous?.screenshots ?? []);
+  const afterScreenshots = mapScreenshots(current.screenshots ?? []);
+  return {
+    baseRunId: runId,
+    compareRunId: compareToRunId,
+    generatedAt: new Date().toISOString(),
+    pages: pageEntries.map((entry) => {
+      const beforePage = asPageArtifact(entry.before);
+      const afterPage = asPageArtifact(entry.after);
+      const routePath = afterPage?.routePath ?? beforePage?.routePath ?? entry.key;
+      const beforeScreenshot = screenshotForPage(beforeScreenshots, routePath, beforePage?.url);
+      const afterScreenshot = screenshotForPage(afterScreenshots, routePath, afterPage?.url);
+      return {
+        routePath,
+        status: entry.status,
+        beforeScreenshot: beforeScreenshot?.path,
+        afterScreenshot: afterScreenshot?.path,
+        boxes: diffBoxes(entry.status, beforeScreenshot, afterScreenshot),
+        markdownDiff: markdownLineDiff(beforePage?.markdown, afterPage?.markdown)
+      };
+    })
+  };
+}
+
+function mapScreenshots(screenshots: ScreenshotArtifact[]): Map<string, ScreenshotArtifact> {
+  const map = new Map<string, ScreenshotArtifact>();
+  for (const screenshot of screenshots) {
+    if (screenshot.routePath) map.set(`route:${screenshot.routePath}`, screenshot);
+    map.set(`url:${screenshot.url}`, screenshot);
+  }
+  return map;
+}
+
+function screenshotForPage(map: Map<string, ScreenshotArtifact>, routePath: string, url?: string): ScreenshotArtifact | undefined {
+  return map.get(`route:${routePath}`) ?? (url ? map.get(`url:${url}`) : undefined);
+}
+
+function diffBoxes(status: SiteSnapshotDiffEntry["status"], before?: ScreenshotArtifact, after?: ScreenshotArtifact): VisualDiff["pages"][number]["boxes"] {
+  if (status === "unchanged") return [];
+  const screenshot = after ?? before;
+  if (!screenshot?.path) return [];
+  return [
+    {
+      x: 0,
+      y: 0,
+      width: screenshot.width,
+      height: screenshot.height,
+      label: status === "added" ? "New page snapshot" : status === "removed" ? "Removed page snapshot" : "Changed page snapshot",
+      tone: status
+    }
+  ];
+}
+
+function markdownLineDiff(before?: string, after?: string): VisualDiff["pages"][number]["markdownDiff"] | undefined {
+  if (before === after) return undefined;
+  const beforeLines = lineSet(before);
+  const afterLines = lineSet(after);
+  const added = [...afterLines].filter((line) => !beforeLines.has(line)).slice(0, 12);
+  const removed = [...beforeLines].filter((line) => !afterLines.has(line)).slice(0, 12);
+  if (!added.length && !removed.length) return undefined;
+  return { added, removed };
+}
+
+function lineSet(value?: string): Set<string> {
+  return new Set(
+    (value ?? "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+  );
+}
+
+function asPageArtifact(value: unknown): PageArtifact | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as Partial<PageArtifact>;
+  return typeof candidate.url === "string" && typeof candidate.markdown === "string" ? (candidate as PageArtifact) : undefined;
+}
+
 function siteSnapshotForArtifact(artifact: WalrusPackageManifest, namespace = namespaceForArtifact(artifact)): SiteSnapshot {
   const snapshot: SiteSnapshot = {
     namespace,
@@ -847,6 +1053,15 @@ function siteSnapshotForArtifact(artifact: WalrusPackageManifest, namespace = na
   };
   snapshot.summary = summarizeSnapshot(snapshot);
   return snapshot;
+}
+
+function writeSse(reply: FastifyReply, event: string, data: unknown): void {
+  reply.raw.write(`event: ${event}\n`);
+  reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function localMemWalFallbackResponse(artifact: WalrusPackageManifest, namespace: string, query: string, kind: "recall" | "query", err: unknown) {

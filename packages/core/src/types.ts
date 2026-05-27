@@ -126,6 +126,107 @@ export type DiffCounter = {
   unchanged: number;
 };
 
+export type McpInstallSnippet = {
+  id: "claude-desktop" | "cursor" | "codex" | "generic" | "mcp-remote";
+  label: string;
+  command?: string;
+  config?: unknown;
+};
+
+export type DemoExtraction = {
+  id: string;
+  target: string;
+  namespace: string;
+  status: RunStatus;
+  result?: unknown;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+};
+
+export type ShareLink = {
+  id: string;
+  namespace: string;
+  target: string;
+  title?: string;
+  description?: string;
+  sourceRunId?: string;
+  versionId: string;
+  artifactCount: number;
+  byteLength: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Schedule = {
+  id: string;
+  ownerId: string;
+  namespace: string;
+  target: string;
+  intervalHours: number;
+  webhookUrl?: string;
+  webhookSecret?: string;
+  active: boolean;
+  lastRunAt?: string;
+  nextRunAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ScheduleRun = {
+  id: string;
+  scheduleId: string;
+  extractionJobId?: string;
+  status: RunStatus;
+  diffSummary?: SiteSnapshotDiff["summary"];
+  error?: string;
+  createdAt: string;
+  completedAt?: string;
+};
+
+export type ContextAlert = {
+  id: string;
+  ownerId: string;
+  scheduleId?: string;
+  namespace: string;
+  target: string;
+  title: string;
+  message: string;
+  diffSummary?: SiteSnapshotDiff["summary"];
+  createdAt: string;
+  readAt?: string;
+};
+
+export type WebhookDelivery = {
+  id: string;
+  alertId: string;
+  webhookUrl: string;
+  status: "queued" | "sent" | "failed";
+  statusCode?: number;
+  error?: string;
+  attempts: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VisualDiff = {
+  baseRunId: string;
+  compareRunId?: string;
+  generatedAt: string;
+  pages: Array<{
+    routePath: string;
+    status: "added" | "removed" | "changed" | "unchanged";
+    beforeScreenshot?: string;
+    afterScreenshot?: string;
+    boxes: Array<{ x: number; y: number; width: number; height: number; label: string; tone: "added" | "removed" | "changed" }>;
+    markdownDiff?: {
+      added: string[];
+      removed: string[];
+    };
+  }>;
+};
+
 export type ScreenshotArtifact = {
   routePath: string;
   url: string;
