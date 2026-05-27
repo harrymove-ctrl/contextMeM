@@ -4881,6 +4881,242 @@ textarea {
   font-weight: 700;
 }
 
+.devAuthBanner {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #f59e0b;
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.devAuthBanner strong {
+  color: #b45309;
+  font-weight: 700;
+}
+
+.devAuthBanner code {
+  background: rgba(245, 158, 11, 0.18);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.accountSecretRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.accountSecretReadout {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.failurePanel {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left-width: 4px;
+  border-radius: 10px;
+  color: #7f1d1d;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  font-size: 13px;
+  max-width: 520px;
+}
+
+.failurePanel strong {
+  color: #991b1b;
+  font-weight: 700;
+}
+
+.failurePanel .failureCode {
+  align-self: flex-start;
+  background: rgba(239, 68, 68, 0.16);
+  color: #991b1b;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+}
+
+.aiChatPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  max-height: calc(100vh - 220px);
+}
+
+.aiChatStream {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 6px;
+  min-height: 220px;
+}
+
+.aiChatEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 16px;
+  border: 1px dashed #cbd5f5;
+  border-radius: 12px;
+  color: #475569;
+  text-align: center;
+}
+
+.aiChatEmpty strong {
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.aiChatEmpty span {
+  font-size: 13px;
+  max-width: 360px;
+}
+
+.aiChatTurn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aiChatUser {
+  align-self: flex-end;
+  max-width: 80%;
+  background: #1e293b;
+  color: #f1f5f9;
+  padding: 10px 12px;
+  border-radius: 12px 12px 4px 12px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aiChatUser span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.aiChatUser p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.aiChatAssistant {
+  align-self: flex-start;
+  max-width: 92%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 12px 12px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.aiChatAssistantHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #334155;
+}
+
+.aiChatAssistantHead small {
+  color: #64748b;
+}
+
+.aiChatSources summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #475569;
+}
+
+.aiChatComposer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.aiChatForm {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.aiChatForm textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5f5;
+  border-radius: 10px;
+  font-size: 13px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.aiChatAdvancedToggle {
+  background: transparent;
+  border: none;
+  color: #475569;
+  font-size: 12px;
+  text-align: left;
+  padding: 2px 0;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.aiChatAdvancedToggle:hover {
+  color: #1e293b;
+  text-decoration: underline;
+}
+
+.aiChatSchema {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.aiChatSchema textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cbd5f5;
+  border-radius: 8px;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+  font-size: 12px;
+}
+
 .shareResultLink,
 .namespaceResult label.shareResultLink {
   display: grid;

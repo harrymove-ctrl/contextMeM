@@ -272,6 +272,71 @@ program
     print({ outputDir, manifest: path.join(manifest.contextDir, "manifest.json") });
   });
 
+program
+  .command("doctor")
+  .description("Run a readiness check against env vars, network, MemWal, and Walrus aggregator")
+  .option("--json", "Print full JSON report")
+  .action(async (options) => {
+    const checks: Array<{ name: string; status: "ok" | "warn" | "fail"; detail: string }> = [];
+
+    if (process.env.MEMWAL_AUTHORIZATION) {
+      checks.push({ name: "env:MEMWAL_AUTHORIZATION", status: "ok", detail: "set" });
+    } else if (process.env.MEMWAL_BEARER) {
+      checks.push({
+        name: "env:MEMWAL_AUTHORIZATION",
+        status: "warn",
+        detail: "MEMWAL_BEARER is deprecated; rename to MEMWAL_AUTHORIZATION (with 'Bearer ' prefix)"
+      });
+    } else {
+      checks.push({ name: "env:MEMWAL_AUTHORIZATION", status: "warn", detail: "missing — MemWal recall/remember disabled" });
+    }
+
+    if (process.env.CONTEXTMEM_ACCOUNT_SECRET && process.env.CONTEXTMEM_ACCOUNT_SECRET.length >= 32) {
+      checks.push({ name: "env:CONTEXTMEM_ACCOUNT_SECRET", status: "ok", detail: `length=${process.env.CONTEXTMEM_ACCOUNT_SECRET.length}` });
+    } else {
+      checks.push({ name: "env:CONTEXTMEM_ACCOUNT_SECRET", status: "warn", detail: "missing or shorter than 32 chars — run `Generate secret` in /app/settings" });
+    }
+
+    if (process.env.OPENAI_API_KEY) {
+      checks.push({ name: "env:OPENAI_API_KEY", status: "ok", detail: "set" });
+    } else {
+      checks.push({ name: "env:OPENAI_API_KEY", status: "warn", detail: "missing — AI Query disabled" });
+    }
+
+    const targets: Array<{ name: string; url: string }> = [
+      { name: "net:walrus-aggregator", url: process.env.WALRUS_AGGREGATOR_URL ?? "https://aggregator.walrus-mainnet.walrus.space" },
+      { name: "net:sui-rpc", url: process.env.SUI_FULLNODE_URL ?? "https://fullnode.mainnet.sui.io" }
+    ];
+    if (process.env.MEMWAL_BASE_URL) targets.push({ name: "net:memwal", url: process.env.MEMWAL_BASE_URL });
+
+    await Promise.all(
+      targets.map(async ({ name, url }) => {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 4000);
+          const response = await fetch(url, { method: "HEAD", signal: controller.signal }).catch(async () =>
+            fetch(url, { method: "GET", signal: controller.signal })
+          );
+          clearTimeout(timeout);
+          checks.push({ name, status: response.ok || response.status < 500 ? "ok" : "fail", detail: `${response.status} ${response.statusText}` });
+        } catch (error) {
+          checks.push({ name, status: "fail", detail: error instanceof Error ? error.message : String(error) });
+        }
+      })
+    );
+
+    if (options.json) {
+      print({ checks });
+    } else {
+      for (const check of checks) {
+        const symbol = check.status === "ok" ? "[ ok ]" : check.status === "warn" ? "[warn]" : "[fail]";
+        console.log(`${symbol} ${check.name} — ${check.detail}`);
+      }
+      const failed = checks.filter((check) => check.status === "fail").length;
+      if (failed > 0) process.exitCode = 1;
+    }
+  });
+
 function networkFromOptions(options: { testnet?: boolean; mainnet?: boolean }): Network {
   if (options.testnet) return "testnet";
   return "mainnet";

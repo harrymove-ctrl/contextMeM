@@ -37,6 +37,9 @@ export class MemWalMcpClient {
 
   constructor(config: MemWalConfig = {}) {
     this.url = config.url ?? process.env.MEMWAL_MCP_URL ?? "http://localhost:3005/api/mcp";
+    if (!config.authorization && !process.env.MEMWAL_AUTHORIZATION && process.env.MEMWAL_BEARER) {
+      console.warn("[contextmem/memwal] MEMWAL_BEARER is deprecated. Set MEMWAL_AUTHORIZATION=\"Bearer <key>\" instead.");
+    }
     this.authorization = config.authorization ?? process.env.MEMWAL_AUTHORIZATION ?? (process.env.MEMWAL_BEARER ? `Bearer ${process.env.MEMWAL_BEARER}` : undefined);
     this.accountId = config.accountId ?? process.env.MEMWAL_ACCOUNT_ID;
   }

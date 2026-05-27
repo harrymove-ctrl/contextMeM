@@ -391,7 +391,10 @@ export async function handleWorkerRequest(request: Request, env: WorkerEnv, ctx:
   } catch (error) {
     const explicitStatus = typeof error === "object" && error && "statusCode" in error ? Number((error as { statusCode?: unknown }).statusCode) : undefined;
     const status = explicitStatus || (error instanceof z.ZodError || (error instanceof Error && /Artifact path|Namespace may/i.test(error.message)) ? 400 : 500);
-    return json({ error: error instanceof Error ? error.message : String(error) }, status);
+    const message = error instanceof Error ? error.message : String(error);
+    const code = typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code) : undefined;
+    const hint = typeof error === "object" && error && "hint" in error ? String((error as { hint?: unknown }).hint) : undefined;
+    return json({ error: { code, message, hint }, message }, status);
   }
 }
 
@@ -1626,7 +1629,7 @@ async function consumeDemoQuota(request: Request, env: WorkerEnv): Promise<void>
   const ipHash = await sha256Hex(ip);
   const key = `${day}:${ipHash}`;
   const existing = await env.CONTEXTMEM_DB.prepare(`SELECT bucket_key, count FROM contextmem_demo_limits WHERE bucket_key = ?`).bind(key).first<{ bucket_key: string; count: number }>();
-  if (existing && Number(existing.count) >= 1) throw statusError("Demo limit reached for today. Import credentials for unlimited local runs.", 429);
+  if (existing && Number(existing.count) >= 1) throw statusError("Demo limit reached for today. Import credentials for unlimited local runs.", 429, "DEMO_LIMIT_EXCEEDED", "Open /app/settings, generate a CONTEXTMEM_ACCOUNT_SECRET and import MemWal SDK credentials to remove the 1/day demo quota.");
   const now = new Date().toISOString();
   await env.CONTEXTMEM_DB.prepare(
     `INSERT INTO contextmem_demo_limits (bucket_key, ip_hash, day, count, updated_at)
@@ -1988,10 +1991,16 @@ function decodeHtml(value: string): string | undefined {
     .trim();
 }
 
-function statusError(message: string, statusCode: number): Error {
-  const error = new Error(message) as Error & { statusCode: number };
+function statusError(message: string, statusCode: number, code?: string, hint?: string): Error {
+  const error = new Error(message) as Error & { statusCode: number; code?: string; hint?: string };
   error.statusCode = statusCode;
+  if (code) error.code = code;
+  if (hint) error.hint = hint;
   return error;
+}
+
+function jsonError(code: string, message: string, status: number, hint?: string): Response {
+  return json({ error: { code, message, hint }, message }, status);
 }
 
 function json(value: unknown, status = 200): Response {

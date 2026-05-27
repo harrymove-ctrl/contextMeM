@@ -448,7 +448,7 @@ type MemWalNotice = {
 };
 
 const API_BASE = import.meta.env.VITE_CONTEXTMEM_API_BASE ?? "http://localhost:8791";
-const showDevMemWalAuth = !import.meta.env.PROD && (import.meta.env.VITE_CONTEXTMEM_DEV_AUTH === "true" || new URLSearchParams(window.location.search).get("devAuth") === "1");
+const showDevMemWalAuth = import.meta.env.DEV && !import.meta.env.PROD && (import.meta.env.VITE_CONTEXTMEM_DEV_AUTH === "true" || new URLSearchParams(window.location.search).get("devAuth") === "1");
 const buildProfileDefaults: Record<BuildProfile, string[]> = {
   fast: ["markdown", "sitemap"],
   balanced: ["markdown", "images", "brand", "styleguide", "sitemap"],
@@ -1318,6 +1318,14 @@ function AppShell({
       </aside>
 
       <section className="appMain">
+        {showDevMemWalAuth ? (
+          <div className="devAuthBanner" role="alert">
+            <strong>Developer auth fallback active.</strong>
+            <span>
+              <code>VITE_CONTEXTMEM_DEV_AUTH</code> or <code>?devAuth=1</code> is enabling a local MemWal bypass. This panel is hidden in production builds. Disable before sharing this browser session.
+            </span>
+          </div>
+        ) : null}
         <header className="appTopbar">
           <div className="appTitleBlock">
             <span>{hasMemWalDelegate ? "Full app" : "Locked preview"}</span>
@@ -1863,6 +1871,8 @@ function SettingsAppPage({
         <SdkCredentialImportForm authenticated={me.authenticated} authBusy={authBusy} delegateAccountId={delegateAccountId} delegateKey={delegateKey} setDelegateAccountId={setDelegateAccountId} setDelegateKey={setDelegateKey} onImport={onImport} />
       </section>
 
+      <AccountSecretCard />
+
       {showDevMemWalAuth ? (
         <section className="settingsCard">
           <div className="sectionHead">
@@ -1874,6 +1884,49 @@ function SettingsAppPage({
             Use local MCP credentials
           </button>
         </section>
+      ) : null}
+    </section>
+  );
+}
+
+function AccountSecretCard() {
+  const [secret, setSecret] = useState<string>("");
+  const [copied, setCopied] = useState(false);
+
+  function generate() {
+    const buffer = new Uint8Array(32);
+    crypto.getRandomValues(buffer);
+    const hex = Array.from(buffer, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    setSecret(hex);
+    setCopied(false);
+  }
+
+  async function copyEnvLine() {
+    if (!secret) return;
+    try {
+      await navigator.clipboard.writeText(`CONTEXTMEM_ACCOUNT_SECRET=${secret}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <section className="settingsCard">
+      <div className="sectionHead">
+        <h2>Account secret</h2>
+        <span>32-byte hex</span>
+      </div>
+      <p className="settingsCopy">Generate a fresh <code>CONTEXTMEM_ACCOUNT_SECRET</code> for your local <code>.env.local</code>. Used to derive session tokens; never sent to the server.</p>
+      <div className="accountSecretRow">
+        <button className="secondary" onClick={generate}>{secret ? "Generate again" : "Generate secret"}</button>
+        {secret ? (
+          <button className="ghost" onClick={() => void copyEnvLine()}>{copied ? "Copied" : "Copy env line"}</button>
+        ) : null}
+      </div>
+      {secret ? (
+        <pre className="accountSecretReadout"><code>CONTEXTMEM_ACCOUNT_SECRET={secret}</code></pre>
       ) : null}
     </section>
   );
@@ -1910,6 +1963,7 @@ function ResultPane({
         <AlertCircle size={26} />
         <strong>Context build failed</strong>
         <span>{visibleError}</span>
+        <FailureExplainer message={visibleError} />
       </div>
     );
   }
@@ -2359,32 +2413,43 @@ function StructureTreeNode({
   );
 }
 
+const aiQuickPrompts: Array<{ label: string; question: string }> = [
+  { label: "What pricing?", question: "What is the pricing model, plans, and any free tier on this site?" },
+  { label: "Brand voice", question: "Describe the brand voice and tone in 3 short bullets with quotes." },
+  { label: "API endpoints", question: "List the developer API endpoints, auth model, and example payloads." },
+  { label: "Target users", question: "Who is this product for? List the primary personas and the jobs-to-be-done." },
+  { label: "Tech stack", question: "What frameworks, infrastructure, and integrations does this site expose?" },
+  { label: "Install steps", question: "How does a new developer install or integrate this product in under 5 minutes?" }
+];
+
+type AiChatTurn = { id: string; question: string; result: AiQueryResult; at: string };
+
 function AiQueryPanel({ artifact, run, setArtifact, authToken }: { artifact: ArtifactManifest; run: RunResponse | null; setArtifact: React.Dispatch<React.SetStateAction<ArtifactManifest | null>>; authToken: string }) {
-  const [question, setQuestion] = useState("Summarize the most important product facts, target users, and developer APIs from this site.");
+  const [question, setQuestion] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [schema, setSchema] = useState('{\n  "answer": { "type": "text", "description": "Direct answer to the question" },\n  "keyFacts": { "type": "list", "description": "Important facts with source support" }\n}');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const result = artifact.aiQuery;
-  const prompts = [
-    "What changed since the previous public version?",
-    "What should a developer agent remember before editing this site?",
-    "Summarize the API, docs, and install path for a DEV user."
-  ];
+  const [turns, setTurns] = useState<AiChatTurn[]>(() => (artifact.aiQuery ? [{ id: "initial", question: "(previous query)", result: artifact.aiQuery, at: "" }] : []));
 
-  async function runQuery() {
+  async function runQuery(text?: string) {
     if (!run) return;
+    const prompt = (text ?? question).trim();
+    if (!prompt) return;
     setBusy(true);
     setError(null);
     try {
-      const parsedSchema = schema.trim() ? JSON.parse(schema) : undefined;
+      const parsedSchema = showAdvanced && schema.trim() ? JSON.parse(schema) : undefined;
       const response = await fetch(`${API_BASE}/api/runs/${run.manifest.runId}/ai-query`, {
         method: "POST",
         headers: authHeaders(authToken, { "content-type": "application/json" }),
-        body: JSON.stringify({ question, schema: parsedSchema })
+        body: JSON.stringify({ question: prompt, schema: parsedSchema })
       });
       if (!response.ok) throw new Error(await readResponseError(response));
       const nextResult = (await response.json()) as AiQueryResult;
       setArtifact((current) => (current ? { ...current, aiQuery: nextResult } : current));
+      setTurns((prev) => [...prev, { id: `${Date.now()}`, question: prompt, result: nextResult, at: new Date().toISOString() }]);
+      setQuestion("");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -2393,57 +2458,94 @@ function AiQueryPanel({ artifact, run, setArtifact, authToken }: { artifact: Art
   }
 
   return (
-    <div className="panel queryPanel">
-      <section className="queryComposer">
+    <div className="panel queryPanel aiChatPanel">
+      <section className="aiChatStream" aria-live="polite">
+        {turns.length === 0 ? (
+          <div className="aiChatEmpty">
+            <MessageSquare size={20} />
+            <strong>Ask anything about this context</strong>
+            <span>Tap a suggested prompt below or type your own question. Answers cite specific pages from the run.</span>
+          </div>
+        ) : (
+          turns.map((turn) => (
+            <article key={turn.id} className="aiChatTurn">
+              <div className="aiChatUser">
+                <span>You</span>
+                <p>{turn.question}</p>
+              </div>
+              <div className="aiChatAssistant">
+                <div className="aiChatAssistantHead">
+                  <span>ContextMeM</span>
+                  <small>{turn.result.usedProvider} · {Math.round(turn.result.confidence * 100)}%</small>
+                </div>
+                <AiResultData data={turn.result.data} />
+                {turn.result.sources.length ? (
+                  <details className="aiChatSources">
+                    <summary>{turn.result.sources.length} source{turn.result.sources.length === 1 ? "" : "s"}</summary>
+                    <div className="sourceGrid">
+                      {turn.result.sources.map((source, index) => (
+                        <article key={`${source.url}-${index}`}>
+                          <strong>{source.routePath ?? source.url}</strong>
+                          {source.quote ? <p>{source.quote}</p> : null}
+                          <code>{source.resourcePath ?? source.blobId ?? source.url}</code>
+                        </article>
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+            </article>
+          ))
+        )}
+      </section>
+
+      <section className="aiChatComposer">
         <div className="memoryQuickPrompts aiPrompts">
-          {prompts.map((prompt) => (
-            <button key={prompt} type="button" onClick={() => setQuestion(prompt)}>
-              {prompt}
+          {aiQuickPrompts.map((prompt) => (
+            <button key={prompt.label} type="button" onClick={() => void runQuery(prompt.question)} disabled={!run || busy}>
+              {prompt.label}
             </button>
           ))}
         </div>
-        <label>
-          <span>Question</span>
-          <textarea value={question} onChange={(event) => setQuestion(event.target.value)} />
-        </label>
-        <label>
-          <span>Structured schema</span>
-          <textarea value={schema} onChange={(event) => setSchema(event.target.value)} spellCheck={false} />
-        </label>
-        <button className="run inline" disabled={!run || busy || !question.trim()} onClick={runQuery}>
-          <MessageSquare size={16} />
-          {busy ? "Querying" : "Run AI Query"}
+        <form
+          className="aiChatForm"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void runQuery();
+          }}
+        >
+          <textarea
+            value={question}
+            onChange={(event) => setQuestion(event.target.value)}
+            placeholder="Ask about this site… pricing, APIs, tone, target users, recent changes"
+            rows={2}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                void runQuery();
+              }
+            }}
+          />
+          <button className="run inline" type="submit" disabled={!run || busy || !question.trim()}>
+            <MessageSquare size={16} />
+            {busy ? "Asking" : "Ask"}
+          </button>
+        </form>
+        <button type="button" className="aiChatAdvancedToggle" onClick={() => setShowAdvanced((value) => !value)}>
+          {showAdvanced ? "Hide" : "Show"} structured schema (advanced)
         </button>
-        {error ? <div className="error">{error}</div> : null}
-      </section>
-
-      <section className="queryResult">
-        {result ? (
-          <>
-            <div className="resultMeta">
-              <div>
-                <span>Provider</span>
-                <strong>{result.usedProvider}</strong>
-              </div>
-              <div>
-                <span>Confidence</span>
-                <strong>{Math.round(result.confidence * 100)}%</strong>
-              </div>
-            </div>
-            <AiResultData data={result.data} />
-            <div className="sourceGrid">
-              {result.sources.map((source, index) => (
-                <article key={`${source.url}-${index}`}>
-                  <strong>{source.routePath ?? source.url}</strong>
-                  {source.quote ? <p>{source.quote}</p> : null}
-                  <code>{source.resourcePath ?? source.blobId ?? source.url}</code>
-                </article>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="subEmpty">Ask a question over markdown chunks, metadata, resources, and Walrus provenance.</div>
-        )}
+        {showAdvanced ? (
+          <label className="aiChatSchema">
+            <span>Structured schema (JSON)</span>
+            <textarea value={schema} onChange={(event) => setSchema(event.target.value)} spellCheck={false} rows={5} />
+          </label>
+        ) : null}
+        {error ? (
+          <div className="error">
+            {error}
+            <FailureExplainer message={error} />
+          </div>
+        ) : null}
       </section>
     </div>
   );
@@ -4209,11 +4311,57 @@ async function readResponseError(response: Response): Promise<string> {
   const text = await response.text();
   if (!text) return response.statusText;
   try {
-    const parsed = JSON.parse(text) as { message?: string };
+    const parsed = JSON.parse(text) as { message?: string; error?: string | { code?: string; message?: string; hint?: string } };
+    if (typeof parsed.error === "object" && parsed.error && parsed.error.message) {
+      const tag = parsed.error.code ? `[${parsed.error.code}] ` : "";
+      const hint = parsed.error.hint ? ` — ${parsed.error.hint}` : "";
+      return `${tag}${parsed.error.message}${hint}`;
+    }
+    if (typeof parsed.error === "string") return parsed.error;
     return parsed.message ?? text;
   } catch {
     return text;
   }
+}
+
+function failureHintFor(message: string): { code?: string; hint: string } | null {
+  if (!message) return null;
+  const lower = message.toLowerCase();
+  if (lower.includes("[demo_limit_exceeded]") || lower.includes("demo limit reached")) {
+    return { code: "DEMO_LIMIT_EXCEEDED", hint: "Open /app/settings, generate an account secret and import MemWal credentials to unlock unlimited extractions." };
+  }
+  if (lower.includes("walrus") && (lower.includes("aggregator") || lower.includes("timeout") || lower.includes("unreachable"))) {
+    return { code: "WALRUS_UNREACHABLE", hint: "Walrus aggregator is unreachable. Try again in a minute or set WALRUS_AGGREGATOR_URL to an alternate mirror." };
+  }
+  if (lower.includes("memwal") && (lower.includes("401") || lower.includes("unauthorized") || lower.includes("delegate"))) {
+    return { code: "MEMWAL_AUTH", hint: "MemWal rejected the delegate key. Re-import SDK credentials in /app/settings or rotate the key in the MemWal dashboard." };
+  }
+  if (lower.includes("openai") && (lower.includes("rate") || lower.includes("429"))) {
+    return { code: "OPENAI_RATE_LIMIT", hint: "OpenAI rate-limited the request. Wait ~30 seconds, then retry — or set a higher-tier OPENAI_API_KEY." };
+  }
+  if (lower.includes("openai") && lower.includes("api key")) {
+    return { code: "OPENAI_MISSING", hint: "OPENAI_API_KEY is not configured. AI Query is disabled until it's set in the API worker env." };
+  }
+  if (lower.includes("namespace") && lower.includes("not found")) {
+    return { code: "NAMESPACE_MISSING", hint: "The hosted namespace doesn't exist or was deleted. Re-publish from /app/publish or check the URL." };
+  }
+  if (lower.includes("read token") || (lower.includes("namespace") && lower.includes("token"))) {
+    return { code: "NAMESPACE_TOKEN", hint: "The hosted namespace requires a read token. Generate one in /app/namespaces and pass it as `Authorization: Bearer <token>`." };
+  }
+  return null;
+}
+
+function FailureExplainer({ message }: { message: string | null }) {
+  if (!message) return null;
+  const detail = failureHintFor(message);
+  if (!detail) return null;
+  return (
+    <div className="failurePanel" role="note">
+      <strong>Why did this fail?</strong>
+      <span>{detail.hint}</span>
+      {detail.code ? <code className="failureCode">{detail.code}</code> : null}
+    </div>
+  );
 }
 
 function imagePreviewUrl(image: ArtifactManifest["images"][number], artifact: ArtifactManifest): string | undefined {
