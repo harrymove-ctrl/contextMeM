@@ -1005,14 +1005,19 @@ function getHostedMe(request: Request): Response {
 async function listHostedRuns(request: Request, env: WorkerEnv): Promise<Response> {
   const auth = requireHostedRunAuth(request);
   const limit = Math.min(Number(new URL(request.url).searchParams.get("limit") ?? 25) || 25, 100);
+  // Same browser sometimes builds via demo:* (no auth) and via hosted:* (delegate).
+  // Surface both for this caller so the Runs page shows the run they just built,
+  // regardless of which submission path was used. Demo rows are filtered to this
+  // request's IP so an authed user only sees their own demo extractions.
+  const demoOwner = demoOwnerId(request);
   const result = await env.CONTEXTMEM_DB.prepare(
     `SELECT id, owner_id, namespace, target, status, visibility, display_name, description, tags_json, directory_enabled, source_type, error, result_json, created_at, updated_at, completed_at
      FROM contextmem_extraction_jobs
-     WHERE owner_id = ?
+     WHERE owner_id = ? OR owner_id = ?
      ORDER BY updated_at DESC
      LIMIT ?`
   )
-    .bind(auth.ownerId, limit)
+    .bind(auth.ownerId, demoOwner, limit)
     .all<ExtractionJobRow>();
   return json(allResults(result).map((row) => hostedRunHistoryItem(publicExtractionJobFromRow(row, env))));
 }
@@ -1043,28 +1048,28 @@ async function createHostedRun(request: Request, env: WorkerEnv, ctx: WorkerExec
 }
 
 async function getHostedRun(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
-  const job = await requireHostedRunAccess(request, env, runId);
+  const job = await requireRunReadAccess(request, env, runId);
   return json(hostedRunManifest(job));
 }
 
 async function getHostedRunEvents(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
-  const job = await requireHostedRunAccess(request, env, runId);
+  const job = await requireRunReadAccess(request, env, runId);
   return sse([{ event: "progress", data: hostedRunManifest(job) }, ...(job.status === "completed" || job.status === "failed" ? [{ event: "done", data: hostedRunManifest(job) }] : [])]);
 }
 
 async function getHostedRunArtifacts(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
-  const job = await requireHostedRunAccess(request, env, runId);
+  const job = await requireRunReadAccess(request, env, runId);
   return json(await artifactManifestForJob(env, job));
 }
 
 async function listHostedRunArtifactFiles(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
-  const job = await requireHostedRunAccess(request, env, runId);
+  const job = await requireRunReadAccess(request, env, runId);
   const artifacts = await new CloudflareNamespaceStore(env).listArtifacts(job.namespace);
   return json(artifacts.map(hostedArtifactFileRecord));
 }
 
 async function getHostedRunArtifactFile(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
-  const job = await requireHostedRunAccess(request, env, runId);
+  const job = await requireRunReadAccess(request, env, runId);
   const artifactPath = new URL(request.url).searchParams.get("path") ?? "";
   if (!artifactPath) return json({ error: "Missing artifact path." }, 400);
   const artifact = await new CloudflareNamespaceStore(env).readArtifact(job.namespace, artifactPath);
@@ -1079,7 +1084,7 @@ async function getHostedRunArtifactFile(request: Request, env: WorkerEnv, runId:
 }
 
 async function getHostedRunPublishReadiness(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
-  const job = await requireHostedRunAccess(request, env, runId);
+  const job = await requireRunReadAccess(request, env, runId);
   const [artifact, files] = await Promise.all([artifactManifestForJob(env, job).catch(() => undefined), new CloudflareNamespaceStore(env).listArtifacts(job.namespace)]);
   const paths = new Set(files.map((file) => file.path));
   const routeCount = Array.isArray(artifact?.pages) ? artifact.pages.length : 0;
@@ -1215,6 +1220,19 @@ async function requireHostedRunAccess(request: Request, env: WorkerEnv, runId: s
   const job = await getExtractionJob(env, runId);
   if (!job || job.ownerId !== auth.ownerId) throw statusError("Hosted run not found.", 404);
   return job;
+}
+
+// Looser read-only guard: accepts a job if (a) the caller has a hosted delegate
+// matching the run's owner, OR (b) the run is public-visibility (covers demo:*
+// extractions, public shares, anonymous <img src=...> fetches without headers).
+// Use this for READ endpoints. Keep requireHostedRunAccess for write ops.
+async function requireRunReadAccess(request: Request, env: WorkerEnv, runId: string): Promise<PublicExtractionJob> {
+  const job = await getExtractionJob(env, runId);
+  if (!job) throw statusError("Run not found.", 404);
+  if (job.visibility === "public") return job;
+  const auth = readHostedRunAuth(request);
+  if (auth && job.ownerId === auth.ownerId) return job;
+  throw statusError("Run not found.", 404);
 }
 
 function readHostedRunAuth(request: Request): HostedRunAuth | undefined {
@@ -3004,21 +3022,58 @@ function extractLinks(html: string, base: URL): Array<{ url: URL; label: string 
 
 function extractResourceLinks(html: string, base: URL): Array<{ url: URL; label: string; kind: string }> {
   const resources: Array<{ url: URL; label: string; kind: string }> = [];
-  const patterns: Array<{ kind: string; regex: RegExp }> = [
-    { kind: "stylesheet", regex: /<link\b[^>]*href=["']([^"']+)["'][^>]*>/gi },
-    { kind: "script", regex: /<script\b[^>]*src=["']([^"']+)["'][^>]*>/gi },
-    { kind: "image", regex: /<img\b[^>]*src=["']([^"']+)["'][^>]*>/gi }
-  ];
-  for (const { kind, regex } of patterns) {
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(html))) {
-      try {
-        const url = new URL(match[1]!, base);
-        if (/^https?:$/.test(url.protocol)) resources.push({ url, label: url.pathname.split("/").pop() || url.hostname, kind });
-      } catch {
-        // ignore malformed URLs
-      }
-    }
+  // Process <img> FIRST so when the same URL appears as both <img src> and
+  // <link rel="preload" as="image"> the image classification wins through dedupe.
+  const imgRegex = /<img\b[^>]*>/gi;
+  let imgMatch: RegExpExecArray | null;
+  while ((imgMatch = imgRegex.exec(html))) {
+    const attrs = extractTagAttributes(imgMatch[0]!);
+    if (!attrs.src) continue;
+    try {
+      const url = new URL(attrs.src, base);
+      if (!/^https?:$/.test(url.protocol)) continue;
+      resources.push({ url, label: attrs.alt || url.pathname.split("/").pop() || url.hostname, kind: "image" });
+    } catch { /* ignore */ }
+  }
+  // <link> tags are classified by rel + as. Icon and preload-as-image become
+  // image resources too. Stylesheets stay stylesheet. Other rels are skipped.
+  const linkRegex = /<link\b[^>]*>/gi;
+  let linkMatch: RegExpExecArray | null;
+  while ((linkMatch = linkRegex.exec(html))) {
+    const attrs = extractTagAttributes(linkMatch[0]!);
+    if (!attrs.href) continue;
+    const rel = (attrs.rel ?? "").toLowerCase();
+    const asAttr = (attrs.as ?? "").toLowerCase();
+    let kind: string | undefined;
+    if (rel.includes("stylesheet")) kind = "stylesheet";
+    else if (rel.includes("icon") || rel.includes("apple-touch-icon")) kind = "image";
+    else if (rel.includes("preload") && asAttr === "image") kind = "image";
+    else if (rel.includes("preload") && asAttr === "style") kind = "stylesheet";
+    else if (rel.includes("preload") && asAttr === "script") kind = "script";
+    if (!kind) continue;
+    try {
+      const url = new URL(attrs.href, base);
+      if (/^https?:$/.test(url.protocol)) resources.push({ url, label: url.pathname.split("/").pop() || url.hostname, kind });
+    } catch { /* ignore */ }
+  }
+  // <script src>
+  const scriptRegex = /<script\b[^>]*src=["']([^"']+)["'][^>]*>/gi;
+  let scriptMatch: RegExpExecArray | null;
+  while ((scriptMatch = scriptRegex.exec(html))) {
+    try {
+      const url = new URL(scriptMatch[1]!, base);
+      if (/^https?:$/.test(url.protocol)) resources.push({ url, label: url.pathname.split("/").pop() || url.hostname, kind: "script" });
+    } catch { /* ignore */ }
+  }
+  // <source srcset> in <picture> / <video poster> as additional image signal.
+  const sourceRegex = /<(?:source|img)\b[^>]*srcset=["']([^"']+)["']/gi;
+  let sourceMatch: RegExpExecArray | null;
+  while ((sourceMatch = sourceRegex.exec(html))) {
+    const first = sourceMatch[1]!.split(",")[0]!.trim().split(/\s+/)[0]!;
+    try {
+      const url = new URL(first, base);
+      if (/^https?:$/.test(url.protocol)) resources.push({ url, label: url.pathname.split("/").pop() || url.hostname, kind: "image" });
+    } catch { /* ignore */ }
   }
   return dedupeByUrl(resources);
 }
