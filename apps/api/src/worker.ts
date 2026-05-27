@@ -434,6 +434,7 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
   }
   if (request.method === "GET" && url.pathname.startsWith("/api/share-links/")) {
     const suffix = decodeURIComponent(url.pathname.slice("/api/share-links/".length));
+    if (suffix.endsWith("/og.svg")) return getShareLinkOgSvg(request, env, suffix.slice(0, -"/og.svg".length));
     if (suffix.endsWith("/artifacts")) return getShareLinkArtifacts(request, env, suffix.slice(0, -"/artifacts".length));
     return getShareLink(request, env, suffix);
   }
@@ -449,6 +450,9 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
   }
   if (request.method === "GET" && url.pathname === "/api/directory") {
     return listDirectoryNamespaces(request, env);
+  }
+  if (request.method === "GET" && url.pathname.startsWith("/api/badge/")) {
+    return getBadgeSvg(request, env, decodeURIComponent(url.pathname.slice("/api/badge/".length).replace(/\.svg$/, "")));
   }
   if (request.method === "GET" && url.pathname.startsWith("/api/directory/")) {
     return getDirectoryNamespace(request, env);
@@ -685,6 +689,43 @@ async function getDirectoryNamespace(request: Request, env: WorkerEnv): Promise<
   });
 }
 
+async function getBadgeSvg(_request: Request, env: WorkerEnv, namespace: string): Promise<Response> {
+  const summary = await new CloudflareNamespaceStore(env).getNamespace(namespace);
+  const live = summary && summary.visibility === "public" && summary.directoryEnabled;
+  const labelLeft = "Powered by ContextMeM";
+  const labelRight = live ? namespace.slice(0, 28) : "offline";
+  const charWidth = 6.6;
+  const leftWidth = Math.ceil(labelLeft.length * charWidth) + 16;
+  const rightWidth = Math.ceil(labelRight.length * charWidth) + 16;
+  const total = leftWidth + rightWidth;
+  const rightFill = live ? "#0f172a" : "#7f1d1d";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="22" role="img" aria-label="${labelLeft}: ${labelRight}">
+  <linearGradient id="bg" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <mask id="m"><rect width="${total}" height="22" rx="4" fill="#fff"/></mask>
+  <g mask="url(#m)">
+    <rect width="${leftWidth}" height="22" fill="#1e293b"/>
+    <rect x="${leftWidth}" width="${rightWidth}" height="22" fill="${rightFill}"/>
+    <rect width="${total}" height="22" fill="url(#bg)"/>
+  </g>
+  <g fill="#fff" font-family="ui-monospace,Menlo,monospace" font-size="11">
+    <text x="${leftWidth / 2}" y="15" text-anchor="middle">${labelLeft}</text>
+    <text x="${leftWidth + rightWidth / 2}" y="15" text-anchor="middle">${labelRight}</text>
+  </g>
+</svg>`;
+  return cors(
+    new Response(svg, {
+      status: 200,
+      headers: {
+        "content-type": "image/svg+xml; charset=utf-8",
+        "cache-control": "public, max-age=300"
+      }
+    })
+  );
+}
+
 async function importNamespace(request: Request, env: WorkerEnv): Promise<Response> {
   const input = namespaceImportSchema.parse(await request.json());
   const result = await storeNamespaceImport(input, request, env);
@@ -781,6 +822,61 @@ async function getShareLinkArtifacts(request: Request, env: WorkerEnv, shareId: 
   const share = await getShareLinkRow(env, shareId);
   if (!share) return json({ error: "Share link not found." }, 404);
   return json({ share: publicShareLink(share, request, env), artifacts: await new CloudflareNamespaceStore(env).listArtifacts(share.namespace) });
+}
+
+async function getShareLinkOgSvg(_request: Request, env: WorkerEnv, shareId: string): Promise<Response> {
+  const share = await getShareLinkRow(env, shareId);
+  if (!share) {
+    return new Response("<svg/>", { status: 404, headers: { "content-type": "image/svg+xml; charset=utf-8" } });
+  }
+  const title = svgEscape((share.title ?? share.target).slice(0, 64));
+  const namespace = svgEscape(share.namespace.slice(0, 48));
+  const artifactCount = share.artifact_count ?? 0;
+  const description = svgEscape((share.description ?? "Verified public context package").slice(0, 120));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="40" y="40" width="1120" height="550" rx="28" fill="none" stroke="#334155" stroke-width="2"/>
+  <text x="80" y="120" fill="#94a3b8" font-family="ui-monospace,Menlo,monospace" font-size="20" letter-spacing="6">CONTEXTMEM · SHARE</text>
+  <text x="80" y="240" fill="#f8fafc" font-family="Inter,system-ui,sans-serif" font-size="56" font-weight="700">${title}</text>
+  <text x="80" y="320" fill="#cbd5f5" font-family="Inter,system-ui,sans-serif" font-size="26">${description}</text>
+  <g transform="translate(80,440)" fill="#94a3b8" font-family="ui-monospace,Menlo,monospace" font-size="22">
+    <text>namespace · ${namespace}</text>
+    <text y="36">artifacts · ${artifactCount}</text>
+  </g>
+  <text x="80" y="565" fill="#475569" font-family="Inter,system-ui,sans-serif" font-size="20">Walrus-native context for agents · contextmem.pages.dev</text>
+</svg>`;
+  return cors(
+    new Response(svg, {
+      status: 200,
+      headers: {
+        "content-type": "image/svg+xml; charset=utf-8",
+        "cache-control": "public, max-age=600"
+      }
+    })
+  );
+}
+
+function svgEscape(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case "\"":
+        return "&quot;";
+      default:
+        return "&#39;";
+    }
+  });
 }
 
 async function createSchedule(request: Request, env: WorkerEnv): Promise<Response> {

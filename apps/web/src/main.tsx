@@ -519,6 +519,19 @@ function ContextMemExperience() {
   const [sessionToken, setSessionToken] = useState(() => window.localStorage.getItem("contextmem.session") ?? "");
   const [delegateAccountId, setDelegateAccountId] = useState("");
   const [delegateKey, setDelegateKey] = useState("");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.location.pathname.startsWith("/app/settings")) return;
+    const params = new URLSearchParams(window.location.search);
+    const memwalAccount = params.get("memwalAccountId") ?? params.get("delegateAccountId");
+    const memwalKey = params.get("memwalDelegateKey") ?? params.get("delegateKey");
+    if (memwalAccount) setDelegateAccountId(memwalAccount);
+    if (memwalKey) setDelegateKey(memwalKey);
+    if (memwalAccount || memwalKey) {
+      const cleanUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, "", cleanUrl);
+    }
+  }, []);
   const didAutorun = useRef(false);
   const heroRef = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLElement>(null);
@@ -996,6 +1009,7 @@ function ContextMemExperience() {
         }
       />
       <Route path="/share/:shareId" element={<SharePage />} />
+      <Route path="/showcase" element={<ShowcasePage />} />
       <Route path="/app" element={renderShell("Build console", "Resolve a Walrus Site, verify resources, then generate a context package.", buildPage)} />
       <Route
         path="/app/artifacts"
@@ -1083,6 +1097,29 @@ function SharePage() {
   useEffect(() => {
     if (!shareId) return;
     void loadShare();
+  }, [shareId]);
+
+  useEffect(() => {
+    if (!shareId) return;
+    const ogUrl = `${API_BASE}/api/share-links/${encodeURIComponent(shareId)}/og.svg`;
+    const tags: HTMLMetaElement[] = [];
+    function setMeta(property: string, content: string) {
+      let tag = document.head.querySelector<HTMLMetaElement>(`meta[property="${property}"]`);
+      if (!tag) {
+        tag = document.createElement("meta");
+        tag.setAttribute("property", property);
+        document.head.appendChild(tag);
+        tags.push(tag);
+      }
+      tag.content = content;
+    }
+    setMeta("og:image", ogUrl);
+    setMeta("og:type", "article");
+    setMeta("twitter:card", "summary_large_image");
+    setMeta("twitter:image", ogUrl);
+    return () => {
+      tags.forEach((tag) => tag.remove());
+    };
   }, [shareId]);
 
   async function loadShare() {
@@ -1208,6 +1245,110 @@ function SharePage() {
             </article>
           </section>
         </>
+      )}
+    </main>
+  );
+}
+
+type ShowcaseItem = {
+  namespace: string;
+  target: string;
+  displayName?: string;
+  description?: string;
+  tags?: string[];
+  visibility: string;
+  directoryEnabled: boolean;
+  lastSnapshotAt?: string;
+  artifactCount?: number;
+  mcpUrl: string;
+};
+
+function ShowcasePage() {
+  const [items, setItems] = useState<ShowcaseItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/directory`);
+        if (!response.ok) throw new Error(await readResponseError(response));
+        const body = (await response.json()) as { namespaces: ShowcaseItem[] };
+        if (!cancelled) setItems(body.namespaces ?? []);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filtered = items.filter((item) => {
+    if (!search.trim()) return true;
+    const haystack = `${item.namespace} ${item.target} ${item.displayName ?? ""} ${item.description ?? ""} ${(item.tags ?? []).join(" ")}`.toLowerCase();
+    return haystack.includes(search.trim().toLowerCase());
+  });
+
+  return (
+    <main className="showcasePage">
+      <header className="showcaseHero">
+        <Link className="appBrand" to="/">
+          <span className="appBrandMark"><Server size={18} /></span>
+          <span>
+            <strong>ContextMeM</strong>
+            <small>Showcase · public hosted namespaces</small>
+          </span>
+        </Link>
+        <h1>Browse public ContextMeM namespaces</h1>
+        <p>Every namespace below exposes a read-only MCP endpoint. Install one in Claude Desktop, Cursor, or any MCP client to ground an agent in verified site context.</p>
+        <input
+          className="showcaseSearch"
+          type="search"
+          placeholder="Filter by domain, namespace, or tag"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </header>
+
+      {busy ? (
+        <section className="panel"><p>Loading directory…</p></section>
+      ) : error ? (
+        <section className="panel errorState">
+          <h2>Directory unavailable</h2>
+          <p>{error}</p>
+          <FailureExplainer message={error} />
+        </section>
+      ) : !filtered.length ? (
+        <section className="panel"><p>No public namespaces match that filter yet.</p></section>
+      ) : (
+        <section className="showcaseGrid">
+          {filtered.map((item) => (
+            <article key={item.namespace} className="showcaseCard">
+              <header>
+                <strong>{item.displayName ?? item.namespace}</strong>
+                <code>{item.namespace}</code>
+              </header>
+              <p>{item.description ?? compactTarget(item.target)}</p>
+              <dl>
+                <div><span>target</span><strong>{compactTarget(item.target)}</strong></div>
+                <div><span>artifacts</span><strong>{item.artifactCount ?? "—"}</strong></div>
+                <div><span>last snapshot</span><strong>{item.lastSnapshotAt ? new Date(item.lastSnapshotAt).toLocaleDateString() : "—"}</strong></div>
+              </dl>
+              {item.tags?.length ? (
+                <div className="showcaseTags">{item.tags.slice(0, 6).map((tag) => <span key={tag}>{tag}</span>)}</div>
+              ) : null}
+              <footer>
+                <a href={item.mcpUrl} target="_blank" rel="noreferrer">Open MCP URL</a>
+                <button onClick={() => void navigator.clipboard.writeText(item.mcpUrl)}>Copy</button>
+              </footer>
+            </article>
+          ))}
+        </section>
       )}
     </main>
   );

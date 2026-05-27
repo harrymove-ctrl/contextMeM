@@ -5117,6 +5117,156 @@ textarea {
   font-size: 12px;
 }
 
+.showcasePage {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 36px 24px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.showcaseHero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.showcaseHero h1 {
+  font-size: 28px;
+  margin: 0;
+  color: #0f172a;
+}
+
+.showcaseHero p {
+  margin: 0;
+  color: #475569;
+  max-width: 640px;
+  font-size: 14px;
+}
+
+.showcaseSearch {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5f5;
+  font-size: 14px;
+  max-width: 420px;
+}
+
+.showcaseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.showcaseCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.showcaseCard header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.showcaseCard header strong {
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.showcaseCard header code {
+  font-size: 11px;
+  color: #64748b;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+}
+
+.showcaseCard p {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.showcaseCard dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+.showcaseCard dl div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.showcaseCard dl span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.showcaseCard dl strong {
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.showcaseTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.showcaseTags span {
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.showcaseCard footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 10px;
+  margin-top: auto;
+}
+
+.showcaseCard footer a {
+  flex: 1;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #f8fafc;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.showcaseCard footer a:hover {
+  background: #0f172a;
+}
+
+.showcaseCard footer button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5f5;
+  background: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+  color: #1e293b;
+}
+
 .shareResultLink,
 .namespaceResult label.shareResultLink {
   display: grid;
