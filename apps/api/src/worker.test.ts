@@ -226,10 +226,10 @@ describe("ContextMeM hosted namespace Worker", () => {
   it("creates and completes a fetch-based extraction job", async () => {
     const env = createTestEnv();
     const restoreFetch = mockFetch({
-      "https://example.com/": "<html><head><title>Example Site</title><meta name=\"description\" content=\"A test site\"></head><body><a href=\"/about\">About</a><img src=\"/logo.png\"></body></html>",
-      "https://example.com/about": "<html><head><title>About</title></head><body>About the test site</body></html>",
-      "https://example.com/robots.txt": "User-agent: *\nAllow: /",
-      "https://example.com/sitemap.xml": "<urlset></urlset>"
+      "https://demo-product.wal.app/": "<html><head><title>Example Site</title><meta name=\"description\" content=\"A test site\"></head><body><a href=\"/about\">About</a><img src=\"/logo.png\"></body></html>",
+      "https://demo-product.wal.app/about": "<html><head><title>About</title></head><body>About the test site</body></html>",
+      "https://demo-product.wal.app/robots.txt": "User-agent: *\nAllow: /",
+      "https://demo-product.wal.app/sitemap.xml": "<urlset></urlset>"
     });
     try {
       const { handleWorkerRequest } = await worker();
@@ -237,14 +237,71 @@ describe("ContextMeM hosted namespace Worker", () => {
         new Request("https://contextmem.test/api/extractions", {
           method: "POST",
           headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
-          body: JSON.stringify({ ownerId: "acct_extract", target: "https://example.com/", namespace: "web:example.com", displayName: "Example Extract" })
+          body: JSON.stringify({ ownerId: "acct_extract", target: "https://demo-product.wal.app/", namespace: "web:demo-product.wal.app", displayName: "Demo Product Extract" })
         }),
         env
       );
       expect(response.status).toBe(202);
       const body = (await response.json()) as { job: { id: string; status: string; result?: { namespace: string } } };
       expect(body.job.status).toBe("completed");
-      expect(body.job.result?.namespace).toBe("web:example.com");
+      expect(body.job.result?.namespace).toBe("web:demo-product.wal.app");
+    } finally {
+      restoreFetch();
+    }
+  });
+
+  it("runs private hosted builds with MemWal delegate headers", async () => {
+    const env = createTestEnv();
+    const restoreFetch = mockFetch({
+      "https://demo-product.wal.app/": "<html><head><title>Hosted Product</title><meta name=\"description\" content=\"A hosted prod test\"></head><body><a href=\"/about\">About</a><img src=\"/logo.png\"></body></html>",
+      "https://demo-product.wal.app/about": "<html><head><title>About Hosted Product</title></head><body>Private hosted run context</body></html>",
+      "https://demo-product.wal.app/robots.txt": "User-agent: *\nAllow: /",
+      "https://demo-product.wal.app/sitemap.xml": "<urlset></urlset>"
+    });
+    try {
+      const { handleWorkerRequest } = await worker();
+      const hostedHeaders = {
+        "x-memwal-account-id": "acct_memwal",
+        "x-memwal-bearer": "delegate-token-123456",
+        "content-type": "application/json"
+      };
+
+      const me = await handleWorkerRequest(new Request("https://contextmem.test/api/me", { headers: hostedHeaders }), env);
+      expect(me.status).toBe(200);
+      expect(await me.text()).toContain("\"canRun\": true");
+
+      const create = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/runs", {
+          method: "POST",
+          headers: hostedHeaders,
+          body: JSON.stringify({ target: "https://demo-product.wal.app/", buildProfile: "balanced", outputs: ["markdown", "images", "sitemap"] })
+        }),
+        env
+      );
+      expect(create.status).toBe(202);
+      const created = (await create.json()) as { manifest: { runId: string; status: string; mode: string; namespace: string } };
+      expect(created.manifest.status).toBe("completed");
+      expect(created.manifest.mode).toBe("walrus");
+
+      const manifest = await handleWorkerRequest(new Request(`https://contextmem.test/api/runs/${created.manifest.runId}`, { headers: hostedHeaders }), env);
+      expect(manifest.status).toBe(200);
+      expect(await manifest.text()).toContain(created.manifest.namespace);
+
+      const artifacts = await handleWorkerRequest(new Request(`https://contextmem.test/api/runs/${created.manifest.runId}/artifacts`, { headers: hostedHeaders }), env);
+      expect(artifacts.status).toBe(200);
+      const artifactBody = (await artifacts.json()) as { pages: unknown[]; images: unknown[]; walrus?: { resources: unknown[] } };
+      expect(artifactBody.pages.length).toBeGreaterThan(0);
+      expect(Array.isArray(artifactBody.images)).toBe(true);
+      expect(Array.isArray(artifactBody.walrus?.resources)).toBe(true);
+      expect(JSON.stringify(artifactBody)).not.toContain("delegate-token");
+
+      const files = await handleWorkerRequest(new Request(`https://contextmem.test/api/runs/${created.manifest.runId}/artifact-files`, { headers: hostedHeaders }), env);
+      expect(files.status).toBe(200);
+      expect(await files.text()).toContain("/context/manifest.json");
+
+      const history = await handleWorkerRequest(new Request("https://contextmem.test/api/runs?limit=10", { headers: hostedHeaders }), env);
+      expect(history.status).toBe(200);
+      expect(await history.text()).toContain(created.manifest.runId);
     } finally {
       restoreFetch();
     }
@@ -253,14 +310,14 @@ describe("ContextMeM hosted namespace Worker", () => {
   it("runs public demo extraction with quota, event status, and clear target validation", async () => {
     const env = createTestEnv();
     const restoreFetch = mockFetch({
-      "https://example.com/": "<html><head><title>Demo Site</title></head><body><a href=\"/about\">About</a></body></html>",
-      "https://example.com/about": "<html><head><title>About</title></head><body>Demo about page</body></html>",
-      "https://example.com/robots.txt": "User-agent: *\nAllow: /",
-      "https://example.com/sitemap.xml": "<urlset></urlset>",
-      "https://fmsprint.wal.app/": "<html><head><title>Drift Racer</title><meta name=\"description\" content=\"Drift-to-Chain on Sui Testnet\"></head><body><a href=\"/about\">About Drift Racer</a></body></html>",
-      "https://fmsprint.wal.app/about": "<html><head><title>About Drift Racer</title></head><body>Drift Racer public Walrus Site context for Sui product testing</body></html>",
-      "https://fmsprint.wal.app/robots.txt": "User-agent: *\nAllow: /",
-      "https://fmsprint.wal.app/sitemap.xml": "<urlset></urlset>"
+      "https://demo-product.wal.app/": "<html><head><title>Demo Site</title></head><body><a href=\"/about\">About</a></body></html>",
+      "https://demo-product.wal.app/about": "<html><head><title>About</title></head><body>Demo about page</body></html>",
+      "https://demo-product.wal.app/robots.txt": "User-agent: *\nAllow: /",
+      "https://demo-product.wal.app/sitemap.xml": "<urlset></urlset>",
+      "https://seal-docs.wal.app/": "<html><head><title>Seal Docs</title><meta name=\"description\" content=\"Sui-native end-to-end encryption SDK\"></head><body><a href=\"/getting-started\">Getting started</a></body></html>",
+      "https://seal-docs.wal.app/getting-started": "<html><head><title>Getting started</title></head><body>Seal documentation public Walrus Site for Sui-native E2E encryption</body></html>",
+      "https://seal-docs.wal.app/robots.txt": "User-agent: *\nAllow: /",
+      "https://seal-docs.wal.app/sitemap.xml": "<urlset></urlset>"
     });
     try {
       const { handleWorkerRequest } = await worker();
@@ -274,14 +331,14 @@ describe("ContextMeM hosted namespace Worker", () => {
       );
       expect(sample.status).toBe(202);
       const sampleBody = (await sample.json()) as { job: { target: string; status: string } };
-      expect(sampleBody.job.target).toBe("https://fmsprint.wal.app/");
+      expect(sampleBody.job.target).toBe("https://seal-docs.wal.app/");
       expect(sampleBody.job.status).toBe("completed");
 
       const first = await handleWorkerRequest(
         new Request("https://contextmem.test/api/demo/extractions", {
           method: "POST",
           headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.10" },
-          body: JSON.stringify({ target: "https://example.com/" })
+          body: JSON.stringify({ target: "https://demo-product.wal.app/" })
         }),
         env
       );
@@ -298,7 +355,7 @@ describe("ContextMeM hosted namespace Worker", () => {
         new Request("https://contextmem.test/api/demo/extractions", {
           method: "POST",
           headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.10" },
-          body: JSON.stringify({ target: "https://example.com/" })
+          body: JSON.stringify({ target: "https://demo-product.wal.app/" })
         }),
         env
       );
@@ -350,15 +407,15 @@ describe("ContextMeM hosted namespace Worker", () => {
         headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
         body: JSON.stringify({
           ownerId: "acct_share",
-          target: "https://example.com/",
+          target: "https://demo-product.wal.app/",
           title: "Shareable Example",
-          manifest: { target: "https://example.com/", env: "OPENAI_API_KEY=sk-secret-value" },
+          manifest: { target: "https://demo-product.wal.app/", env: "OPENAI_API_KEY=sk-secret-value" },
           files: [
             {
               path: "/context/manifest.json",
               contentType: "application/json; charset=utf-8",
               encoding: "utf8",
-              content: JSON.stringify({ target: "https://example.com/", token: "VITE_CONTEXTMEM_DEV_AUTH=true" })
+              content: JSON.stringify({ target: "https://demo-product.wal.app/", token: "VITE_CONTEXTMEM_DEV_AUTH=true" })
             },
             {
               path: "/llms.txt",
@@ -389,9 +446,9 @@ describe("ContextMeM hosted namespace Worker", () => {
   it("runs due schedules, stores alerts, and records webhook delivery metadata", async () => {
     const env = createTestEnv();
     const restoreFetch = mockFetch({
-      "https://example.com/": "<html><head><title>Scheduled Site</title></head><body>Scheduled run</body></html>",
-      "https://example.com/robots.txt": "User-agent: *\nAllow: /",
-      "https://example.com/sitemap.xml": "<urlset></urlset>",
+      "https://demo-product.wal.app/": "<html><head><title>Scheduled Site</title></head><body>Scheduled run</body></html>",
+      "https://demo-product.wal.app/robots.txt": "User-agent: *\nAllow: /",
+      "https://demo-product.wal.app/sitemap.xml": "<urlset></urlset>",
       "https://webhook.test/hook": "ok"
     });
     try {
@@ -400,7 +457,7 @@ describe("ContextMeM hosted namespace Worker", () => {
         new Request("https://contextmem.test/api/schedules", {
           method: "POST",
           headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
-          body: JSON.stringify({ ownerId: "acct_sched", target: "https://example.com/", intervalHours: 1, webhookUrl: "https://webhook.test/hook", webhookSecret: "test-secret" })
+          body: JSON.stringify({ ownerId: "acct_sched", target: "https://demo-product.wal.app/", intervalHours: 1, webhookUrl: "https://webhook.test/hook", webhookSecret: "test-secret" })
         }),
         env
       );
@@ -435,9 +492,9 @@ async function importFixtureNamespace(env: WorkerEnv, visibility: "private" | "p
         namespace: `web:example-${visibility}.com`,
         visibility,
         ...options,
-        target: "https://example.com/",
+        target: "https://demo-product.wal.app/",
         sourceRunId: "run_fixture",
-        manifest: { target: "https://example.com/", pages: [] },
+        manifest: { target: "https://demo-product.wal.app/", pages: [] },
         files: [
           {
             path: "/llms.txt",
@@ -449,7 +506,7 @@ async function importFixtureNamespace(env: WorkerEnv, visibility: "private" | "p
             path: "/context/manifest.json",
             contentType: "application/json; charset=utf-8",
             encoding: "utf8",
-            content: JSON.stringify({ target: "https://example.com/" })
+            content: JSON.stringify({ target: "https://demo-product.wal.app/" })
           },
           {
             path: "/context/site-structure.json",
@@ -487,6 +544,7 @@ function mcpPost(env: WorkerEnv, url: string, token: string, body: unknown, extr
 function createTestEnv(): WorkerEnv {
   return {
     CONTEXTMEM_NAMESPACE_IMPORT_TOKEN: "import-secret",
+    CONTEXTMEM_DEMO_SAMPLE_TARGET: "https://fmsprint.wal.app/",
     CONTEXTMEM_CONTEXT_BUCKET: new MemoryR2Bucket(),
     CONTEXTMEM_DB: new MemoryD1Database()
   };
@@ -599,6 +657,15 @@ class MemoryD1Statement {
       const current = this.db.namespaces.get(namespace)?.current_version_id;
       const results = this.db.artifacts.filter((artifact) => artifact.namespace === namespace && artifact.version_id === current).sort((a, b) => String(a.path).localeCompare(String(b.path))) as T[];
       return { results };
+    }
+    if (query.includes("from contextmem_extraction_jobs")) {
+      let results = [...this.db.extractionJobs.values()];
+      if (query.includes("where owner_id = ?")) {
+        const ownerId = String(this.values[0]);
+        results = results.filter((job) => job.owner_id === ownerId);
+      }
+      results.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+      return { results: results as T[] };
     }
     if (query.includes("from contextmem_schedules")) {
       let results = [...this.db.schedules.values()];

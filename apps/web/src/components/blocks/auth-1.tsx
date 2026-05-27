@@ -15,30 +15,8 @@ type Auth1Props = {
   variant?: "compact" | "panel";
   onBack?: () => void;
   description?: string;
+  delegateStorage?: "server" | "browser";
 };
-
-const proofCards = [
-  {
-    icon: ShieldCheck,
-    title: "Encrypted delegate",
-    text: "The private key is sent once to the ContextMeM API and reused server-side."
-  },
-  {
-    icon: Database,
-    title: "MemWal recall",
-    text: "Unlock verified context recall, memory sync, and namespace history."
-  },
-  {
-    icon: Sparkles,
-    title: "Full console",
-    text: "After import, all Walrus Site tabs, artifacts, and build actions become active."
-  },
-  {
-    icon: Server,
-    title: "Mainnet only",
-    text: "Built for current mainnet Walrus Sites resources and object IDs."
-  }
-];
 
 export function Auth1({
   authenticated,
@@ -52,7 +30,8 @@ export function Auth1({
   noticeSlot,
   variant = "panel",
   onBack,
-  description
+  description,
+  delegateStorage = "server"
 }: Auth1Props) {
   const [showKey, setShowKey] = useState(false);
   const id = useId();
@@ -60,6 +39,34 @@ export function Auth1({
   const keyInputId = `${id}-delegate-key`;
   const canImport = delegateAccountId.trim().length > 0 && delegateKey.trim().length > 0;
   const compact = variant === "compact";
+  const proofCards = [
+    delegateStorage === "browser"
+      ? {
+          icon: ShieldCheck,
+          title: "Browser delegate",
+          text: "The private key is stored in this browser and sent only as a request header for private hosted runs."
+        }
+      : {
+          icon: ShieldCheck,
+          title: "Encrypted delegate",
+          text: "The private key is sent once to the ContextMeM API and reused server-side."
+        },
+    {
+      icon: Database,
+      title: "MemWal recall",
+      text: "Unlock verified context recall, memory sync, and namespace history."
+    },
+    {
+      icon: Sparkles,
+      title: "Full console",
+      text: "After import, all Walrus Site tabs, artifacts, and build actions become active."
+    },
+    {
+      icon: Server,
+      title: "Mainnet only",
+      text: "Built for current mainnet Walrus Sites resources and object IDs."
+    }
+  ];
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

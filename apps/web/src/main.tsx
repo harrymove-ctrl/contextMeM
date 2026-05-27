@@ -537,23 +537,12 @@ function ContextMemExperience() {
     const memwalAccount = params.get("memwalAccountId") ?? params.get("delegateAccountId");
     const memwalKey = params.get("memwalDelegateKey") ?? params.get("delegateKey");
     if (!memwalAccount && !memwalKey) return;
-    if (!isLocalApiBase(API_BASE)) {
-      setAuthHint("Hosted demo mode ignores MemWal delegate credentials in URLs. Use the local app for full SDK import.");
-      setMemwalNotice({ tone: "warning", message: "Hosted demo mode ignores MemWal delegate credentials in URLs. Use public preview here or run the local ContextMeM API for full SDK import." });
-      const cleanUrl = window.location.pathname + window.location.hash;
-      window.history.replaceState({}, "", cleanUrl);
-      return;
-    }
-    if (!window.location.pathname.startsWith("/app/settings")) {
-      const cleanUrl = window.location.pathname + window.location.hash;
-      window.history.replaceState({}, "", cleanUrl);
-      return;
-    }
     if (memwalAccount) setDelegateAccountId(memwalAccount);
     if (memwalKey) setDelegateKey(memwalKey);
     const cleanUrl = window.location.pathname + window.location.hash;
     window.history.replaceState({}, "", cleanUrl);
-  }, []);
+    if (!window.location.pathname.startsWith("/app/settings")) navigate("/app/settings");
+  }, [navigate]);
   const didAutorun = useRef(false);
   const heroRef = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLElement>(null);
@@ -669,20 +658,7 @@ function ContextMemExperience() {
     if (isHostedApiBase) {
       const stored = readHostedDelegate();
       if (stored) {
-        setMe({
-          authenticated: true,
-          account: {
-            id: `hosted:${stored.memwalAccountId.slice(0, 12)}`,
-            ownerAddress: stored.memwalAccountId,
-            provider: "unknown",
-            memwalAccountId: stored.memwalAccountId,
-            hasDelegateKey: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          quota: { limit: 0, used: 0, remaining: 0, unlimited: true },
-          access: { canPreview: true, canRun: true, reason: "hosted client-side delegate" }
-        });
+        setMe(hostedBrowserMe(stored));
         return;
       }
       setMe(anonymousMe);
@@ -773,26 +749,13 @@ function ContextMemExperience() {
         setMemwalNotice({ tone: "warning", message });
         return;
       }
-      setMe({
-        authenticated: true,
-        account: {
-          id: `hosted:${accountId.slice(0, 12)}`,
-          ownerAddress: accountId,
-          provider: "unknown",
-          memwalAccountId: accountId,
-          hasDelegateKey: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        quota: { limit: 0, used: 0, remaining: 0, unlimited: true },
-        access: { canPreview: true, canRun: true, reason: "hosted client-side delegate" }
-      });
+      setMe(hostedBrowserMe({ memwalAccountId: accountId, delegateKey: key }));
       setDelegateAccountId("");
       setDelegateKey("");
-      setAuthHint("MemWal delegate stored in this browser only. It never leaves your device.");
+      setAuthHint("MemWal delegate stored for this browser session and sent to the hosted API only when you run private ContextMeM requests.");
       setMemwalNotice({
         tone: "success",
-        message: "Delegate stored locally in your browser. It is sent per-request as an MCP header; the public Worker does not persist it."
+        message: "Delegate ready on the hosted app. The Worker accepts it for prod testing and does not persist the private key server-side."
       });
       return;
     }
@@ -1172,7 +1135,9 @@ function ContextMemExperience() {
         path="/app/settings"
         element={renderShell(
           "Settings",
-          "Manage MemWal delegate status and encrypted server-side credentials.",
+          isLocalApiBase(API_BASE)
+            ? "Manage MemWal delegate status and encrypted server-side credentials."
+            : "Manage MemWal delegate status for hosted prod testing.",
           <SettingsAppPage
             me={me}
             quotaLabel={quotaLabel}
@@ -2311,7 +2276,7 @@ function SettingsAppPage({
             ? "Import again only if you rotate the delegate key in MemWal."
             : isLocalApiBase(API_BASE)
               ? sdkImportBody
-              : "Paste your MemWal account ID and delegate private key. On the public site the delegate is stored in this browser's localStorage only and sent as a per-request MCP header — the Worker never persists it."}
+              : "Paste your MemWal account ID and delegate private key. On the public site the delegate is stored in this browser only, sent as a request header for private hosted runs, and never persisted by the Worker."}
         </p>
         <a className="sdkSetupLink" href={memwalDashboardUrl} target="_blank" rel="noreferrer">
           <ExternalLink size={13} />
@@ -2320,7 +2285,7 @@ function SettingsAppPage({
         <SdkCredentialImportForm authenticated={me.authenticated} authBusy={authBusy} delegateAccountId={delegateAccountId} delegateKey={delegateKey} setDelegateAccountId={setDelegateAccountId} setDelegateKey={setDelegateKey} onImport={onImport} />
       </section>
 
-      <AccountSecretCard />
+      {isLocalApiBase(API_BASE) ? <AccountSecretCard /> : null}
 
       {showDevMemWalAuth ? (
         <section className="settingsCard">
@@ -2584,6 +2549,7 @@ function SdkCredentialImportForm({
       setDelegateKey={setDelegateKey}
       onImport={onImport}
       dashboardUrl={memwalDashboardUrl}
+      delegateStorage={isLocalApiBase(API_BASE) ? "server" : "browser"}
     />
   );
 }
@@ -2594,7 +2560,7 @@ function SavedSdkCredentialStatus({ accountId }: { accountId?: string }) {
       <ShieldCheck size={16} />
       <div>
         <strong>SDK credentials saved</strong>
-        <p>ContextMeM will reuse the encrypted server-side delegate. Import again only if you rotate this key in MemWal.</p>
+        <p>{isLocalApiBase(API_BASE) ? "ContextMeM will reuse the encrypted server-side delegate. Import again only if you rotate this key in MemWal." : "ContextMeM will reuse the delegate from this browser for hosted prod testing. Import again only if you rotate this key in MemWal."}</p>
         {accountId ? <code>{compactHash(accountId)}</code> : null}
       </div>
       <a className="sdkSetupLink" href={memwalDashboardUrl} target="_blank" rel="noreferrer">
@@ -2612,10 +2578,10 @@ function HostedCredentialGate({ notice, previewBusy, onPreviewDemo, panel = fals
       <div className="hostedCredentialIcon">
         <ShieldCheck size={22} />
       </div>
-      <span>Public hosted demo</span>
-      <h2>Do not paste delegate private keys here.</h2>
+      <span>Hosted prod test</span>
+      <h2>Run a public preview or import credentials.</h2>
       <p>
-        This public Worker only runs demo extraction and share pages today. Full MemWal SDK import is enabled in the local ContextMeM app where the Fastify API stores delegate keys server-side.
+        Public preview works without credentials. Private hosted runs accept your MemWal delegate from Settings and do not require a local API.
       </p>
       {hasInput ? (
         <form
@@ -2654,7 +2620,6 @@ function HostedCredentialGate({ notice, previewBusy, onPreviewDemo, panel = fals
           Open MemWal dashboard
         </a>
       </div>
-      <code>Local full app: VITE_CONTEXTMEM_API_BASE=http://localhost:8791</code>
       <MemWalNoticeCard notice={notice} centered={panel} />
     </div>
   );
@@ -2703,9 +2668,10 @@ function LockedPreview({
           onImport={onImport}
           dashboardUrl={memwalDashboardUrl}
           noticeSlot={<MemWalNoticeCard notice={notice} centered />}
+          delegateStorage={isLocalApiBase(API_BASE) ? "server" : "browser"}
           description={isLocalApiBase(API_BASE)
             ? "Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted server-side and unlocks verified Walrus context."
-            : "Paste your MemWal account ID and delegate private key. On the public site they are stored in this browser only and sent as a per-request MCP header — the Worker never persists them."}
+            : "Paste your MemWal account ID and delegate private key. On the public site they are stored in this browser only, sent as request headers for private hosted runs, and never persisted by the Worker."}
         />
       ) : (
         <HostedCredentialGate notice={notice} previewBusy={previewBusy} onPreviewDemo={onPreviewDemo} panel target={target} setTarget={setTarget} />
@@ -4911,7 +4877,7 @@ function formatDuration(value: number): string {
 function buildProgressCopy(phase?: string): string {
   switch (phase) {
     case "queued":
-      return "The local API accepted the build and is preparing the first phase.";
+      return "The API accepted the build and is preparing the first phase.";
     case "resolving":
       return "Resolving the target to a website or Walrus Site object.";
     case "listing_resources":
@@ -5031,7 +4997,7 @@ function artifactFileUrl(runId: string | undefined, artifactPath: string, access
 }
 
 function authHeaders(token: string, base: Record<string, string> = {}): Record<string, string> {
-  const merged = { ...base, ...hostedDelegateHeaders() };
+  const merged = { ...base, ...(!isLocalApiBase(API_BASE) ? hostedDelegateHeaders() : {}) };
   return token ? { ...merged, authorization: `Bearer ${token}` } : merged;
 }
 
@@ -5057,6 +5023,24 @@ function readHostedDelegate(): { memwalAccountId: string; delegateKey: string } 
   } catch {
     return null;
   }
+}
+
+function hostedBrowserMe(stored: { memwalAccountId: string; delegateKey: string }): AccountMe {
+  const now = new Date().toISOString();
+  return {
+    authenticated: true,
+    account: {
+      id: `hosted:${stored.memwalAccountId.toLowerCase().replace(/[^a-z0-9:._-]+/g, "-").slice(0, 180)}`,
+      ownerAddress: stored.memwalAccountId,
+      provider: "unknown",
+      memwalAccountId: stored.memwalAccountId,
+      hasDelegateKey: true,
+      createdAt: now,
+      updatedAt: now
+    },
+    quota: { limit: 0, used: 0, remaining: 0, unlimited: true },
+    access: { canPreview: true, canRun: true, reason: "Hosted MemWal delegate is available for this browser session." }
+  };
 }
 
 function hostedDelegateHeaders(): Record<string, string> {

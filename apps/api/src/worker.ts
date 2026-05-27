@@ -29,6 +29,7 @@ export type WorkerEnv = {
 
 const defaultHostedWorkerBaseUrl = "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev";
 const legacyInternalWorkerOrigin = "https://contextmem.worker";
+const hostedRunDefaultOutputs = ["markdown", "images", "brand", "styleguide", "sitemap"];
 
 type WorkerExecutionContext = {
   props?: Record<string, unknown>;
@@ -169,6 +170,32 @@ type AlertRow = {
   created_at: string;
 };
 
+type HostedRunAuth = {
+  ownerId: string;
+  accountId: string;
+  authorization: string;
+  mcpUrl?: string;
+};
+
+type PublicExtractionJob = {
+  id: string;
+  ownerId: string;
+  namespace: string;
+  target: string;
+  status: ExtractionJobRow["status"];
+  visibility: HostedNamespaceVisibility;
+  displayName?: string;
+  description?: string;
+  tags: string[];
+  directoryEnabled: boolean;
+  sourceType: string;
+  error?: string;
+  result?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+};
+
 const namespaceImportSchema = z.object({
   namespace: z.string().min(3).max(300),
   visibility: z.enum(["private", "public"]).default("private"),
@@ -227,6 +254,15 @@ type ExtractionCreateInput = z.infer<typeof extractionCreateSchema>;
 const demoExtractionCreateSchema = z.object({
   target: z.string().min(1).max(500).optional(),
   sample: z.boolean().default(false)
+});
+
+const hostedRunCreateSchema = z.object({
+  target: z.string().url(),
+  mode: z.enum(["auto", "web", "walrus"]).default("auto"),
+  buildProfile: z.enum(["fast", "balanced", "full"]).default("balanced"),
+  outputs: z.array(z.string().min(1).max(40)).default(hostedRunDefaultOutputs),
+  background: z.boolean().default(true),
+  crawlOptions: z.unknown().optional()
 });
 
 const feedbackCreateSchema = z.object({
@@ -411,16 +447,23 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     return json({ ok: true, service: "contextmem-hosted-namespace-mcp" });
   }
   if (request.method === "GET" && url.pathname === "/api/me") {
-    return json({
-      authenticated: false,
-      account: null,
-      quota: { limit: 1, used: 0, remaining: 0 },
-      access: {
-        canPreview: true,
-        canRun: false,
-        reason: "Import MemWal SDK credentials in the local app for verified recall and memory."
-      }
-    });
+    return getHostedMe(request);
+  }
+  if (request.method === "POST" && url.pathname === "/api/runs") {
+    return createHostedRun(request, env, ctx);
+  }
+  if (request.method === "GET" && url.pathname === "/api/runs") {
+    return listHostedRuns(request, env);
+  }
+  const hostedRunRoute = matchHostedRunRoute(url.pathname);
+  if (hostedRunRoute) {
+    if (request.method === "GET" && !hostedRunRoute.action) return getHostedRun(request, env, hostedRunRoute.runId);
+    if (request.method === "GET" && hostedRunRoute.action === "events") return getHostedRunEvents(request, env, hostedRunRoute.runId);
+    if (request.method === "GET" && hostedRunRoute.action === "artifacts") return getHostedRunArtifacts(request, env, hostedRunRoute.runId);
+    if (request.method === "GET" && hostedRunRoute.action === "artifact-files") return listHostedRunArtifactFiles(request, env, hostedRunRoute.runId);
+    if (request.method === "GET" && hostedRunRoute.action === "artifact-file") return getHostedRunArtifactFile(request, env, hostedRunRoute.runId);
+    if (request.method === "GET" && hostedRunRoute.action === "publish-readiness") return getHostedRunPublishReadiness(request, env, hostedRunRoute.runId);
+    if (request.method === "POST" && hostedRunRoute.action === "share") return shareHostedRun(request, env, hostedRunRoute.runId);
   }
   if (request.method === "POST" && url.pathname === "/api/demo/extractions") {
     return createDemoExtraction(request, env, ctx);
@@ -837,6 +880,231 @@ async function importNamespace(request: Request, env: WorkerEnv): Promise<Respon
   const input = namespaceImportSchema.parse(await request.json());
   const result = await storeNamespaceImport(input, request, env);
   return json(result, 201);
+}
+
+function matchHostedRunRoute(pathname: string): { runId: string; action?: string } | undefined {
+  const match = /^\/api\/runs\/([^/]+)(?:\/(.+))?$/.exec(pathname);
+  if (!match?.[1]) return undefined;
+  return {
+    runId: decodeURIComponent(match[1]),
+    action: match[2]
+  };
+}
+
+function getHostedMe(request: Request): Response {
+  const auth = readHostedRunAuth(request);
+  if (!auth) {
+    return json({
+      authenticated: false,
+      account: null,
+      quota: { limit: 1, used: 0, remaining: 0 },
+      access: {
+        canPreview: true,
+        canRun: false,
+        reason: "Import MemWal SDK credentials to unlock private hosted runs."
+      }
+    });
+  }
+  return json(hostedMe(auth));
+}
+
+async function listHostedRuns(request: Request, env: WorkerEnv): Promise<Response> {
+  const auth = requireHostedRunAuth(request);
+  const limit = Math.min(Number(new URL(request.url).searchParams.get("limit") ?? 25) || 25, 100);
+  const result = await env.CONTEXTMEM_DB.prepare(
+    `SELECT id, owner_id, namespace, target, status, visibility, display_name, description, tags_json, directory_enabled, source_type, error, result_json, created_at, updated_at, completed_at
+     FROM contextmem_extraction_jobs
+     WHERE owner_id = ?
+     ORDER BY updated_at DESC
+     LIMIT ?`
+  )
+    .bind(auth.ownerId, limit)
+    .all<ExtractionJobRow>();
+  return json(allResults(result).map((row) => hostedRunHistoryItem(publicExtractionJobFromRow(row, env))));
+}
+
+async function createHostedRun(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<Response> {
+  const auth = requireHostedRunAuth(request);
+  const input = hostedRunCreateSchema.parse(await request.json());
+  const target = validatePublicDemoTarget(input.target);
+  const outputs = normalizeTags(input.outputs).length ? normalizeTags(input.outputs) : hostedRunDefaultOutputs;
+  const namespace = normalizeNamespace(`${target.hostname.endsWith(".wal.app") ? "walrus" : "web"}:${slugNamespace(target.hostname)}:${createShortId()}`);
+  const job = await createExtractionJob(
+    {
+      ownerId: auth.ownerId,
+      target: target.toString(),
+      namespace,
+      visibility: "private",
+      displayName: displayNameFromTarget(target.toString()),
+      description: "Private hosted ContextMeM build",
+      tags: ["hosted", target.hostname.endsWith(".wal.app") ? "walrus" : "web", `profile:${input.buildProfile}`, ...outputs.map((output) => `output:${output}`)],
+      directoryEnabled: false
+    },
+    env,
+    ctx
+  );
+  if (!job) throw statusError("Hosted run could not be created.", 500);
+  const artifact = job.status === "completed" ? await artifactManifestForJob(env, job).catch(() => undefined) : undefined;
+  return json(hostedRunResponse(job, artifact), 202);
+}
+
+async function getHostedRun(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const job = await requireHostedRunAccess(request, env, runId);
+  return json(hostedRunManifest(job));
+}
+
+async function getHostedRunEvents(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const job = await requireHostedRunAccess(request, env, runId);
+  return sse([{ event: "progress", data: hostedRunManifest(job) }, ...(job.status === "completed" || job.status === "failed" ? [{ event: "done", data: hostedRunManifest(job) }] : [])]);
+}
+
+async function getHostedRunArtifacts(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const job = await requireHostedRunAccess(request, env, runId);
+  return json(await artifactManifestForJob(env, job));
+}
+
+async function listHostedRunArtifactFiles(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const job = await requireHostedRunAccess(request, env, runId);
+  const artifacts = await new CloudflareNamespaceStore(env).listArtifacts(job.namespace);
+  return json(artifacts.map(hostedArtifactFileRecord));
+}
+
+async function getHostedRunArtifactFile(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const job = await requireHostedRunAccess(request, env, runId);
+  const artifactPath = new URL(request.url).searchParams.get("path") ?? "";
+  if (!artifactPath) return json({ error: "Missing artifact path." }, 400);
+  const artifact = await new CloudflareNamespaceStore(env).readArtifact(job.namespace, artifactPath);
+  if (!artifact) return json({ error: "Artifact not found." }, 404);
+  const body = artifact.encoding === "utf8" ? artifact.content : toArrayBuffer(base64ToBytes(artifact.content));
+  const headers = new Headers({
+    "content-type": artifact.contentType,
+    "cache-control": "no-store"
+  });
+  if (new URL(request.url).searchParams.get("download") === "1") headers.set("content-disposition", `attachment; filename="${artifact.path.split("/").pop() || "artifact"}"`);
+  return cors(new Response(body, { headers }));
+}
+
+async function getHostedRunPublishReadiness(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const job = await requireHostedRunAccess(request, env, runId);
+  const [artifact, files] = await Promise.all([artifactManifestForJob(env, job).catch(() => undefined), new CloudflareNamespaceStore(env).listArtifacts(job.namespace)]);
+  const paths = new Set(files.map((file) => file.path));
+  const routeCount = Array.isArray(artifact?.pages) ? artifact.pages.length : 0;
+  return json({
+    ready: paths.has("/llms.txt") && paths.has("/context/manifest.json"),
+    routeCount,
+    artifactCount: files.length,
+    totalBytes: files.reduce((sum, file) => sum + Number(file.size || 0), 0),
+    missing: [!paths.has("/llms.txt") ? "/llms.txt" : undefined, !paths.has("/context/manifest.json") ? "/context/manifest.json" : undefined].filter(Boolean)
+  });
+}
+
+async function shareHostedRun(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const job = await requireHostedRunAccess(request, env, runId);
+  const input = z.object({ title: z.string().max(160).optional(), description: z.string().max(600).optional() }).parse(await request.json().catch(() => ({})));
+  const files = redactImportFiles(await namespaceFiles(env, job.namespace));
+  const shareId = `shr_${cryptoRandomId(10)}`;
+  const shareNamespace = normalizeNamespace(`share:${shareId}`);
+  const imported = await storeNamespaceImport(
+    {
+      namespace: shareNamespace,
+      visibility: "public",
+      ownerId: job.ownerId,
+      displayName: input.title ?? job.displayName ?? displayNameFromTarget(job.target),
+      description: input.description ?? job.description,
+      tags: ["share", "contextmem"],
+      sourceType: "import",
+      directoryEnabled: false,
+      target: job.target,
+      sourceRunId: job.id,
+      manifest: redactUnknown(await artifactManifestForJob(env, job).catch(() => ({ target: job.target }))),
+      files
+    },
+    request,
+    env
+  );
+  const now = new Date().toISOString();
+  await env.CONTEXTMEM_DB.prepare(
+    `INSERT INTO contextmem_share_links (id, namespace, target, title, description, source_run_id, version_id, artifact_count, byte_length, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(shareId, shareNamespace, job.target, input.title ?? job.displayName ?? null, input.description ?? job.description ?? null, job.id, imported.versionId, imported.artifactCount, imported.byteLength, now, now)
+    .run();
+  const shareInput = {
+    ownerId: job.ownerId,
+    target: job.target,
+    title: input.title ?? job.displayName,
+    description: input.description ?? job.description,
+    sourceRunId: job.id,
+    manifest: {},
+    files
+  };
+  return json({ share: shareLinkFromImport(shareId, shareNamespace, shareInput, imported, now, request, env), url: `${workerBaseUrl(request, env)}/share/${shareId}` }, 201);
+}
+
+async function requireHostedRunAccess(request: Request, env: WorkerEnv, runId: string): Promise<PublicExtractionJob> {
+  const auth = requireHostedRunAuth(request);
+  const job = await getExtractionJob(env, runId);
+  if (!job || job.ownerId !== auth.ownerId) throw statusError("Hosted run not found.", 404);
+  return job;
+}
+
+function readHostedRunAuth(request: Request): HostedRunAuth | undefined {
+  const accountId = request.headers.get("x-memwal-account-id")?.trim();
+  const authorizationHeader = request.headers.get("x-memwal-authorization")?.trim();
+  const bearerHeader = request.headers.get("x-memwal-bearer")?.trim();
+  const rawSecret = authorizationHeader ?? bearerHeader;
+  if (!accountId || !rawSecret) return undefined;
+  const delegate = normalizeDelegateSecret(rawSecret);
+  if (delegate.length < 12) return undefined;
+  return {
+    ownerId: hostedOwnerId(accountId),
+    accountId,
+    authorization: authorizationHeader?.match(/^Bearer\s+/i) ? authorizationHeader : `Bearer ${delegate}`,
+    mcpUrl: request.headers.get("x-memwal-mcp-url")?.trim() || undefined
+  };
+}
+
+function requireHostedRunAuth(request: Request): HostedRunAuth {
+  const auth = readHostedRunAuth(request);
+  if (!auth) {
+    throw statusError(
+      "Hosted runs require MemWal SDK delegate headers.",
+      401,
+      "HOSTED_DELEGATE_REQUIRED",
+      "Import your MemWal account ID and delegate private key in Settings on contextmem.pages.dev."
+    );
+  }
+  return auth;
+}
+
+function hostedMe(auth: HostedRunAuth) {
+  const now = new Date().toISOString();
+  return {
+    authenticated: true,
+    account: {
+      id: auth.ownerId,
+      ownerAddress: auth.accountId,
+      provider: "unknown",
+      memwalAccountId: auth.accountId,
+      hasDelegateKey: true,
+      createdAt: now,
+      updatedAt: now
+    },
+    quota: { limit: 0, used: 0, remaining: 0, unlimited: true },
+    access: {
+      canPreview: true,
+      canRun: true,
+      reason: "Hosted MemWal delegate is available for this browser session."
+    }
+  };
+}
+
+function hostedOwnerId(accountId: string): string {
+  return `hosted:${accountId.toLowerCase().replace(/[^a-z0-9:._-]+/g, "-").slice(0, 180)}`;
+}
+
+function normalizeDelegateSecret(value: string): string {
+  return value.replace(/^Bearer\s+/i, "").trim();
 }
 
 async function createDemoExtraction(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<Response> {
@@ -1270,24 +1538,46 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
   const description = extractDescription(home.text) ?? job.description ?? "";
   const metadata = extractPageMetadata(home.text);
   const walrusHeaders = target.hostname.endsWith(".wal.app") ? extractWalrusHeaders(home.headers) : {};
-  const links = extractLinks(home.text, target).slice(0, 40);
-  const resources = dedupeByUrl([...extractResourceLinks(home.text, target), ...metadataResourceLinks(metadata, target)]).slice(0, 80);
-  const sameOriginPages = links.filter((link) => link.url.origin === target.origin).slice(0, 3);
-  const fetchedPages = [];
-  for (const link of sameOriginPages) {
-    try {
-      const page = await fetchText(link.url.toString());
-      fetchedPages.push({
-        url: link.url.toString(),
-        title: extractTitle(page.text) ?? link.label,
-        text: htmlToText(page.text).slice(0, 12000)
-      });
-    } catch {
-      // Keep extraction best-effort for remote agents.
+  const links = extractLinks(home.text, target).slice(0, 120);
+  const resources = dedupeByUrl([...extractResourceLinks(home.text, target), ...metadataResourceLinks(metadata, target)]).slice(0, 200);
+  const imageResources = resources.filter((resource) => resource.kind === "image");
+  const walrusResources = resources.map((resource) => ({
+    path: resource.url.pathname || "/",
+    blobId: "",
+    blobHash: "",
+    contentType: resource.kind,
+    aggregatorUrl: resource.url.toString()
+  }));
+  const extras = await fetchOptionalTextFiles(target);
+  const sitemapUrls = parseSitemapUrls(extras, target);
+  const candidateUrls = new Map<string, { url: URL; label?: string }>();
+  for (const link of links) {
+    if (link.url.origin !== target.origin) continue;
+    if (link.url.toString() === target.toString()) continue;
+    candidateUrls.set(link.url.toString(), { url: link.url, label: link.label });
+  }
+  for (const sitemapUrl of sitemapUrls) {
+    if (sitemapUrl.origin !== target.origin) continue;
+    if (sitemapUrl.toString() === target.toString()) continue;
+    if (!candidateUrls.has(sitemapUrl.toString())) {
+      candidateUrls.set(sitemapUrl.toString(), { url: sitemapUrl });
     }
   }
-
-  const extras = await fetchOptionalTextFiles(target);
+  const PAGE_LIMIT = 15;
+  const sameOriginPages = Array.from(candidateUrls.values()).slice(0, PAGE_LIMIT);
+  const pageResults = await Promise.allSettled(
+    sameOriginPages.map(async (link) => {
+      const page = await fetchText(link.url.toString());
+      return {
+        url: link.url.toString(),
+        title: extractTitle(page.text) ?? link.label ?? link.url.pathname,
+        text: htmlToText(page.text).slice(0, 25000)
+      };
+    })
+  );
+  const fetchedPages = pageResults
+    .filter((result): result is PromiseFulfilledResult<{ url: string; title: string; text: string }> => result.status === "fulfilled")
+    .map((result) => result.value);
   const manifest = {
     runId: job.id,
     namespace: job.namespace,
@@ -1299,8 +1589,24 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     title,
     description,
     metadata,
-    walrus: Object.keys(walrusHeaders).length ? walrusHeaders : undefined,
-    pages: [{ url: target.toString(), title, routePath: "/", markdown: htmlToText(home.text).slice(0, 20000) }, ...fetchedPages.map((page) => ({ url: page.url, title: page.title, markdown: page.text }))],
+    walrusHeaders: Object.keys(walrusHeaders).length ? walrusHeaders : undefined,
+    pages: [{ url: target.toString(), title, routePath: "/", markdown: htmlToText(home.text).slice(0, 40000) }, ...fetchedPages.map((page) => ({ url: page.url, title: page.title, routePath: new URL(page.url).pathname, markdown: page.text }))],
+    images: imageResources.map((resource) => ({
+      src: resource.url.toString(),
+      absoluteUrl: resource.url.toString(),
+      role: resource.label,
+      contentType: resource.kind
+    })),
+    walrus: target.hostname.endsWith(".wal.app")
+      ? {
+          site: {
+            network: "mainnet",
+            siteObjectId: walrusHeaders["x-walrus-site-object-id"] ?? "unknown",
+            aggregatorUrl: target.toString()
+          },
+          resources: walrusResources
+        }
+      : undefined,
     resources: resources.map((resource) => ({ url: resource.url.toString(), label: resource.label, kind: resource.kind })),
     errors: []
   };
@@ -1383,6 +1689,29 @@ async function fetchText(url: string): Promise<FetchedText> {
   const text = await response.text();
   if (text.length > 1_500_000) throw new Error(`Fetch response is too large for demo extraction: ${url}`);
   return { text, contentType, headers: responseHeaderMap(response.headers) };
+}
+
+function parseSitemapUrls(extras: NamespaceImportInput["files"], target: URL): URL[] {
+  const sitemap = extras.find((file) => file.path === "/site/sitemap.xml" && file.encoding === "utf8");
+  if (!sitemap || sitemap.encoding !== "utf8" || !sitemap.content) return [];
+  const urls: URL[] = [];
+  const seen = new Set<string>();
+  const locMatches = sitemap.content.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi);
+  for (const match of locMatches) {
+    const raw = match[1];
+    if (!raw) continue;
+    try {
+      const parsed = new URL(raw, target);
+      const key = parsed.toString();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      urls.push(parsed);
+    } catch {
+      // ignore unparseable loc entries
+    }
+    if (urls.length >= 60) break;
+  }
+  return urls;
 }
 
 async function fetchOptionalTextFiles(target: URL): Promise<NamespaceImportInput["files"]> {
@@ -1559,6 +1888,10 @@ async function getExtractionJobRow(env: WorkerEnv, jobId: string): Promise<Extra
 async function getExtractionJob(env: WorkerEnv, jobId: string) {
   const row = await getExtractionJobRow(env, jobId);
   if (!row) return undefined;
+  return publicExtractionJobFromRow(row, env);
+}
+
+function publicExtractionJobFromRow(row: ExtractionJobRow, env: WorkerEnv): PublicExtractionJob {
   const result = row.result_json ? normalizeExtractionResultLinks(JSON.parse(row.result_json) as Record<string, unknown>, row.namespace, env) : undefined;
   return {
     id: row.id,
@@ -1578,6 +1911,187 @@ async function getExtractionJob(env: WorkerEnv, jobId: string) {
     updatedAt: row.updated_at,
     completedAt: row.completed_at ?? undefined
   };
+}
+
+function hostedRunManifest(job: PublicExtractionJob) {
+  return {
+    runId: job.id,
+    target: job.target,
+    mode: hostedRunMode(job.target),
+    status: job.status,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+    artifactDir: `hosted:${job.namespace}`,
+    namespace: job.namespace,
+    outputs: hostedRunOutputs(job),
+    buildProfile: hostedRunBuildProfile(job),
+    progress: hostedRunProgress(job),
+    errors: job.error ? [job.error] : []
+  };
+}
+
+function hostedRunResponse(job: PublicExtractionJob, artifact?: Record<string, unknown>) {
+  const resources = Array.isArray(artifact?.resources) ? artifact.resources.length : Array.isArray((artifact?.walrus as { resources?: unknown[] } | undefined)?.resources) ? (artifact?.walrus as { resources?: unknown[] }).resources!.length : 0;
+  const pages = Array.isArray(artifact?.pages) ? artifact.pages.length : undefined;
+  return {
+    manifest: hostedRunManifest(job),
+    pages,
+    walrus: hostedRunMode(job.target) === "walrus" ? { resources, pages: pages ?? 0 } : undefined
+  };
+}
+
+function hostedRunHistoryItem(job: PublicExtractionJob) {
+  const manifest = hostedRunManifest(job);
+  return {
+    runId: manifest.runId,
+    target: manifest.target,
+    mode: manifest.mode,
+    status: manifest.status,
+    namespace: manifest.namespace,
+    updatedAt: manifest.updatedAt,
+    pages: Number((job.result as { pages?: unknown } | undefined)?.pages ?? 0),
+    images: 0,
+    resources: Number((job.result as { artifactCount?: unknown } | undefined)?.artifactCount ?? 0),
+    hasDesignSystem: false,
+    hasScreenshots: false,
+    errors: manifest.errors
+  };
+}
+
+async function artifactManifestForJob(env: WorkerEnv, job: PublicExtractionJob): Promise<Record<string, unknown>> {
+  const artifact = await new CloudflareNamespaceStore(env).readArtifact(job.namespace, "/context/manifest.json");
+  if (!artifact || artifact.encoding !== "utf8") throw statusError("Run artifact manifest not found.", 404);
+  return normalizeHostedArtifactManifest(safeJsonParse(artifact.content), job);
+}
+
+function normalizeHostedArtifactManifest(value: unknown, job: PublicExtractionJob): Record<string, unknown> {
+  const source = value && typeof value === "object" ? { ...(value as Record<string, unknown>) } : {};
+  const pages = Array.isArray(source.pages) ? source.pages : [];
+  const resources = Array.isArray(source.resources) ? (source.resources as Array<Record<string, unknown>>) : [];
+  const images = Array.isArray(source.images)
+    ? source.images
+    : resources
+        .filter((resource) => String(resource.kind ?? "").includes("image"))
+        .map((resource) => ({
+          src: resource.url,
+          absoluteUrl: String(resource.url ?? job.target),
+          role: "resource",
+          contentType: resource.kind
+        }));
+  const normalized: Record<string, unknown> = {
+    ...source,
+    runId: String(source.runId ?? job.id),
+    target: String(source.target ?? job.target),
+    generatedAt: String(source.generatedAt ?? job.completedAt ?? job.updatedAt),
+    pages,
+    images
+  };
+  const rawWalrus = source.walrus;
+  const hasStructuredWalrus = rawWalrus && typeof rawWalrus === "object" && Array.isArray((rawWalrus as { resources?: unknown }).resources);
+  if (hasStructuredWalrus) return normalized;
+  if (hostedRunMode(job.target) === "walrus") {
+    normalized.walrus = {
+      site: {
+        network: "mainnet",
+        siteObjectId: String((source.metadata as Record<string, unknown> | undefined)?.["x-walrus-site-object-id"] ?? "unknown"),
+        aggregatorUrl: job.target
+      },
+      resources: resources.map((resource, index) => ({
+        path: new URL(String(resource.url ?? job.target), job.target).pathname || `/resource-${index + 1}`,
+        blobId: String(resource.blobId ?? ""),
+        blobHash: String(resource.blobHash ?? ""),
+        contentType: String(resource.kind ?? "resource"),
+        aggregatorUrl: String(resource.url ?? job.target)
+      }))
+    };
+  } else {
+    delete normalized.walrus;
+  }
+  return normalized;
+}
+
+function hostedRunMode(target: string): "web" | "walrus" {
+  try {
+    return new URL(target).hostname.endsWith(".wal.app") ? "walrus" : "web";
+  } catch {
+    return "web";
+  }
+}
+
+function hostedRunOutputs(job: PublicExtractionJob): string[] {
+  const outputs = job.tags.flatMap((tag) => (tag.startsWith("output:") ? [tag.slice("output:".length)] : []));
+  return outputs.length ? outputs : hostedRunDefaultOutputs;
+}
+
+function hostedRunBuildProfile(job: PublicExtractionJob): "fast" | "balanced" | "full" {
+  const profile = job.tags.find((tag) => tag.startsWith("profile:"))?.slice("profile:".length);
+  return profile === "fast" || profile === "balanced" || profile === "full" ? profile : "balanced";
+}
+
+function hostedRunProgress(job: PublicExtractionJob) {
+  const phase = job.status === "queued" ? "queued" : job.status === "running" ? "crawling_pages" : job.status === "completed" ? "completed" : "failed";
+  const label =
+    job.status === "completed"
+      ? "Hosted context package is ready"
+      : job.status === "failed"
+        ? job.error ?? "Hosted context build failed"
+        : job.status === "running"
+          ? "Fetching the target and writing hosted artifacts"
+          : "Queued hosted context build";
+  return {
+    phase,
+    label,
+    updatedAt: job.updatedAt
+  };
+}
+
+async function namespaceFiles(env: WorkerEnv, namespace: string): Promise<NamespaceImportInput["files"]> {
+  const store = new CloudflareNamespaceStore(env);
+  const artifacts = await store.listArtifacts(namespace);
+  const files: NamespaceImportInput["files"] = [];
+  for (const artifact of artifacts) {
+    const content = await store.readArtifact(namespace, artifact.path);
+    if (!content) continue;
+    files.push({
+      path: artifact.path,
+      contentType: artifact.contentType,
+      encoding: content.encoding,
+      content: content.content
+    });
+  }
+  return files;
+}
+
+function hostedArtifactFileRecord(artifact: HostedArtifactRecord) {
+  const kind = hostedArtifactKind(artifact);
+  return {
+    path: artifact.path,
+    size: artifact.size,
+    updatedAt: artifact.updatedAt,
+    contentType: artifact.contentType,
+    kind,
+    group: artifactGroup(artifact.path, kind),
+    previewable: ["json", "markdown", "html", "css", "text"].includes(kind),
+    downloadable: true
+  };
+}
+
+function hostedArtifactKind(artifact: HostedArtifactRecord): "json" | "markdown" | "html" | "image" | "css" | "text" | "binary" | "other" {
+  if (/^image\//i.test(artifact.contentType)) return "image";
+  const kind = inferHostedArtifactKind(artifact.path, artifact.contentType);
+  if (kind === "json" || kind === "markdown" || kind === "html" || kind === "css" || kind === "text" || kind === "binary") return kind;
+  return "other";
+}
+
+function artifactGroup(path: string, kind: string): "core" | "design-system" | "walrus" | "screenshots" | "package" | "pages" | "assets" | "other" {
+  if (path === "/llms.txt" || path === "/context/manifest.json") return "core";
+  if (path.includes("design") || path.includes("styleguide") || path.includes("brand")) return "design-system";
+  if (path.includes("walrus") || path.includes("resources")) return "walrus";
+  if (path.includes("screenshot")) return "screenshots";
+  if (path.startsWith("/site/")) return "pages";
+  if (kind === "image") return "assets";
+  if (path.startsWith("/context/")) return "package";
+  return "other";
 }
 
 async function insertSchedule(input: z.infer<typeof scheduleCreateSchema>, env: WorkerEnv) {
