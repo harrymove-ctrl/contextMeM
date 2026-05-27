@@ -4,7 +4,7 @@
   "workers_dev": true,
   "preview_urls": false,
   "vars": {
-    "CONTEXTMEM_WORKER_BASE_URL": "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev",
+    "CONTEXTMEM_WORKER_BASE_URL": "https://contextmem.pages.dev",
     "CONTEXTMEM_DEMO_SAMPLE_TARGET": "https://seal-docs.wal.app/"
   },
   "compatibility_date": "2026-05-21",

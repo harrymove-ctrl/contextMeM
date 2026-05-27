@@ -3969,6 +3969,79 @@ textarea {
   color: #7f1d1d;
 }
 
+.hostedBuildBanner {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #a3e635;
+  background: #f1f8df;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.hostedBuildBannerHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #166534;
+}
+
+.hostedBuildBannerHead strong {
+  font-size: 13px;
+  color: #14532d;
+}
+
+.hostedBuildBannerHead code {
+  margin-left: auto;
+  background: rgba(22, 101, 52, 0.12);
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  color: #14532d;
+}
+
+.hostedBuildBannerRow {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.hostedBuildBannerRow span {
+  color: #475569;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.hostedBuildBannerRow a {
+  color: #0f172a;
+  text-decoration: none;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.hostedBuildBannerRow a:hover {
+  text-decoration: underline;
+}
+
+.hostedBuildBannerRow button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #94d843;
+  background: #ffffff;
+  color: #14532d;
+  font-size: 11px;
+  cursor: pointer;
+}
+
 @media (max-width: 540px) {
   .hostedCredentialInput {
     grid-template-columns: 1fr;

@@ -525,6 +525,7 @@ function ContextMemExperience() {
   const [authBusy, setAuthBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authHint, setAuthHint] = useState("");
+  const [hostedBuildResult, setHostedBuildResult] = useState<{ shareId: string; namespace: string; shareUrl: string; mcpUrl: string } | null>(null);
   const [memwalNotice, setMemwalNotice] = useState<MemWalNotice | null>(null);
   const [demoPreview, setDemoPreview] = useState<DemoPreviewState | null>(null);
   const [me, setMe] = useState<AccountMe>(anonymousMe);
@@ -928,7 +929,10 @@ function ContextMemExperience() {
           } as unknown as RunResponse["manifest"]
         });
       }
-      setAuthHint(`Hosted build complete. Public share: /share/${shareId}`);
+      const shareUrl = `${window.location.origin}/share/${shareId}`;
+      const mcpUrl = `${window.location.origin}/mcp?namespace=${encodeURIComponent(body.job.namespace)}`;
+      setHostedBuildResult({ shareId, namespace: body.job.namespace, shareUrl, mcpUrl });
+      setAuthHint(`Hosted build complete. Public share + MCP endpoint below.`);
       if (artifactResp.ok) {
         // artifact list refreshed - not used directly, the manifest already populates tabs
         void artifactResp;
@@ -1126,6 +1130,7 @@ function ContextMemExperience() {
       onStartRun={startRun}
       onRemember={remember}
       hasMemWalDelegate={hasMemWalDelegate}
+      hostedBuildResult={hostedBuildResult}
     />
   );
 
@@ -2225,7 +2230,8 @@ function BuildConsolePage({
   primaryActionLabel,
   onStartRun,
   onRemember,
-  hasMemWalDelegate
+  hasMemWalDelegate,
+  hostedBuildResult
 }: {
   target: string;
   setTarget: React.Dispatch<React.SetStateAction<string>>;
@@ -2250,6 +2256,7 @@ function BuildConsolePage({
   onStartRun: () => void;
   onRemember: () => void;
   hasMemWalDelegate: boolean;
+  hostedBuildResult: { shareId: string; namespace: string; shareUrl: string; mcpUrl: string } | null;
 }) {
   const visibleTab = buildTabs.some(([label]) => label === activeTab) ? activeTab : "Markdown";
   const applyBuildProfile = (profile: BuildProfile) => {
@@ -2330,6 +2337,8 @@ function BuildConsolePage({
           <Brain size={17} />
           Remember in MemWal
         </button>
+
+        {hostedBuildResult ? <HostedBuildBanner result={hostedBuildResult} /> : null}
 
         {error ? <div className={artifact || error.startsWith("MemWal") ? "notice" : "error"}>{artifact && !error.startsWith("MemWal") ? `Partial context kept: ${error}` : error}</div> : null}
       </aside>
@@ -2844,6 +2853,44 @@ function pageEditKey(page: MarkdownPage): string {
   return page.artifactPath ?? page.url;
 }
 
+function HostedBuildBanner({ result }: { result: { shareId: string; namespace: string; shareUrl: string; mcpUrl: string } }) {
+  const [copied, setCopied] = useState<"share" | "mcp" | null>(null);
+  async function copy(kind: "share" | "mcp", value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 1800);
+    } catch {
+      setCopied(null);
+    }
+  }
+  return (
+    <div className="hostedBuildBanner">
+      <div className="hostedBuildBannerHead">
+        <CheckCircle2 size={16} />
+        <strong>Hosted build complete</strong>
+        <code>{result.namespace}</code>
+      </div>
+      <div className="hostedBuildBannerRow">
+        <span>Share page</span>
+        <Link to={`/share/${result.shareId}`}>{result.shareUrl}</Link>
+        <button type="button" onClick={() => void copy("share", result.shareUrl)}>
+          <Clipboard size={13} />
+          {copied === "share" ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <div className="hostedBuildBannerRow">
+        <span>MCP endpoint</span>
+        <a href={result.mcpUrl} target="_blank" rel="noreferrer">{result.mcpUrl}</a>
+        <button type="button" onClick={() => void copy("mcp", result.mcpUrl)}>
+          <Clipboard size={13} />
+          {copied === "mcp" ? "Copied" : "Copy"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function MarkdownLink(props: MarkdownAnchorProps) {
   const { href, children, node: _node, ...anchorProps } = props;
   const external = typeof href === "string" && /^https?:\/\//i.test(href);
@@ -3257,6 +3304,10 @@ function AiQueryPanel({ artifact, run, setArtifact, authToken }: { artifact: Art
     if (!run) return;
     const prompt = (text ?? question).trim();
     if (!prompt) return;
+    if (!isLocalApiBase(API_BASE)) {
+      setError("AI Query needs server-side OpenAI access — currently only the local Fastify API runs that. Run `bun run dev` locally to enable AI Query on the same run. The hosted MCP namespace already serves the verified extracted context to any agent.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
