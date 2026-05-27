@@ -893,7 +893,7 @@ function ContextMemExperience() {
     try {
       const createRes = await fetch(`${API_BASE}/api/demo/extractions`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...hostedDelegateHeaders() },
         body: JSON.stringify({
           target: requestedTarget,
           ...(customNamespace.trim() ? { namespace: customNamespace.trim() } : {}),

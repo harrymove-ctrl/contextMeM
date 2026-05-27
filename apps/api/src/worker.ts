@@ -1199,7 +1199,8 @@ async function createDemoExtraction(request: Request, env: WorkerEnv, ctx: Worke
   const input = demoExtractionCreateSchema.parse(await request.json().catch(() => ({})));
   const target = validatePublicDemoTarget(input.sample ? demoSampleTarget(env) : input.target ?? demoSampleTarget(env));
   const sample = input.sample || !input.target;
-  if (!sample) await consumeDemoQuota(request, env);
+  const authedDelegate = readHostedRunAuth(request);
+  if (!sample && !authedDelegate) await consumeDemoQuota(request, env);
   const namespace = input.namespace
     ? normalizeNamespace(input.namespace.startsWith("demo:") ? input.namespace : `demo:${input.namespace}`)
     : normalizeNamespace(`demo:${slugNamespace(target.hostname)}:${createShortId()}`);
@@ -2512,7 +2513,7 @@ async function consumeDemoQuota(request: Request, env: WorkerEnv): Promise<void>
   const ipHash = await sha256Hex(ip);
   const key = `${day}:${ipHash}`;
   const existing = await env.CONTEXTMEM_DB.prepare(`SELECT bucket_key, count FROM contextmem_demo_limits WHERE bucket_key = ?`).bind(key).first<{ bucket_key: string; count: number }>();
-  if (existing && Number(existing.count) >= 1) throw statusError("Demo limit reached for today. Import credentials for unlimited local runs.", 429, "DEMO_LIMIT_EXCEEDED", "Open /app/settings, generate a CONTEXTMEM_ACCOUNT_SECRET and import MemWal SDK credentials to remove the 1/day demo quota.");
+  if (existing && Number(existing.count) >= 1) throw statusError("Demo limit reached for today. Import MemWal credentials to unlock unlimited builds.", 429, "DEMO_LIMIT_EXCEEDED", "Open /app/settings, paste your MemWal account ID and delegate private key, then run the build again — the demo quota is bypassed once the delegate is attached.");
   const now = new Date().toISOString();
   await env.CONTEXTMEM_DB.prepare(
     `INSERT INTO contextmem_demo_limits (bucket_key, ip_hash, day, count, updated_at)

@@ -314,10 +314,10 @@ describe("ContextMeM hosted namespace Worker", () => {
       "https://demo-product.wal.app/about": "<html><head><title>About</title></head><body>Demo about page</body></html>",
       "https://demo-product.wal.app/robots.txt": "User-agent: *\nAllow: /",
       "https://demo-product.wal.app/sitemap.xml": "<urlset></urlset>",
-      "https://seal-docs.wal.app/": "<html><head><title>Seal Docs</title><meta name=\"description\" content=\"Sui-native end-to-end encryption SDK\"></head><body><a href=\"/getting-started\">Getting started</a></body></html>",
-      "https://seal-docs.wal.app/getting-started": "<html><head><title>Getting started</title></head><body>Seal documentation public Walrus Site for Sui-native E2E encryption</body></html>",
-      "https://seal-docs.wal.app/robots.txt": "User-agent: *\nAllow: /",
-      "https://seal-docs.wal.app/sitemap.xml": "<urlset></urlset>"
+      "https://fmsprint.wal.app/": "<html><head><title>Drift Racer</title><meta name=\"description\" content=\"Drift-to-Chain on Sui Testnet\"></head><body><a href=\"/about\">About Drift Racer</a></body></html>",
+      "https://fmsprint.wal.app/about": "<html><head><title>About Drift Racer</title></head><body>Drift Racer public Walrus Site context for Sui product testing</body></html>",
+      "https://fmsprint.wal.app/robots.txt": "User-agent: *\nAllow: /",
+      "https://fmsprint.wal.app/sitemap.xml": "<urlset></urlset>"
     });
     try {
       const { handleWorkerRequest } = await worker();
@@ -331,7 +331,7 @@ describe("ContextMeM hosted namespace Worker", () => {
       );
       expect(sample.status).toBe(202);
       const sampleBody = (await sample.json()) as { job: { target: string; status: string } };
-      expect(sampleBody.job.target).toBe("https://seal-docs.wal.app/");
+      expect(sampleBody.job.target).toBe("https://fmsprint.wal.app/");
       expect(sampleBody.job.status).toBe("completed");
 
       const first = await handleWorkerRequest(
@@ -382,6 +382,24 @@ describe("ContextMeM hosted namespace Worker", () => {
       );
       expect(objectId.status).toBe(400);
       expect(await objectId.text()).toContain("public http(s) URLs");
+
+      const authedRetry = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/demo/extractions", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "cf-connecting-ip": "203.0.113.10",
+            "x-memwal-account-id": "0xabc123def4567890abcdef0123456789abcdef01",
+            "x-memwal-authorization": "Bearer delegate-secret-token-1234"
+          },
+          body: JSON.stringify({ target: "https://demo-product.wal.app/" })
+        }),
+        env
+      );
+      expect(authedRetry.status).toBe(202);
+      const authedBody = (await authedRetry.json()) as { job: { status: string; result?: { share?: { id: string } } } };
+      expect(authedBody.job.status).toBe("completed");
+      expect(authedBody.job.result?.share?.id).toMatch(/^shr_/);
     } finally {
       restoreFetch();
     }
