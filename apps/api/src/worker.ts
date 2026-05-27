@@ -520,6 +520,10 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     if (!auth.ok) return json({ error: auth.message }, auth.status);
     return updateNamespace(request, env, decodeURIComponent(url.pathname.slice("/api/namespaces/".length)));
   }
+  if (request.method === "POST" && url.pathname.startsWith("/api/namespaces/") && url.pathname.endsWith("/artifact-edit")) {
+    const slice = url.pathname.slice("/api/namespaces/".length, -"/artifact-edit".length);
+    return updateNamespaceArtifact(request, env, decodeURIComponent(slice));
+  }
   if (request.method === "POST" && url.pathname === "/api/extractions") {
     const auth = requireImportAuthorization(request, env);
     if (!auth.ok) return json({ error: auth.message }, auth.status);
@@ -883,6 +887,85 @@ async function importNamespace(request: Request, env: WorkerEnv): Promise<Respon
   const input = namespaceImportSchema.parse(await request.json());
   const result = await storeNamespaceImport(input, request, env);
   return json(result, 201);
+}
+
+async function updateNamespaceArtifact(request: Request, env: WorkerEnv, namespace: string): Promise<Response> {
+  const body = await request.json().catch(() => null);
+  const parsed = z.object({ path: z.string().min(1), content: z.string() }).safeParse(body);
+  if (!parsed.success) return json({ error: "Body must be { path: string, content: string }." }, 400);
+  const artifactPath = normalizeHostedArtifactPath(parsed.data.path);
+  if (!artifactPath.startsWith("/site/") || !artifactPath.endsWith(".md")) {
+    return json({ error: "Only /site/*.md artifacts can be edited inline." }, 400);
+  }
+
+  const row = await env.CONTEXTMEM_DB.prepare(
+    `SELECT namespace, owner_id, current_version_id, byte_length, manifest_json FROM contextmem_namespaces WHERE namespace = ?`
+  )
+    .bind(namespace)
+    .first<{ namespace: string; owner_id: string; current_version_id: string; byte_length: number; manifest_json: string | null }>();
+  if (!row) return json({ error: "Namespace not found." }, 404);
+
+  const providedOwner = request.headers.get("x-memwal-account-id") ?? new URL(request.url).searchParams.get("ownerId") ?? "";
+  const callerDemoOwner = demoOwnerId(request);
+  const importAuth = requireImportAuthorization(request, env);
+  const ownerMatch =
+    importAuth.ok ||
+    (providedOwner && providedOwner === row.owner_id) ||
+    (row.owner_id.startsWith("demo:") && row.owner_id === callerDemoOwner);
+  if (!ownerMatch) {
+    return json({ error: "You do not own this namespace. Pass x-memwal-account-id or the import token." }, 403);
+  }
+
+  const store = new CloudflareNamespaceStore(env);
+  const existing = await store.readArtifact(namespace, artifactPath);
+  if (!existing) return json({ error: "Artifact not found in this namespace." }, 404);
+
+  const newBytes = new TextEncoder().encode(parsed.data.content);
+  const r2Key = `namespaces/${await sha256Hex(namespace)}/${row.current_version_id}${artifactPath}`;
+  await env.CONTEXTMEM_CONTEXT_BUCKET.put(r2Key, newBytes, {
+    httpMetadata: { contentType: existing.contentType ?? "text/markdown; charset=utf-8" },
+    customMetadata: {
+      namespace,
+      versionId: row.current_version_id,
+      path: artifactPath,
+      sha256: await sha256Hex(newBytes)
+    }
+  });
+
+  let manifestJson = row.manifest_json;
+  if (manifestJson) {
+    try {
+      const manifest = JSON.parse(manifestJson) as { pages?: Array<{ artifactPath?: string; markdown?: string }> };
+      if (Array.isArray(manifest.pages)) {
+        for (const page of manifest.pages) {
+          if (page.artifactPath === artifactPath) {
+            page.markdown = parsed.data.content;
+          }
+        }
+        manifestJson = JSON.stringify(manifest, null, 2);
+      }
+    } catch {
+      // leave manifest_json untouched on parse failure
+    }
+  }
+
+  const oldSize = existing.encoding === "utf8" ? new TextEncoder().encode(existing.content).byteLength : 0;
+  const byteDelta = newBytes.byteLength - oldSize;
+  const updates = await env.CONTEXTMEM_DB.prepare(
+    `UPDATE contextmem_namespaces SET byte_length = byte_length + ?, manifest_json = ?, updated_at = ? WHERE namespace = ?`
+  )
+    .bind(byteDelta, manifestJson, new Date().toISOString(), namespace)
+    .run();
+  void updates;
+
+  await env.CONTEXTMEM_DB.prepare(
+    `UPDATE contextmem_namespace_artifacts SET size = ?, sha256 = ?, updated_at = ? WHERE namespace = ? AND path = ?`
+  )
+    .bind(newBytes.byteLength, await sha256Hex(newBytes), new Date().toISOString(), namespace, artifactPath)
+    .run()
+    .catch(() => undefined);
+
+  return json({ ok: true, path: artifactPath, size: newBytes.byteLength });
 }
 
 function matchHostedRunRoute(pathname: string): { runId: string; action?: string } | undefined {
@@ -1609,7 +1692,7 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     description,
     metadata,
     walrusHeaders: Object.keys(walrusHeaders).length ? walrusHeaders : undefined,
-    pages: [{ url: target.toString(), title, routePath: "/", markdown: htmlToText(home.text).slice(0, 40000) }, ...fetchedPages.map((page) => ({ url: page.url, title: page.title, routePath: new URL(page.url).pathname, markdown: page.text }))],
+    pages: [{ url: target.toString(), title, routePath: "/", artifactPath: "/site/index.md", markdown: htmlToText(home.text).slice(0, 40000) }, ...fetchedPages.map((page, index) => ({ url: page.url, title: page.title, routePath: new URL(page.url).pathname, artifactPath: `/site/page-${index + 1}.md`, markdown: page.text }))],
     images: imageResources.map((resource) => ({
       src: resource.url.toString(),
       absoluteUrl: resource.url.toString(),

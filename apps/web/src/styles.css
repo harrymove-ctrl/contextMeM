@@ -3893,6 +3893,82 @@ textarea {
   word-break: break-word;
 }
 
+.markdownRawEditor {
+  width: 100%;
+  min-height: 200px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid #cbd5f5;
+  border-radius: 10px;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  resize: vertical;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.markdownRawEditor:focus {
+  outline: none;
+  border-color: var(--cm-blue);
+  box-shadow: 0 0 0 3px rgba(29, 99, 237, 0.22);
+}
+
+.markdownEditActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.markdownEditActions button {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.markdownEditActions button.primary {
+  background: #111416;
+  color: #ffffff;
+  box-shadow: 4px 4px 0 rgba(168, 217, 70, 0.6);
+}
+
+.markdownEditActions button.primary:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.markdownEditActions button.ghost {
+  background: transparent;
+  color: #475569;
+  border: 1px solid #cbd5f5;
+}
+
+.markdownSaveNotice {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  border: 1px solid;
+}
+
+.markdownSaveNotice.success {
+  background: #f1f8df;
+  border-color: #a3e635;
+  color: #1e293b;
+}
+
+.markdownSaveNotice.warning {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #7f1d1d;
+}
+
 @media (max-width: 540px) {
   .hostedCredentialInput {
     grid-template-columns: 1fr;

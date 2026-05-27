@@ -103,7 +103,7 @@ type ArtifactManifest = {
   runId?: string;
   target: string;
   generatedAt?: string;
-  pages: Array<{ url: string; routePath?: string; title?: string; markdown: string; source?: { blobId?: string; resourcePath?: string } }>;
+  pages: Array<{ url: string; routePath?: string; artifactPath?: string; title?: string; markdown: string; source?: { blobId?: string; resourcePath?: string } }>;
   discovery?: {
     strategy: "web" | "walrus";
     profile?: BuildProfile;
@@ -1419,7 +1419,7 @@ function ShareContentTabs({ manifest, artifacts, mcpUrl, namespace, shareId }: {
         ))}
       </nav>
       <div className="shareTabBody">
-        {active === "markdown" ? <MarkdownPanel pages={manifest.pages} /> : null}
+        {active === "markdown" ? <MarkdownPanel pages={manifest.pages} namespace={namespace} /> : null}
         {active === "structure" ? <ShareStructurePreview structure={manifest.siteStructure} /> : null}
         {active === "images" ? <ShareImagesGrid manifest={manifest} /> : null}
         {active === "brand" ? <BrandPanel data={manifest.brand} /> : null}
@@ -2654,7 +2654,22 @@ function ResultPane({
   }
 
   if (tab === "Markdown") {
-    return <MarkdownPanel pages={artifact.pages} />;
+    const ns = run?.manifest.namespace;
+    return (
+      <MarkdownPanel
+        pages={artifact.pages}
+        namespace={ns}
+        onPageEdited={(artifactPath, content) => {
+          setArtifact((current) => {
+            if (!current) return current;
+            return {
+              ...current,
+              pages: current.pages.map((page) => (page.artifactPath === artifactPath ? { ...page, markdown: content } : page))
+            };
+          });
+        }}
+      />
+    );
   }
 
   if (tab === "Structure") return <StructurePanel data={artifact.siteStructure} run={run} authToken={authToken} />;
@@ -2691,12 +2706,60 @@ function ResultPane({
   return <PublishPanel run={run} authToken={authToken} />;
 }
 
-function MarkdownPanel({ pages }: { pages: MarkdownPage[] }) {
+function MarkdownPanel({ pages, namespace, onPageEdited }: { pages: MarkdownPage[]; namespace?: string; onPageEdited?: (artifactPath: string, content: string) => void }) {
   const [mode, setMode] = useState<MarkdownViewMode>("preview");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [savingPath, setSavingPath] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{ tone: "success" | "warning"; message: string } | null>(null);
   const totalCharacters = useMemo(() => pages.reduce((sum, page) => sum + page.markdown.length, 0), [pages]);
+  const canEdit = Boolean(namespace);
 
   if (!pages.length) {
     return <div className="panel subEmpty">No markdown pages were extracted for this run.</div>;
+  }
+
+  function draftFor(page: MarkdownPage): string {
+    const key = pageEditKey(page);
+    return drafts[key] ?? page.markdown;
+  }
+
+  function setDraft(page: MarkdownPage, value: string) {
+    const key = pageEditKey(page);
+    setDrafts((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function resetDraft(page: MarkdownPage) {
+    const key = pageEditKey(page);
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  async function savePage(page: MarkdownPage) {
+    if (!page.artifactPath || !namespace) {
+      setSaveNotice({ tone: "warning", message: "This page has no artifact path. Re-run the build so it's tracked." });
+      return;
+    }
+    setSavingPath(page.artifactPath);
+    setSaveNotice(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/namespaces/${encodeURIComponent(namespace)}/artifact-edit`, {
+        method: "POST",
+        headers: authHeaders("", { "content-type": "application/json" }),
+        body: JSON.stringify({ path: page.artifactPath, content: draftFor(page) })
+      });
+      if (!response.ok) throw new Error(await readResponseError(response));
+      const content = draftFor(page);
+      onPageEdited?.(page.artifactPath, content);
+      resetDraft(page);
+      setSaveNotice({ tone: "success", message: `Saved ${page.artifactPath}. MCP clients reading this namespace will get the new content on next query.` });
+    } catch (err) {
+      setSaveNotice({ tone: "warning", message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setSavingPath(null);
+    }
   }
 
   return (
@@ -2704,7 +2767,7 @@ function MarkdownPanel({ pages }: { pages: MarkdownPage[] }) {
       <div className="markdownToolbar">
         <div>
           <strong>Markdown</strong>
-          <span>{pages.length} pages · {formatBytes(totalCharacters)}</span>
+          <span>{pages.length} pages · {formatBytes(totalCharacters)}{canEdit ? " · raw is editable" : ""}</span>
         </div>
         <div className="markdownMode" role="group" aria-label="Markdown view mode">
           <button type="button" className={mode === "preview" ? "selected" : ""} onClick={() => setMode("preview")} aria-pressed={mode === "preview"}>
@@ -2718,29 +2781,67 @@ function MarkdownPanel({ pages }: { pages: MarkdownPage[] }) {
         </div>
       </div>
 
-      {pages.map((page, index) => (
-        <article className="page markdownPage" key={`${page.url}-${index}`}>
-          <div className="pageHead markdownPageHead">
-            <div>
-              <strong>{page.title ?? page.routePath ?? page.url}</strong>
-              <span>{page.routePath ?? page.url}</span>
-            </div>
-            <span>{page.source?.blobId ?? formatBytes(page.markdown.length)}</span>
-          </div>
+      {saveNotice ? (
+        <div className={`markdownSaveNotice ${saveNotice.tone}`}>{saveNotice.message}</div>
+      ) : null}
 
-          {mode === "preview" ? (
-            <div className="markdownBody">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: MarkdownLink }}>
-                {page.markdown}
-              </ReactMarkdown>
+      {pages.map((page, index) => {
+        const key = pageEditKey(page);
+        const value = draftFor(page);
+        const dirty = drafts[key] !== undefined && drafts[key] !== page.markdown;
+        return (
+          <article className="page markdownPage" key={`${page.url}-${index}`}>
+            <div className="pageHead markdownPageHead">
+              <div>
+                <strong>{page.title ?? page.routePath ?? page.url}</strong>
+                <span>{page.routePath ?? page.url}</span>
+              </div>
+              <span>{page.source?.blobId ?? formatBytes(value.length)}{page.artifactPath ? ` · ${page.artifactPath}` : ""}</span>
             </div>
-          ) : (
-            <pre className="markdownRaw">{page.markdown}</pre>
-          )}
-        </article>
-      ))}
+
+            {mode === "preview" ? (
+              <div className="markdownBody">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: MarkdownLink }}>
+                  {value}
+                </ReactMarkdown>
+              </div>
+            ) : canEdit ? (
+              <>
+                <textarea
+                  className="markdownRawEditor"
+                  value={value}
+                  onChange={(event) => setDraft(page, event.target.value)}
+                  spellCheck={false}
+                  rows={Math.min(24, Math.max(8, value.split("\n").length))}
+                />
+                <div className="markdownEditActions">
+                  <button
+                    type="button"
+                    className="primary"
+                    disabled={!dirty || savingPath === page.artifactPath}
+                    onClick={() => void savePage(page)}
+                  >
+                    {savingPath === page.artifactPath ? "Saving…" : dirty ? "Save to namespace" : "Saved"}
+                  </button>
+                  {dirty ? (
+                    <button type="button" className="ghost" onClick={() => resetDraft(page)}>
+                      Discard changes
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            ) : (
+              <pre className="markdownRaw">{value}</pre>
+            )}
+          </article>
+        );
+      })}
     </div>
   );
+}
+
+function pageEditKey(page: MarkdownPage): string {
+  return page.artifactPath ?? page.url;
 }
 
 function MarkdownLink(props: MarkdownAnchorProps) {
