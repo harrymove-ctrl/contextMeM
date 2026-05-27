@@ -1550,19 +1550,17 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
   }));
   const extras = await fetchOptionalTextFiles(target);
   const sitemapUrls = parseSitemapUrls(extras, target);
+  const targetKey = normalizeCrawlKey(target);
   const candidateUrls = new Map<string, { url: URL; label?: string }>();
-  for (const link of links) {
-    if (link.url.origin !== target.origin) continue;
-    if (link.url.toString() === target.toString()) continue;
-    candidateUrls.set(link.url.toString(), { url: link.url, label: link.label });
+  function pushCandidate(url: URL, label?: string) {
+    if (url.origin !== target.origin) return;
+    const key = normalizeCrawlKey(url);
+    if (!key || key === targetKey) return;
+    if (candidateUrls.has(key)) return;
+    candidateUrls.set(key, { url, label });
   }
-  for (const sitemapUrl of sitemapUrls) {
-    if (sitemapUrl.origin !== target.origin) continue;
-    if (sitemapUrl.toString() === target.toString()) continue;
-    if (!candidateUrls.has(sitemapUrl.toString())) {
-      candidateUrls.set(sitemapUrl.toString(), { url: sitemapUrl });
-    }
-  }
+  for (const link of links) pushCandidate(link.url, link.label);
+  for (const sitemapUrl of sitemapUrls) pushCandidate(sitemapUrl);
   const PAGE_LIMIT = 15;
   const sameOriginPages = Array.from(candidateUrls.values()).slice(0, PAGE_LIMIT);
   const pageResults = await Promise.allSettled(
@@ -1689,6 +1687,13 @@ async function fetchText(url: string): Promise<FetchedText> {
   const text = await response.text();
   if (text.length > 1_500_000) throw new Error(`Fetch response is too large for demo extraction: ${url}`);
   return { text, contentType, headers: responseHeaderMap(response.headers) };
+}
+
+function normalizeCrawlKey(url: URL): string {
+  let pathname = url.pathname;
+  if (pathname.length > 1 && pathname.endsWith("/")) pathname = pathname.slice(0, -1);
+  pathname = pathname.toLowerCase();
+  return `${url.origin}${pathname || "/"}`;
 }
 
 function parseSitemapUrls(extras: NamespaceImportInput["files"], target: URL): URL[] {
