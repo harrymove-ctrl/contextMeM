@@ -20,7 +20,7 @@
     "contextmem": "bun packages/cli/src/index.ts",
     "mcp:start": "bun packages/mcp/src/index.ts",
     "typecheck": "bun run --filter './packages/*' typecheck && bun run --filter './apps/*' typecheck",
-    "test": "vitest run",
+    "test": "CONTEXTMEM_ALLOW_PLACEHOLDER_HOSTS=true vitest run",
     "build": "bun run --filter './packages/*' build && bun run --filter './apps/*' build",
     "check": "bun run typecheck && bun run test",
     "clean": "rm -rf node_modules bun.lock apps/web/dist runs/example-smoke"

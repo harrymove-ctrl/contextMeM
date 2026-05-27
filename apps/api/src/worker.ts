@@ -1845,8 +1845,30 @@ function validatePublicDemoTarget(value: string): URL {
   const host = url.hostname.toLowerCase();
   if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host.endsWith(".local")) throw statusError("Demo target must be public, not localhost.", 400);
   if (isPrivateIpv4(host)) throw statusError("Demo target must be public, not a private IP.", 400);
+  if (process.env.CONTEXTMEM_ALLOW_PLACEHOLDER_HOSTS !== "true" && isReservedExampleHost(host)) {
+    throw statusError(
+      "example.com / .org / .net are IANA placeholder domains with no real content. Try a real product site — e.g., a .wal.app Walrus Site or your own marketing URL.",
+      400,
+      "DEMO_PLACEHOLDER_HOST",
+      "Paste a real Walrus Site (e.g., https://fmsprint.wal.app/) or a public product URL so the demo has actual content to extract."
+    );
+  }
   url.hash = "";
   return url;
+}
+
+function isReservedExampleHost(host: string): boolean {
+  const reserved = new Set([
+    "example.com",
+    "example.org",
+    "example.net",
+    "example.edu",
+    "test.com",
+    "invalid",
+    "localhost"
+  ]);
+  if (reserved.has(host)) return true;
+  return /(^|\.)example\.(com|org|net|edu)$/.test(host) || host.endsWith(".test") || host.endsWith(".invalid") || host.endsWith(".example");
 }
 
 function isPrivateIpv4(host: string): boolean {
