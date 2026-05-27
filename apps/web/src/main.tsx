@@ -993,6 +993,8 @@ function ContextMemExperience() {
       canImportSdkCredentials={canImportSdkCredentials}
       previewBusy={busy}
       onPreviewDemo={startDemoExtraction}
+      target={target}
+      setTarget={setTarget}
     />
   );
   const buildPage = (
@@ -2548,7 +2550,8 @@ function SavedSdkCredentialStatus({ accountId }: { accountId?: string }) {
   );
 }
 
-function HostedCredentialGate({ notice, previewBusy, onPreviewDemo, panel = false }: { notice: MemWalNotice | null; previewBusy: boolean; onPreviewDemo: () => void; panel?: boolean }) {
+function HostedCredentialGate({ notice, previewBusy, onPreviewDemo, panel = false, target, setTarget }: { notice: MemWalNotice | null; previewBusy: boolean; onPreviewDemo: () => void; panel?: boolean; target?: string; setTarget?: React.Dispatch<React.SetStateAction<string>> }) {
+  const hasInput = typeof target === "string" && typeof setTarget === "function";
   return (
     <div className={`hostedCredentialGate ${panel ? "panelMode" : ""}`}>
       <div className="hostedCredentialIcon">
@@ -2559,11 +2562,38 @@ function HostedCredentialGate({ notice, previewBusy, onPreviewDemo, panel = fals
       <p>
         This public Worker only runs demo extraction and share pages today. Full MemWal SDK import is enabled in the local ContextMeM app where the Fastify API stores delegate keys server-side.
       </p>
-      <div className="hostedCredentialActions">
-        <button type="button" onClick={onPreviewDemo} disabled={previewBusy}>
-          {previewBusy ? <LoaderCircle className="spinIcon" size={16} /> : <Play size={16} />}
-          {previewBusy ? "Preview running" : "Run public preview"}
-        </button>
+      {hasInput ? (
+        <form
+          className="hostedCredentialInput"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!previewBusy) onPreviewDemo();
+          }}
+        >
+          <input
+            type="url"
+            value={target ?? ""}
+            onChange={(event) => setTarget?.(event.target.value)}
+            placeholder="Paste a .wal.app URL or public web URL (leave blank for the curated sample)"
+            disabled={previewBusy}
+            spellCheck={false}
+            inputMode="url"
+            autoComplete="off"
+          />
+          <button type="submit" disabled={previewBusy}>
+            {previewBusy ? <LoaderCircle className="spinIcon" size={16} /> : <Play size={16} />}
+            {previewBusy ? "Running" : target?.trim() ? "Run this URL" : "Run public preview"}
+          </button>
+        </form>
+      ) : (
+        <div className="hostedCredentialActions">
+          <button type="button" onClick={onPreviewDemo} disabled={previewBusy}>
+            {previewBusy ? <LoaderCircle className="spinIcon" size={16} /> : <Play size={16} />}
+            {previewBusy ? "Preview running" : "Run public preview"}
+          </button>
+        </div>
+      )}
+      <div className="hostedCredentialActions secondary">
         <a href={memwalDashboardUrl} target="_blank" rel="noreferrer">
           <ExternalLink size={14} />
           Open MemWal dashboard
@@ -2586,8 +2616,10 @@ function LockedPreview({
   onImport,
   canImportSdkCredentials,
   previewBusy,
-  onPreviewDemo
-}: SdkCredentialImportFormProps & { notice: MemWalNotice | null; canImportSdkCredentials: boolean; previewBusy: boolean; onPreviewDemo: () => void }) {
+  onPreviewDemo,
+  target,
+  setTarget
+}: SdkCredentialImportFormProps & { notice: MemWalNotice | null; canImportSdkCredentials: boolean; previewBusy: boolean; onPreviewDemo: () => void; target: string; setTarget: React.Dispatch<React.SetStateAction<string>> }) {
   return (
     <div className="lockedPreview">
       <div className="blurredDemo" aria-hidden="true">
@@ -2618,7 +2650,7 @@ function LockedPreview({
           noticeSlot={<MemWalNoticeCard notice={notice} centered />}
         />
       ) : (
-        <HostedCredentialGate notice={notice} previewBusy={previewBusy} onPreviewDemo={onPreviewDemo} panel />
+        <HostedCredentialGate notice={notice} previewBusy={previewBusy} onPreviewDemo={onPreviewDemo} panel target={target} setTarget={setTarget} />
       )}
     </div>
   );
