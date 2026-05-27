@@ -23,7 +23,7 @@ Setup:
 ```json
 {
   "contextmem": {
-    "url": "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev/mcp/<namespace>",
+    "url": "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev/mcp?namespace=<namespace>",
     "headers": {
       "Authorization": "Bearer <read-token>"
     }
@@ -47,7 +47,7 @@ Install shape:
       "args": [
         "-y",
         "mcp-remote",
-        "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev/mcp/<namespace>",
+        "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev/mcp?namespace=<namespace>",
         "--header",
         "Authorization: Bearer <read-token>"
       ]

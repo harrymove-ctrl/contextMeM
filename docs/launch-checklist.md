@@ -21,11 +21,20 @@ These are the human-gated steps from `plans/reports/brainstorm-260526-end-user-i
 
 Submission copy lives in `docs/marketplace-listings.md`. Each platform must be submitted manually under the maintainer's account.
 
-- [ ] **Smithery** — paste the long description + setup JSON from `marketplace-listings.md`. Use the hosted MCP URL `https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev/mcp/<namespace>`.
+- [ ] **Smithery** — paste the long description + setup JSON from `marketplace-listings.md`. Use the hosted MCP URL `https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev/mcp?namespace=<namespace>`.
 - [ ] **Claude Desktop Directory** — submit category "Developer Tools" with the `mcp-remote` install shape.
 - [ ] **Cursor MCP Marketplace** — submit category "Docs and Knowledge" with namespace-specific MCP URL + read token instructions.
 
 After each submission, save the listing URL into `docs/marketplace-listings.md` so future updates can be cross-referenced.
+
+## Known SPA limitation — per-share social previews
+
+`/share/:shareId` injects `og:image` and `twitter:image` from JavaScript. Crawlers that execute JS (Slack, Discord, LinkedIn in some cases) will pick them up; crawlers that read initial HTML only (X/Twitter, most generic OG fetchers) will fall back to the static defaults in `apps/web/index.html` → `/og-default.svg`. To get per-share OG cards on X, you need either:
+
+- a Cloudflare Pages Function (`_middleware.ts`) that intercepts `/share/*` and injects per-share `og:image` server-side, or
+- prerender share pages to static HTML.
+
+Both are out of scope for the current SPA shell. Track if/when this matters by watching share-link CTR.
 
 ## Post-launch monitoring
 

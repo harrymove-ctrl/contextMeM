@@ -2884,7 +2884,15 @@ textarea {
   color: var(--cm-ink);
 }
 
+.heroTarget input:disabled {
+  color: #5f6975;
+}
+
 .heroTarget button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 40px;
   min-width: 74px;
   border: 0;
@@ -2896,6 +2904,11 @@ textarea {
   transition: transform 190ms ease, filter 190ms ease;
 }
 
+.heroTarget button.isLoading:disabled {
+  opacity: 1;
+  filter: saturate(1.08);
+}
+
 .heroTarget:focus-within {
   border-color: rgba(29, 99, 237, 0.48);
   box-shadow: 0 0 0 4px rgba(29, 99, 237, 0.1), 0 18px 44px rgba(17, 20, 22, 0.11);
@@ -2904,6 +2917,100 @@ textarea {
 .heroTarget button:not(:disabled):hover {
   transform: translateY(-1px);
   filter: saturate(1.08);
+}
+
+.spinIcon {
+  animation: result-spin 900ms linear infinite;
+}
+
+.heroDemoStatus {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 690px);
+  margin-top: 10px;
+  padding: 11px 12px;
+  border: 1px solid rgba(29, 99, 237, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 34px rgba(17, 20, 22, 0.1);
+}
+
+.heroDemoStatusMain {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.heroDemoStatusIcon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(29, 99, 237, 0.1);
+  color: var(--cm-blue);
+}
+
+.heroDemoStatus strong,
+.heroDemoStatus span {
+  display: block;
+}
+
+.heroDemoStatus strong {
+  color: var(--cm-ink);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.heroDemoStatusMain span:not(.heroDemoStatusIcon) {
+  margin-top: 2px;
+  color: #5f6975;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.heroDemoStatus code {
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #eef4ff;
+  color: #344050;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.heroDemoStatusTrack {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(17, 20, 22, 0.09);
+}
+
+.heroDemoStatusTrack span {
+  display: block;
+  width: var(--preview-progress, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cm-blue), var(--cm-accent));
+  transition: width 320ms ease;
+}
+
+.heroDemoStatus.failed {
+  border-color: rgba(220, 38, 38, 0.24);
+  background: #fff8f6;
+}
+
+.heroDemoStatus.failed .heroDemoStatusIcon {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.heroDemoStatus.completed .heroDemoStatusIcon {
+  background: rgba(168, 217, 70, 0.18);
+  color: #5a8616;
 }
 
 .heroCta,
@@ -2943,6 +3050,17 @@ textarea {
   transform: rotate(-45deg);
 }
 
+.heroCta:disabled,
+.pageEnd button:disabled {
+  cursor: not-allowed;
+  opacity: 0.78;
+  transform: none;
+}
+
+.heroCta:disabled:hover {
+  transform: none;
+}
+
 .heroGhost {
   background: rgba(255, 255, 255, 0.8);
   border-color: rgba(17, 20, 22, 0.13);
@@ -2966,6 +3084,17 @@ textarea {
   transform: translate3d(calc(var(--hero-x, 0) * -0.2), calc(var(--hero-y, 0) * -0.2), 0);
   animation-delay: 460ms;
   transition: transform 420ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.heroPreview.isDemoStarting,
+.heroPreview.isDemoQueued,
+.heroPreview.isDemoRunning {
+  border-color: rgba(29, 99, 237, 0.22);
+  box-shadow: 0 26px 70px rgba(29, 99, 237, 0.16), var(--cm-shadow);
+}
+
+.heroPreview.isDemoFailed {
+  border-color: rgba(220, 38, 38, 0.24);
 }
 
 .previewChrome {
@@ -3032,6 +3161,14 @@ textarea {
   color: var(--cm-accent);
 }
 
+.previewHeader .spinIcon {
+  color: #b7ff46;
+}
+
+.heroPreview.isDemoFailed .previewHeader svg {
+  color: #ff8c7a;
+}
+
 .previewPipeline {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3050,6 +3187,30 @@ textarea {
   animation: pulse-step 2800ms ease-in-out infinite;
 }
 
+.pipelineStep.isActive,
+.pipelineStep.isDone,
+.pipelineStep.isFailed {
+  animation: none;
+}
+
+.pipelineStep.isActive {
+  border-color: rgba(29, 99, 237, 0.35);
+  background: #eef4ff;
+  box-shadow: inset 0 -3px 0 rgba(29, 99, 237, 0.48);
+}
+
+.pipelineStep.isDone {
+  border-color: rgba(168, 217, 70, 0.5);
+  background: #f3fae8;
+  box-shadow: inset 0 -3px 0 rgba(168, 217, 70, 0.72);
+}
+
+.pipelineStep.isFailed {
+  border-color: rgba(220, 38, 38, 0.3);
+  background: #fff4f2;
+  box-shadow: inset 0 -3px 0 rgba(220, 38, 38, 0.45);
+}
+
 .pipelineStep:nth-child(2) {
   animation-delay: 160ms;
 }
@@ -3064,6 +3225,14 @@ textarea {
 
 .pipelineStep svg {
   color: var(--cm-blue);
+}
+
+.pipelineStep.isDone svg {
+  color: #5a8616;
+}
+
+.pipelineStep.isFailed svg {
+  color: #dc2626;
 }
 
 .pipelineStep span {
@@ -3103,6 +3272,31 @@ textarea {
   border-radius: 999px;
   background: var(--cm-accent);
   box-shadow: 0 0 0 4px rgba(168, 217, 70, 0.18);
+}
+
+.previewLog div.isActive span {
+  background: var(--cm-blue);
+  box-shadow: 0 0 0 4px rgba(29, 99, 237, 0.14);
+}
+
+.previewLog div.isDone span {
+  background: var(--cm-accent);
+}
+
+.previewLog div.isFailed span {
+  background: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+}
+
+.previewLog div.isActive p,
+.previewLog div.isDone p {
+  color: var(--cm-ink);
+  font-weight: 700;
+}
+
+.previewLog div.isFailed p {
+  color: #b91c1c;
+  font-weight: 700;
 }
 
 .previewLog p {
@@ -3403,6 +3597,107 @@ textarea {
 .sdkSetupLink.locked {
   justify-content: center;
   margin: 12px auto 0;
+}
+
+.hostedCredentialGate {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid rgba(29, 99, 237, 0.18);
+  border-radius: 8px;
+  background: rgba(248, 251, 245, 0.88);
+}
+
+.hostedCredentialGate.panelMode {
+  position: relative;
+  z-index: 1;
+  width: min(520px, calc(100% - 32px));
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--cm-shadow);
+  backdrop-filter: blur(22px);
+}
+
+.hostedCredentialIcon {
+  display: inline-flex;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #111416;
+  color: var(--cm-accent);
+  box-shadow: 8px 8px 0 rgba(168, 217, 70, 0.58);
+}
+
+.hostedCredentialGate > span {
+  color: var(--cm-muted);
+  font-size: 12px;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.hostedCredentialGate h2 {
+  margin: 0;
+  color: var(--cm-ink);
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.hostedCredentialGate p {
+  margin: 0;
+  color: #344050;
+  line-height: 1.55;
+}
+
+.hostedCredentialActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hostedCredentialActions button,
+.hostedCredentialActions a {
+  min-height: 40px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.hostedCredentialActions button {
+  border: 0;
+  background: #111416;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 6px 6px 0 rgba(168, 217, 70, 0.68);
+}
+
+.hostedCredentialActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.hostedCredentialActions a {
+  border: 1px solid rgba(17, 20, 22, 0.12);
+  background: #ffffff;
+  color: var(--cm-blue);
+}
+
+.hostedCredentialGate > code {
+  display: block;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: #eef4ff;
+  color: #344050;
+  font-size: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .sdkSavedState {
@@ -4181,6 +4476,195 @@ textarea {
 
 .appContent {
   min-width: 0;
+}
+
+.demoRunPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid rgba(29, 99, 237, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--cm-soft-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.demoRunPanelTop {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.demoRunPanelIcon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(29, 99, 237, 0.1);
+  color: var(--cm-blue);
+}
+
+.demoRunPanel.failed {
+  border-color: rgba(220, 38, 38, 0.24);
+  background: #fff8f6;
+}
+
+.demoRunPanel.failed .demoRunPanelIcon {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.demoRunPanel.completed .demoRunPanelIcon {
+  background: rgba(168, 217, 70, 0.18);
+  color: #5a8616;
+}
+
+.demoRunPanelTop div {
+  min-width: 0;
+}
+
+.demoRunPanelTop div > span {
+  color: var(--cm-muted);
+  font-size: 11px;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.demoRunPanelTop h2 {
+  margin: 3px 0 0;
+  color: var(--cm-ink);
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.demoRunPanelTop p {
+  margin: 4px 0 0;
+  color: #526070;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.demoRunPanelButton {
+  min-height: 38px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(17, 20, 22, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--cm-ink);
+  cursor: pointer;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.demoRunPanelButton.primary {
+  border-color: transparent;
+  background: #111416;
+  color: #ffffff;
+  box-shadow: 5px 5px 0 rgba(168, 217, 70, 0.68);
+}
+
+.demoRunPanelTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(17, 20, 22, 0.09);
+}
+
+.demoRunPanelTrack span {
+  display: block;
+  width: var(--preview-progress, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cm-blue), var(--cm-accent));
+  transition: width 320ms ease;
+}
+
+.demoRunPanelMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #526070;
+  font-size: 12px;
+}
+
+.demoRunPanelMeta code {
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #eef4ff;
+  color: #344050;
+  overflow-wrap: anywhere;
+}
+
+.demoRunPanelSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.demoRunPanelSteps div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid var(--cm-border);
+  border-radius: 8px;
+  background: #f8fbf5;
+}
+
+.demoRunPanelSteps span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(17, 20, 22, 0.24);
+}
+
+.demoRunPanelSteps p {
+  margin: 0;
+  color: #526070;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.demoRunPanelSteps .isActive {
+  border-color: rgba(29, 99, 237, 0.26);
+  background: #eef4ff;
+}
+
+.demoRunPanelSteps .isActive span {
+  background: var(--cm-blue);
+  box-shadow: 0 0 0 4px rgba(29, 99, 237, 0.12);
+}
+
+.demoRunPanelSteps .isDone {
+  border-color: rgba(168, 217, 70, 0.45);
+  background: #f3fae8;
+}
+
+.demoRunPanelSteps .isDone span {
+  background: var(--cm-accent);
+  box-shadow: 0 0 0 4px rgba(168, 217, 70, 0.16);
+}
+
+.demoRunPanelSteps .isFailed {
+  border-color: rgba(220, 38, 38, 0.24);
+  background: #fff4f2;
+}
+
+.demoRunPanelSteps .isFailed span {
+  background: #dc2626;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
 }
 
 .appWorkspace {
@@ -5430,7 +5914,7 @@ textarea {
 .visualBox {
   fill: rgba(34, 197, 94, 0.12);
   stroke: #16a34a;
-  stroke-width: 0.4;
+  stroke-width: 2;
 }
 
 .visualBox.removed {
@@ -6089,6 +6573,15 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .demoRunPanelTop {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .demoRunPanelButton {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
   .appPanelStack,
   .settingsGrid,
   .appResults {
@@ -6320,6 +6813,14 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .demoRunPanel {
+    padding: 12px;
+  }
+
+  .demoRunPanelSteps {
+    grid-template-columns: 1fr;
+  }
+
   .settingsCard {
     padding: 11px;
   }
@@ -6456,6 +6957,24 @@ textarea:focus {
     width: calc(100% - 14px);
   }
 
+  .hostedCredentialGate.panelMode {
+    width: calc(100% - 14px);
+    padding: 18px;
+  }
+
+  .hostedCredentialGate h2 {
+    font-size: 24px;
+  }
+
+  .hostedCredentialActions {
+    flex-direction: column;
+  }
+
+  .hostedCredentialActions button,
+  .hostedCredentialActions a {
+    width: 100%;
+  }
+
   .rbAuth1FormCol {
     padding: 16px;
   }
@@ -6487,7 +7006,10 @@ textarea:focus {
   .logoTrack,
   .rbAuth1MarqueeTrack,
   .rbAuth1Flicker,
-  .pipelineStep {
+  .pipelineStep,
+  .spinIcon,
+  .heroDemoStatusTrack span,
+  .demoRunPanelTrack span {
     animation: none !important;
     transition: none !important;
     transform: none !important;

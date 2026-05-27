@@ -192,6 +192,7 @@ const namespaceImportSchema = z.object({
 });
 
 type NamespaceImportInput = z.infer<typeof namespaceImportSchema>;
+type FetchedText = { text: string; contentType: string; headers: Record<string, string> };
 
 const namespaceUpdateSchema = z.object({
   ownerId: z.string().min(1).max(200).optional(),
@@ -807,7 +808,7 @@ async function createShareLink(request: Request, env: WorkerEnv): Promise<Respon
   )
     .bind(shareId, namespace, input.target, input.title ?? null, input.description ?? null, input.sourceRunId ?? null, imported.versionId, imported.artifactCount, imported.byteLength, now, now)
     .run();
-  return json({ share: shareLinkFromImport(shareId, namespace, input, imported, now), url: `${workerBaseUrl(request, env)}/share/${shareId}` }, 201);
+  return json({ share: shareLinkFromImport(shareId, namespace, input, imported, now, request, env), url: `${workerBaseUrl(request, env)}/share/${shareId}` }, 201);
 }
 
 async function getShareLink(request: Request, env: WorkerEnv, shareId: string): Promise<Response> {
@@ -1161,8 +1162,10 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
   const home = await fetchText(target.toString());
   const title = extractTitle(home.text) ?? job.display_name ?? target.hostname;
   const description = extractDescription(home.text) ?? job.description ?? "";
+  const metadata = extractPageMetadata(home.text);
+  const walrusHeaders = target.hostname.endsWith(".wal.app") ? extractWalrusHeaders(home.headers) : {};
   const links = extractLinks(home.text, target).slice(0, 40);
-  const resources = extractResourceLinks(home.text, target).slice(0, 80);
+  const resources = dedupeByUrl([...extractResourceLinks(home.text, target), ...metadataResourceLinks(metadata, target)]).slice(0, 80);
   const sameOriginPages = links.filter((link) => link.url.origin === target.origin).slice(0, 3);
   const fetchedPages = [];
   for (const link of sameOriginPages) {
@@ -1189,6 +1192,8 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     source: "cloudflare-fetch-extractor",
     title,
     description,
+    metadata,
+    walrus: Object.keys(walrusHeaders).length ? walrusHeaders : undefined,
     pages: [{ url: target.toString(), title, routePath: "/", markdown: htmlToText(home.text).slice(0, 20000) }, ...fetchedPages.map((page) => ({ url: page.url, title: page.title, markdown: page.text }))],
     resources: resources.map((resource) => ({ url: resource.url.toString(), label: resource.label, kind: resource.kind })),
     errors: []
@@ -1228,6 +1233,9 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     `Namespace: ${job.namespace}`,
     `Generated: ${fetchedAt}`,
     "",
+    "## Product Metadata",
+    ...metadataSummaryLines(metadata, walrusHeaders),
+    "",
     "## Useful Pages",
     `- ${target.toString()}${title ? ` — ${title}` : ""}`,
     ...fetchedPages.map((page) => `- ${page.url}${page.title ? ` — ${page.title}` : ""}`),
@@ -1243,6 +1251,7 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     { path: "/index.html", contentType: home.contentType, encoding: "utf8", content: home.text.slice(0, 500_000) },
     { path: "/site/index.md", contentType: "text/markdown; charset=utf-8", encoding: "utf8", content: `# ${title}\n\n${htmlToText(home.text).slice(0, 12000)}` },
     { path: "/context/manifest.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest, null, 2) },
+    { path: "/context/metadata.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify({ title, description, metadata, walrus: walrusHeaders }, null, 2) },
     { path: "/context/site-structure.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(siteStructure, null, 2) },
     { path: "/context/resources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(resources.map((resource) => ({ url: resource.url.toString(), label: resource.label, kind: resource.kind })), null, 2) }
   ];
@@ -1255,7 +1264,7 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
   return { manifest, files };
 }
 
-async function fetchText(url: string): Promise<{ text: string; contentType: string }> {
+async function fetchText(url: string): Promise<FetchedText> {
   const response = await fetch(url, {
     headers: {
       "user-agent": "ContextMCP Cloudflare Extractor/0.1 (+https://contextmem.ai)"
@@ -1267,7 +1276,7 @@ async function fetchText(url: string): Promise<{ text: string; contentType: stri
   const contentType = response.headers.get("content-type") ?? "text/html; charset=utf-8";
   const text = await response.text();
   if (text.length > 1_500_000) throw new Error(`Fetch response is too large for demo extraction: ${url}`);
-  return { text, contentType };
+  return { text, contentType, headers: responseHeaderMap(response.headers) };
 }
 
 async function fetchOptionalTextFiles(target: URL): Promise<NamespaceImportInput["files"]> {
@@ -1279,12 +1288,32 @@ async function fetchOptionalTextFiles(target: URL): Promise<NamespaceImportInput
       if (!response.ok) continue;
       const contentType = response.headers.get("content-type") ?? (name.endsWith(".xml") ? "application/xml; charset=utf-8" : "text/plain; charset=utf-8");
       const text = await response.text();
+      if (isHtmlFallback(contentType, text)) continue;
       files.push({ path: `/site/${name}`, contentType, encoding: "utf8", content: text.slice(0, 500_000) });
     } catch {
       // optional
     }
   }
   return files;
+}
+
+function responseHeaderMap(headers: Headers): Record<string, string> {
+  const output: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    const normalized = key.toLowerCase();
+    if (normalized.startsWith("x-resource-") || normalized.startsWith("x-wal-") || normalized === "x-unix-time-cached" || normalized === "last-modified") {
+      output[normalized] = value;
+    }
+  });
+  return output;
+}
+
+function extractWalrusHeaders(headers: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(headers).filter(([key]) => key.startsWith("x-resource-") || key.startsWith("x-wal-") || key === "x-unix-time-cached"));
+}
+
+function isHtmlFallback(contentType: string, text: string): boolean {
+  return /text\/html/i.test(contentType) && /^\s*(<!doctype html|<html\b)/i.test(text);
 }
 
 function buildImportResponse(
@@ -1308,7 +1337,7 @@ function buildImportResponse(
   }
 ) {
   const baseUrl = workerBaseUrl(request, env);
-  const mcpUrl = `${baseUrl}/mcp/${encodeURIComponent(namespace)}`;
+  const mcpUrl = namespaceMcpUrl(request, env, namespace);
   const gatewayMcpUrl = `${baseUrl}/mcp`;
   const serverName = `contextmem-${slugNamespace(namespace)}`;
   const authorization = `Bearer ${readToken}`;
@@ -1670,13 +1699,13 @@ function publicShareLink(row: ShareLinkRow, request: Request, env: WorkerEnv) {
     artifactCount: Number(row.artifact_count),
     byteLength: Number(row.byte_length),
     url: `${workerBaseUrl(request, env)}/share/${row.id}`,
-    mcpUrl: `${workerBaseUrl(request, env)}/mcp/${encodeURIComponent(row.namespace)}`,
+    mcpUrl: namespaceMcpUrl(request, env, row.namespace),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
 }
 
-function shareLinkFromImport(shareId: string, namespace: string, input: z.infer<typeof shareLinkCreateSchema>, imported: Awaited<ReturnType<typeof storeNamespaceImport>>, now: string) {
+function shareLinkFromImport(shareId: string, namespace: string, input: z.infer<typeof shareLinkCreateSchema>, imported: Awaited<ReturnType<typeof storeNamespaceImport>>, now: string, request: Request, env: WorkerEnv) {
   return {
     id: shareId,
     namespace,
@@ -1687,6 +1716,8 @@ function shareLinkFromImport(shareId: string, namespace: string, input: z.infer<
     versionId: imported.versionId,
     artifactCount: imported.artifactCount,
     byteLength: imported.byteLength,
+    url: `${workerBaseUrl(request, env)}/share/${shareId}`,
+    mcpUrl: namespaceMcpUrl(request, env, namespace),
     createdAt: now,
     updatedAt: now
   };
@@ -1745,7 +1776,7 @@ function demoOwnerId(request: Request): string {
 }
 
 function demoSampleTarget(env: WorkerEnv): string {
-  return env.CONTEXTMEM_DEMO_SAMPLE_TARGET ?? "https://example.com/";
+  return env.CONTEXTMEM_DEMO_SAMPLE_TARGET ?? "https://rememe.wal.app/";
 }
 
 function redactImportFiles(files: NamespaceImportInput["files"]): NamespaceImportInput["files"] {
@@ -1828,7 +1859,7 @@ function directoryItem(summary: HostedNamespaceSummary, request: Request, env: W
 }
 
 function namespaceListItem(summary: HostedNamespaceSummary, request: Request, env: WorkerEnv) {
-  const mcpUrl = `${workerBaseUrl(request, env)}/mcp/${encodeURIComponent(summary.namespace)}`;
+  const mcpUrl = namespaceMcpUrl(request, env, summary.namespace);
   const gatewayMcpUrl = `${workerBaseUrl(request, env)}/mcp`;
   return {
     ...summary,
@@ -1964,6 +1995,12 @@ function workerBaseUrl(request: Request, env: WorkerEnv): string {
   return (env.CONTEXTMEM_WORKER_BASE_URL ?? new URL(request.url).origin).replace(/\/+$/, "");
 }
 
+function namespaceMcpUrl(request: Request, env: WorkerEnv, namespace: string): string {
+  const url = new URL("/mcp", workerBaseUrl(request, env));
+  url.searchParams.set("namespace", namespace);
+  return url.toString();
+}
+
 function constantTimeEqual(left: string, right: string): boolean {
   const leftBytes = new TextEncoder().encode(left);
   const rightBytes = new TextEncoder().encode(right);
@@ -2010,6 +2047,54 @@ function extractTitle(html: string): string | undefined {
 function extractDescription(html: string): string | undefined {
   const match = /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["'][^>]*>/i.exec(html) ?? /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["'][^>]*>/i.exec(html);
   return decodeHtml(match?.[1]?.trim() ?? "");
+}
+
+function extractPageMetadata(html: string): Record<string, string> {
+  const metadata: Record<string, string> = {};
+  const pattern = /<meta\b[^>]*>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(html))) {
+    const attrs = extractTagAttributes(match[0] ?? "");
+    const key = attrs.name ?? attrs.property ?? attrs.itemprop;
+    const value = attrs.content;
+    if (!key || !value) continue;
+    metadata[key.toLowerCase()] = value;
+  }
+  return metadata;
+}
+
+function extractTagAttributes(tag: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  const pattern = /([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(tag))) {
+    const key = match[1]?.toLowerCase();
+    const value = decodeHtml(match[2] ?? match[3] ?? match[4] ?? "");
+    if (key && value) attrs[key] = value;
+  }
+  return attrs;
+}
+
+function metadataResourceLinks(metadata: Record<string, string>, base: URL): Array<{ url: URL; label: string; kind: string }> {
+  const resources: Array<{ url: URL; label: string; kind: string }> = [];
+  for (const key of ["og:image", "twitter:image", "image"]) {
+    const value = metadata[key];
+    if (!value) continue;
+    try {
+      const url = new URL(value, base);
+      if (/^https?:$/.test(url.protocol)) resources.push({ url, label: key, kind: "image" });
+    } catch {
+      // ignore malformed metadata URLs
+    }
+  }
+  return resources;
+}
+
+function metadataSummaryLines(metadata: Record<string, string>, walrusHeaders: Record<string, string>): string[] {
+  const preferredKeys = ["title", "description", "keywords", "author", "og:title", "og:description", "og:image", "twitter:image"];
+  const lines = preferredKeys.flatMap((key) => (metadata[key] ? [`- ${key}: ${metadata[key]}`] : []));
+  const walrusLines = Object.entries(walrusHeaders).map(([key, value]) => `- ${key}: ${value}`);
+  return [...lines, ...walrusLines].length ? [...lines, ...walrusLines] : ["- No metadata found in the initial HTML."];
 }
 
 function extractLinks(html: string, base: URL): Array<{ url: URL; label: string }> {

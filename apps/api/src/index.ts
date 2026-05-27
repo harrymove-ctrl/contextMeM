@@ -91,7 +91,7 @@ app.setErrorHandler((error, _request, reply) => {
   const statusCode = explicitStatus ?? (error instanceof z.ZodError || message.startsWith("Walrus URL") || message.startsWith("AI query requires") ? 400 : 500);
   reply.status(statusCode).send({
     statusCode,
-    error: statusCode === 400 ? "Bad Request" : statusCode === 401 ? "Unauthorized" : statusCode === 403 ? "Forbidden" : statusCode === 429 ? "Too Many Requests" : "Internal Server Error",
+    error: statusCode === 400 ? "Bad Request" : statusCode === 401 ? "Unauthorized" : statusCode === 403 ? "Forbidden" : statusCode === 404 ? "Not Found" : statusCode === 429 ? "Too Many Requests" : "Internal Server Error",
     message
   });
 });
@@ -116,6 +116,11 @@ const runSchema = z.object({
 });
 
 type RunInput = z.infer<typeof runSchema>;
+
+const demoExtractionCreateSchema = z.object({
+  target: z.string().min(1).optional(),
+  sample: z.boolean().default(false)
+});
 
 const buildProfileOutputs: Record<BuildProfile, string[]> = {
   fast: ["markdown", "sitemap"],
@@ -584,6 +589,58 @@ app.post("/api/runs/:id/share", async (request) => {
   });
 });
 
+app.get("/api/share-links/:shareId", async (request) => {
+  const { shareId } = request.params as { shareId: string };
+  return publicHostedWorkerJson(`/api/share-links/${encodeURIComponent(shareId)}`);
+});
+
+app.get("/api/share-links/:shareId/artifacts", async (request) => {
+  const { shareId } = request.params as { shareId: string };
+  return publicHostedWorkerJson(`/api/share-links/${encodeURIComponent(shareId)}/artifacts`);
+});
+
+app.get("/api/share-links/:shareId/og.svg", async (request, reply) => {
+  const { shareId } = request.params as { shareId: string };
+  const response = await publicHostedWorkerResponse(`/api/share-links/${encodeURIComponent(shareId)}/og.svg`);
+  if (!response.ok) {
+    reply.status(response.status);
+    reply.type("image/svg+xml; charset=utf-8");
+    reply.header("cache-control", "no-store");
+    return notFoundOgSvg(shareId);
+  }
+  reply.status(response.status);
+  const contentType = response.headers.get("content-type");
+  const cacheControl = response.headers.get("cache-control");
+  if (contentType) reply.type(contentType);
+  if (cacheControl) reply.header("cache-control", cacheControl);
+  return Buffer.from(await response.arrayBuffer());
+});
+
+app.post("/api/demo/extractions", async (request) => {
+  const input = demoExtractionCreateSchema.parse(request.body ?? {});
+  return publicHostedWorkerJson("/api/demo/extractions", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input)
+  });
+});
+
+app.get("/api/demo/extractions/:jobId/events", async (request, reply) => {
+  const { jobId } = request.params as { jobId: string };
+  const response = await publicHostedWorkerResponse(`/api/demo/extractions/${encodeURIComponent(jobId)}/events`);
+  reply.status(response.status);
+  const contentType = response.headers.get("content-type");
+  const cacheControl = response.headers.get("cache-control");
+  if (contentType) reply.type(contentType);
+  if (cacheControl) reply.header("cache-control", cacheControl);
+  return response.text();
+});
+
+app.get("/api/demo/extractions/:jobId", async (request) => {
+  const { jobId } = request.params as { jobId: string };
+  return publicHostedWorkerJson(`/api/demo/extractions/${encodeURIComponent(jobId)}`);
+});
+
 app.get("/api/hosted/namespaces", async (request) => {
   const auth = await requireAuth(request.headers.authorization);
   return hostedWorkerJson(`/api/namespaces?ownerId=${encodeURIComponent(auth.account.id)}`);
@@ -919,12 +976,16 @@ async function hostedWorkerJson(pathname: string, init: RequestInit = {}): Promi
 }
 
 async function publicHostedWorkerJson(pathname: string, init: RequestInit = {}): Promise<unknown> {
+  const response = await publicHostedWorkerResponse(pathname, init);
+  if (!response.ok) statusError(`Hosted namespace request failed (${response.status}): ${await response.text()}`, response.status);
+  return response.json();
+}
+
+async function publicHostedWorkerResponse(pathname: string, init: RequestInit = {}): Promise<Response> {
   if (!hostedApiUrl) {
     return badRequest("Hosted namespace API is not configured. Set CONTEXTMEM_HOSTED_API_URL.");
   }
-  const response = await fetch(new URL(pathname, hostedApiUrl).toString(), init);
-  if (!response.ok) throw new Error(`Hosted namespace request failed (${response.status}): ${await response.text()}`);
-  return response.json();
+  return fetch(new URL(pathname, hostedApiUrl).toString(), init);
 }
 
 function namespaceForArtifact(artifact: WalrusPackageManifest): string {
@@ -937,6 +998,28 @@ function displayNameFromTarget(target: string): string {
   } catch {
     return target.slice(0, 80);
   }
+}
+
+function notFoundOgSvg(shareId: string): string {
+  const id = svgText(shareId.slice(0, 80));
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="40" y="40" width="1120" height="550" rx="28" fill="none" stroke="#334155" stroke-width="2"/>
+  <text x="80" y="120" fill="#94a3b8" font-family="ui-monospace,Menlo,monospace" font-size="20" letter-spacing="6">CONTEXTMEM SHARE</text>
+  <text x="80" y="260" fill="#f8fafc" font-family="Inter,system-ui,sans-serif" font-size="60" font-weight="700">Share link not found</text>
+  <text x="80" y="340" fill="#cbd5f5" font-family="Inter,system-ui,sans-serif" font-size="26">${id}</text>
+  <text x="80" y="565" fill="#475569" font-family="Inter,system-ui,sans-serif" font-size="20">Create or open a valid ContextMeM share id first.</text>
+</svg>`;
+}
+
+function svgText(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
 
 async function collectHostedNamespaceFiles(runDir: string): Promise<Array<{ path: string; contentType: string; encoding: "utf8"; content: string }>> {
@@ -1237,8 +1320,12 @@ function forbidden(message: string): never {
 }
 
 function badRequest(message: string): never {
+  statusError(message, 400);
+}
+
+function statusError(message: string, statusCode: number): never {
   const error = new Error(message) as Error & { statusCode: number };
-  error.statusCode = 400;
+  error.statusCode = statusCode;
   throw error;
 }
 

@@ -23,6 +23,7 @@ describe("ContextMeM hosted namespace Worker", () => {
   it("imports a private namespace and enforces read tokens", async () => {
     const env = createTestEnv();
     const imported = await importFixtureNamespace(env, "private");
+    expect(imported.mcpUrl).toBe(`https://contextmem.test/mcp?namespace=${encodeURIComponent(imported.namespace)}`);
 
     const { handleWorkerRequest } = await worker();
     const missing = await handleWorkerRequest(new Request(`https://contextmem.test/api/namespaces/${encodeURIComponent(imported.namespace)}`), env);
@@ -255,10 +256,27 @@ describe("ContextMeM hosted namespace Worker", () => {
       "https://example.com/": "<html><head><title>Demo Site</title></head><body><a href=\"/about\">About</a></body></html>",
       "https://example.com/about": "<html><head><title>About</title></head><body>Demo about page</body></html>",
       "https://example.com/robots.txt": "User-agent: *\nAllow: /",
-      "https://example.com/sitemap.xml": "<urlset></urlset>"
+      "https://example.com/sitemap.xml": "<urlset></urlset>",
+      "https://rememe.wal.app/": "<html><head><title>Rememe</title></head><body><a href=\"/about\">About Rememe</a></body></html>",
+      "https://rememe.wal.app/about": "<html><head><title>About Rememe</title></head><body>Rememe public Walrus Site context</body></html>",
+      "https://rememe.wal.app/robots.txt": "User-agent: *\nAllow: /",
+      "https://rememe.wal.app/sitemap.xml": "<urlset></urlset>"
     });
     try {
       const { handleWorkerRequest } = await worker();
+      const sample = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/demo/extractions", {
+          method: "POST",
+          headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.10" },
+          body: JSON.stringify({ sample: true })
+        }),
+        env
+      );
+      expect(sample.status).toBe(202);
+      const sampleBody = (await sample.json()) as { job: { target: string; status: string } };
+      expect(sampleBody.job.target).toBe("https://rememe.wal.app/");
+      expect(sampleBody.job.status).toBe("completed");
+
       const first = await handleWorkerRequest(
         new Request("https://contextmem.test/api/demo/extractions", {
           method: "POST",
@@ -354,11 +372,14 @@ describe("ContextMeM hosted namespace Worker", () => {
       env
     );
     expect(share.status).toBe(201);
-    const shareBody = (await share.json()) as { share: { id: string; namespace: string } };
+    const shareBody = (await share.json()) as { share: { id: string; namespace: string; mcpUrl: string } };
+    expect(shareBody.share.mcpUrl).toBe(`https://contextmem.test/mcp?namespace=${encodeURIComponent(shareBody.share.namespace)}`);
 
     const publicShare = await handleWorkerRequest(new Request(`https://contextmem.test/api/share-links/${shareBody.share.id}`), env);
     expect(publicShare.status).toBe(200);
-    expect(JSON.stringify(await publicShare.json())).toContain("[REDACTED]");
+    const publicShareBody = await publicShare.json();
+    expect(JSON.stringify(publicShareBody)).toContain("[REDACTED]");
+    expect(JSON.stringify(publicShareBody)).toContain(`/mcp?namespace=${encodeURIComponent(shareBody.share.namespace)}`);
 
     const storedManifest = await new CloudflareNamespaceStore(env).readArtifact(shareBody.share.namespace, "/context/manifest.json");
     expect(storedManifest?.content).toContain("[REDACTED]");
@@ -442,7 +463,7 @@ async function importFixtureNamespace(env: WorkerEnv, visibility: "private" | "p
     env
   );
   expect(response.status).toBe(201);
-  return (await response.json()) as { namespace: string; readToken: string };
+  return (await response.json()) as { namespace: string; readToken: string; mcpUrl: string };
 }
 
 function mcpPost(env: WorkerEnv, url: string, token: string, body: unknown, extraHeaders: Record<string, string> = {}) {

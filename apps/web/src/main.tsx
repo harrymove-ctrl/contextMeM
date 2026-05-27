@@ -305,6 +305,17 @@ type HostedExtractionJob = {
   completedAt?: string;
 };
 
+type DemoPreviewPhase = "starting" | "queued" | "running" | "completed" | "failed";
+
+type DemoPreviewState = {
+  phase: DemoPreviewPhase;
+  target: string;
+  message: string;
+  jobId?: string;
+  shareId?: string;
+  updatedAt: number;
+};
+
 type ShareLinkResponse = {
   share: {
     id: string;
@@ -515,22 +526,33 @@ function ContextMemExperience() {
   const [error, setError] = useState<string | null>(null);
   const [authHint, setAuthHint] = useState("");
   const [memwalNotice, setMemwalNotice] = useState<MemWalNotice | null>(null);
+  const [demoPreview, setDemoPreview] = useState<DemoPreviewState | null>(null);
   const [me, setMe] = useState<AccountMe>(anonymousMe);
   const [sessionToken, setSessionToken] = useState(() => window.localStorage.getItem("contextmem.session") ?? "");
   const [delegateAccountId, setDelegateAccountId] = useState("");
   const [delegateKey, setDelegateKey] = useState("");
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!window.location.pathname.startsWith("/app/settings")) return;
     const params = new URLSearchParams(window.location.search);
     const memwalAccount = params.get("memwalAccountId") ?? params.get("delegateAccountId");
     const memwalKey = params.get("memwalDelegateKey") ?? params.get("delegateKey");
-    if (memwalAccount) setDelegateAccountId(memwalAccount);
-    if (memwalKey) setDelegateKey(memwalKey);
-    if (memwalAccount || memwalKey) {
+    if (!memwalAccount && !memwalKey) return;
+    if (!isLocalApiBase(API_BASE)) {
+      setAuthHint("Hosted demo mode ignores MemWal delegate credentials in URLs. Use the local app for full SDK import.");
+      setMemwalNotice({ tone: "warning", message: "Hosted demo mode ignores MemWal delegate credentials in URLs. Use public preview here or run the local ContextMeM API for full SDK import." });
       const cleanUrl = window.location.pathname + window.location.hash;
       window.history.replaceState({}, "", cleanUrl);
+      return;
     }
+    if (!window.location.pathname.startsWith("/app/settings")) {
+      const cleanUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, "", cleanUrl);
+      return;
+    }
+    if (memwalAccount) setDelegateAccountId(memwalAccount);
+    if (memwalKey) setDelegateKey(memwalKey);
+    const cleanUrl = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, "", cleanUrl);
   }, []);
   const didAutorun = useRef(false);
   const heroRef = useRef<HTMLElement>(null);
@@ -540,6 +562,7 @@ function ContextMemExperience() {
   const runNetwork = "mainnet";
   const hasMemWalDelegate = Boolean(me.authenticated && me.account?.hasDelegateKey);
   const canBuild = Boolean(hasMemWalDelegate);
+  const canImportSdkCredentials = isLocalApiBase(API_BASE);
   const quotaLabel = me.authenticated ? (me.quota.unlimited ? "full" : `${me.quota.remaining}/${me.quota.limit}`) : "import";
   const primaryActionLabel = busy ? "Running" : hasMemWalDelegate ? "Build context" : "Import credentials";
   const compactPrimaryActionLabel = busy ? "Running" : hasMemWalDelegate ? "Build" : "Import";
@@ -706,6 +729,14 @@ function ContextMemExperience() {
   }
 
   async function importDelegate() {
+    if (!canImportSdkCredentials) {
+      const message = "Hosted demo mode does not accept delegate private keys. Use public preview here, or run the local ContextMeM API for full MemWal SDK import.";
+      setDelegateKey("");
+      setError(null);
+      setAuthHint(message);
+      setMemwalNotice({ tone: "warning", message });
+      return;
+    }
     setAuthBusy(true);
     setError(null);
     try {
@@ -883,29 +914,57 @@ function ContextMemExperience() {
   }
 
   async function startDemoExtraction() {
+    const requestedTarget = target.trim();
+    const displayTarget = requestedTarget || "curated Walrus Site sample";
     setBusy(true);
     setError(null);
     setAuthHint("");
+    setDemoPreview({
+      phase: "starting",
+      target: displayTarget,
+      message: "Starting hosted preview",
+      updatedAt: Date.now()
+    });
+    let lastJob: HostedExtractionJob | null = null;
     try {
       const response = await fetch(`${API_BASE}/api/demo/extractions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ target: target.trim() || undefined, sample: !target.trim() })
+        body: JSON.stringify({ target: requestedTarget || undefined, sample: !requestedTarget })
       });
       if (!response.ok) throw new Error(await readResponseError(response));
       let body = (await response.json()) as { job: HostedExtractionJob; demo?: { remainingToday?: number } };
+      lastJob = body.job;
+      setDemoPreview(demoPreviewStateFromJob(body.job, displayTarget));
       for (let attempt = 0; attempt < 20 && (body.job.status === "queued" || body.job.status === "running"); attempt += 1) {
         await delay(800);
         const status = await fetch(`${API_BASE}/api/demo/extractions/${encodeURIComponent(body.job.id)}`);
         if (!status.ok) throw new Error(await readResponseError(status));
         body = (await status.json()) as { job: HostedExtractionJob };
+        lastJob = body.job;
+        setDemoPreview(demoPreviewStateFromJob(body.job, displayTarget));
       }
       const shareId = (body.job.result as { share?: { id?: string } } | undefined)?.share?.id;
       if (!shareId) throw new Error(body.job.error ?? "Demo extraction finished without a share page.");
+      setDemoPreview({
+        phase: "completed",
+        target: body.job.target || displayTarget,
+        jobId: body.job.id,
+        shareId,
+        message: "Preview ready. Opening share page",
+        updatedAt: Date.now()
+      });
       navigate(`/share/${shareId}`);
       window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      setDemoPreview({
+        phase: "failed",
+        target: lastJob?.target || displayTarget,
+        jobId: lastJob?.id,
+        message,
+        updatedAt: Date.now()
+      });
       setAuthHint(message);
       setError(message);
     } finally {
@@ -931,6 +990,9 @@ function ContextMemExperience() {
       setDelegateAccountId={setDelegateAccountId}
       setDelegateKey={setDelegateKey}
       onImport={importDelegate}
+      canImportSdkCredentials={canImportSdkCredentials}
+      previewBusy={busy}
+      onPreviewDemo={startDemoExtraction}
     />
   );
   const buildPage = (
@@ -962,6 +1024,12 @@ function ContextMemExperience() {
   );
 
   function renderShell(pageTitle: string, pageDescription: string, child: React.ReactNode) {
+    const lockedContent = (
+      <>
+        {demoPreview ? <DemoPreviewAppPanel preview={demoPreview} onBackHome={() => openApp("/")} /> : null}
+        {lockScreen}
+      </>
+    );
     return (
       <AppShell
         pageTitle={pageTitle}
@@ -973,7 +1041,7 @@ function ContextMemExperience() {
         hasMemWalDelegate={hasMemWalDelegate}
         run={run}
       >
-        {hasMemWalDelegate ? child : lockScreen}
+        {hasMemWalDelegate ? child : lockedContent}
       </AppShell>
     );
   }
@@ -988,6 +1056,7 @@ function ContextMemExperience() {
             target={target}
             setTarget={setTarget}
             busy={busy}
+            demoPreview={demoPreview}
             hasMemWalDelegate={hasMemWalDelegate}
             compactPrimaryActionLabel={compactPrimaryActionLabel}
             statusLabel={statusLabel}
@@ -1054,6 +1123,9 @@ function ContextMemExperience() {
             setDelegateKey={setDelegateKey}
             onImport={importDelegate}
             notice={memwalNotice}
+            canImportSdkCredentials={canImportSdkCredentials}
+            previewBusy={busy}
+            onPreviewDemo={startDemoExtraction}
             showDevMemWalAuth={showDevMemWalAuth}
             onAttachLocalMemWal={attachLocalMemWal}
           />
@@ -1105,20 +1177,20 @@ function SharePage() {
     if (!shareId) return;
     const ogUrl = `${API_BASE}/api/share-links/${encodeURIComponent(shareId)}/og.svg`;
     const tags: HTMLMetaElement[] = [];
-    function setMeta(property: string, content: string) {
-      let tag = document.head.querySelector<HTMLMetaElement>(`meta[property="${property}"]`);
+    function upsert(selector: string, attrName: "property" | "name", attrValue: string, content: string) {
+      let tag = document.head.querySelector<HTMLMetaElement>(selector);
       if (!tag) {
         tag = document.createElement("meta");
-        tag.setAttribute("property", property);
+        tag.setAttribute(attrName, attrValue);
         document.head.appendChild(tag);
         tags.push(tag);
       }
       tag.content = content;
     }
-    setMeta("og:image", ogUrl);
-    setMeta("og:type", "article");
-    setMeta("twitter:card", "summary_large_image");
-    setMeta("twitter:image", ogUrl);
+    upsert('meta[property="og:image"]', "property", "og:image", ogUrl);
+    upsert('meta[property="og:type"]', "property", "og:type", "article");
+    upsert('meta[name="twitter:card"]', "name", "twitter:card", "summary_large_image");
+    upsert('meta[name="twitter:image"]', "name", "twitter:image", ogUrl);
     return () => {
       tags.forEach((tag) => tag.remove());
     };
@@ -1492,10 +1564,142 @@ function AppShell({
   );
 }
 
+function demoPreviewStateFromJob(job: HostedExtractionJob, fallbackTarget: string): DemoPreviewState {
+  const phase = job.status === "queued" || job.status === "running" || job.status === "completed" || job.status === "failed" ? job.status : "starting";
+  const shareId = (job.result as { share?: { id?: string } } | undefined)?.share?.id;
+  return {
+    phase,
+    target: job.target || fallbackTarget,
+    jobId: job.id,
+    shareId,
+    message: demoPreviewMessage(phase, job.error),
+    updatedAt: Date.now()
+  };
+}
+
+function demoPreviewMessage(phase: DemoPreviewPhase, error?: string): string {
+  switch (phase) {
+    case "starting":
+      return "Starting hosted preview";
+    case "queued":
+      return "Queued in Worker. Preparing extraction";
+    case "running":
+      return "Extracting public context and artifacts";
+    case "completed":
+      return "Preview ready. Opening share page";
+    case "failed":
+      return error || "Preview failed. Try another Walrus Site URL";
+  }
+}
+
+function demoPreviewButtonLabel(preview: DemoPreviewState | null): string {
+  if (!preview) return "Preview";
+  switch (preview.phase) {
+    case "starting":
+      return "Starting";
+    case "queued":
+      return "Queued";
+    case "running":
+      return "Extracting";
+    case "completed":
+      return "Opening";
+    case "failed":
+      return "Retry";
+  }
+}
+
+function demoPreviewProgress(phase: DemoPreviewPhase): number {
+  switch (phase) {
+    case "starting":
+      return 18;
+    case "queued":
+      return 36;
+    case "running":
+      return 72;
+    case "completed":
+    case "failed":
+      return 100;
+  }
+}
+
+function demoStepState(index: number, preview: DemoPreviewState | null): string {
+  if (!preview) return "";
+  if (preview.phase === "failed") return index === 0 ? "isFailed" : "";
+  if (preview.phase === "completed") return "isDone";
+  if (preview.phase === "running") {
+    if (index === 0) return "isDone";
+    return index === 1 || index === 2 ? "isActive" : "";
+  }
+  return index === 0 ? "isActive" : "";
+}
+
+function demoLogState(index: number, preview: DemoPreviewState | null): string {
+  if (!preview) return "";
+  if (preview.phase === "failed") return index === 0 ? "isFailed" : "";
+  if (preview.phase === "completed") return "isDone";
+  if (preview.phase === "running") return index === 0 ? "isDone" : index === 1 || index === 2 ? "isActive" : "";
+  if (preview.phase === "queued") return index === 0 ? "isDone" : index === 1 ? "isActive" : "";
+  return index === 0 ? "isActive" : "";
+}
+
+function titleCasePhase(phase: DemoPreviewPhase): string {
+  return `${phase.charAt(0).toUpperCase()}${phase.slice(1)}`;
+}
+
+function DemoPreviewAppPanel({ preview, onBackHome }: { preview: DemoPreviewState; onBackHome: () => void }) {
+  const active = preview.phase !== "failed" && preview.phase !== "completed";
+  const progress = demoPreviewProgress(preview.phase);
+  const steps = [
+    ["Create job", demoLogState(0, preview)],
+    ["Resolve target", demoLogState(1, preview)],
+    ["Package share page", demoLogState(2, preview)]
+  ];
+  return (
+    <section className={`demoRunPanel ${preview.phase}`} aria-live="polite" aria-busy={active}>
+      <div className="demoRunPanelTop">
+        <span className="demoRunPanelIcon">
+          {preview.phase === "failed" ? <AlertCircle size={18} /> : active ? <LoaderCircle className="spinIcon" size={18} /> : <CheckCircle2 size={18} />}
+        </span>
+        <div>
+          <span>Public demo preview</span>
+          <h2>{preview.message}</h2>
+          <p>{preview.target}</p>
+        </div>
+        {preview.shareId ? (
+          <Link className="demoRunPanelButton primary" to={`/share/${preview.shareId}`}>
+            Open share page
+            <ArrowDownRight size={15} />
+          </Link>
+        ) : (
+          <button className="demoRunPanelButton" type="button" onClick={onBackHome}>
+            Back to homepage
+          </button>
+        )}
+      </div>
+      <div className="demoRunPanelTrack" style={{ "--preview-progress": `${progress}%` } as React.CSSProperties}>
+        <span />
+      </div>
+      <div className="demoRunPanelMeta">
+        {preview.jobId ? <code>{compactHash(preview.jobId)}</code> : <span>waiting for job id</span>}
+        <span>{active ? "The Worker is still running. You can stay here or go back to the homepage." : preview.phase === "failed" ? "Try a different Walrus Site URL or run the curated sample." : "Share page is ready."}</span>
+      </div>
+      <div className="demoRunPanelSteps" aria-label="Demo preview progress">
+        {steps.map(([label, state]) => (
+          <div key={label} className={state}>
+            <span />
+            <p>{label}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function LandingPage({
   target,
   setTarget,
   busy,
+  demoPreview,
   hasMemWalDelegate,
   compactPrimaryActionLabel,
   statusLabel,
@@ -1517,6 +1721,7 @@ function LandingPage({
   target: string;
   setTarget: React.Dispatch<React.SetStateAction<string>>;
   busy: boolean;
+  demoPreview: DemoPreviewState | null;
   hasMemWalDelegate: boolean;
   compactPrimaryActionLabel: string;
   statusLabel: string;
@@ -1535,6 +1740,15 @@ function LandingPage({
   onInspectArtifacts: () => void;
   onOpenHistory: () => void;
 }) {
+  const demoActive = Boolean(demoPreview && demoPreview.phase !== "failed" && demoPreview.phase !== "completed");
+  const demoProgress = demoPreview ? demoPreviewProgress(demoPreview.phase) : 0;
+  const previewTarget = demoPreview?.target || (target ? compactTarget(target) : "waiting for target");
+  const previewLogItems = [
+    { label: demoPreview?.phase === "starting" ? "start hosted preview job" : "resolve Walrus Site object", state: demoLogState(0, demoPreview) },
+    { label: demoPreview?.phase === "queued" ? "waiting for Worker slot" : "verify blob/resource manifest", state: demoLogState(1, demoPreview) },
+    { label: demoPreview?.phase === "running" ? "exporting public share package" : "export MemWal-ready context", state: demoLogState(2, demoPreview) }
+  ];
+
   return (
     <main className={`shell landingShell ${hasMemWalDelegate ? "" : "isLocked"}`}>
       <Navigation10
@@ -1574,15 +1788,39 @@ function LandingPage({
             </p>
             <div className="heroTarget">
               <Search size={18} />
-              <input value={target} onChange={(event) => setTarget(event.target.value)} placeholder="Paste a .wal.app URL, Walrus object ID, or web URL" />
-              <button disabled={busy || (hasMemWalDelegate && !target)} onClick={onHeroAction}>
-                {hasMemWalDelegate ? compactPrimaryActionLabel : "Preview"}
+              <input
+                value={target}
+                onChange={(event) => setTarget(event.target.value)}
+                disabled={demoActive}
+                placeholder="Paste a .wal.app URL, Walrus object ID, or web URL"
+              />
+              <button className={demoActive ? "isLoading" : ""} disabled={busy || (hasMemWalDelegate && !target)} onClick={onHeroAction}>
+                {!hasMemWalDelegate && demoActive ? <LoaderCircle className="spinIcon" size={16} /> : null}
+                {hasMemWalDelegate ? compactPrimaryActionLabel : demoPreviewButtonLabel(demoPreview)}
               </button>
             </div>
+            {!hasMemWalDelegate && demoPreview ? (
+              <div className={`heroDemoStatus ${demoPreview.phase}`} aria-live="polite" aria-busy={demoActive}>
+                <div className="heroDemoStatusMain">
+                  <span className="heroDemoStatusIcon">
+                    {demoPreview.phase === "failed" ? <AlertCircle size={16} /> : demoActive ? <LoaderCircle className="spinIcon" size={16} /> : <CheckCircle2 size={16} />}
+                  </span>
+                  <div>
+                    <strong>{demoPreview.message}</strong>
+                    <span>{previewTarget}</span>
+                  </div>
+                </div>
+                {demoPreview.jobId ? <code>{compactHash(demoPreview.jobId)}</code> : null}
+                <div className="heroDemoStatusTrack" style={{ "--preview-progress": `${demoProgress}%` } as React.CSSProperties}>
+                  <span />
+                </div>
+              </div>
+            ) : null}
             <div className="heroActions">
-              <button className="heroCta" onClick={onOpenApp}>
-                {hasMemWalDelegate ? "Open app" : "Preview app"}
-                <ArrowDownRight size={18} />
+              <button className="heroCta" onClick={hasMemWalDelegate ? onOpenApp : onHeroAction} disabled={!hasMemWalDelegate && demoActive}>
+                {!hasMemWalDelegate && demoActive ? <LoaderCircle className="spinIcon" size={17} /> : null}
+                {hasMemWalDelegate ? "Open app" : demoActive ? demoPreviewButtonLabel(demoPreview) : "Run public preview"}
+                {!demoActive ? <ArrowDownRight size={18} /> : null}
               </button>
               <button className="heroGhost" onClick={onInspectArtifacts}>
                 <LayoutGrid size={17} />
@@ -1591,7 +1829,7 @@ function LandingPage({
             </div>
           </div>
 
-          <div className="heroPreview" aria-label="ContextMeM workflow preview">
+          <div className={`heroPreview ${demoPreview ? `isDemo${titleCasePhase(demoPreview.phase)}` : ""}`} aria-label="ContextMeM workflow preview">
             <div className="previewChrome">
               <span />
               <span />
@@ -1600,9 +1838,9 @@ function LandingPage({
             <div className="previewHeader">
               <div>
                 <span>Live pipeline</span>
-                <strong>{target ? compactTarget(target) : "waiting for target"}</strong>
+                <strong>{previewTarget}</strong>
               </div>
-              <CheckCircle2 size={20} />
+              {demoPreview?.phase === "failed" ? <AlertCircle size={20} /> : demoActive ? <LoaderCircle className="spinIcon" size={20} /> : <CheckCircle2 size={20} />}
             </div>
             <div className="previewPipeline">
               {[
@@ -1610,10 +1848,10 @@ function LandingPage({
                 ["verify", "Sui + Walrus resources", Cpu],
                 ["package", "agent context bundle", Boxes],
                 ["remember", "MemWal account memory", Brain]
-              ].map(([step, label, Icon]) => {
+              ].map(([step, label, Icon], index) => {
                 const StepIcon = Icon as typeof Globe2;
                 return (
-                  <div key={step as string} className="pipelineStep">
+                  <div key={step as string} className={`pipelineStep ${demoStepState(index, demoPreview)}`}>
                     <StepIcon size={17} />
                     <span>{step as string}</span>
                     <strong>{label as string}</strong>
@@ -1622,18 +1860,12 @@ function LandingPage({
               })}
             </div>
             <div className="previewLog">
-              <div>
-                <span />
-                <p>resolve Walrus Site object</p>
-              </div>
-              <div>
-                <span />
-                <p>verify blob/resource manifest</p>
-              </div>
-              <div>
-                <span />
-                <p>export MemWal-ready context</p>
-              </div>
+              {previewLogItems.map((item) => (
+                <div key={item.label} className={item.state}>
+                  <span />
+                  <p>{item.label}</p>
+                </div>
+              ))}
             </div>
             <div className="previewMetrics">
               {heroMetrics.map((metric) => {
@@ -1699,9 +1931,9 @@ function LandingPage({
           <span>Account-gated Walrus context</span>
           <h2>Homepage stays focused. The full console, artifacts, history, memory, and publish tools live inside the app.</h2>
         </div>
-        <button onClick={onOpenApp}>
+        <button onClick={hasMemWalDelegate ? onOpenApp : onHeroAction} disabled={!hasMemWalDelegate && demoActive}>
           <ArrowDownRight size={17} />
-          {hasMemWalDelegate ? "Open app" : "Preview locked app"}
+          {hasMemWalDelegate ? "Open app" : demoActive ? demoPreviewButtonLabel(demoPreview) : "Run public preview"}
         </button>
       </section>
     </main>
@@ -1961,6 +2193,9 @@ function SettingsAppPage({
   setDelegateKey,
   onImport,
   notice,
+  canImportSdkCredentials,
+  previewBusy,
+  onPreviewDemo,
   showDevMemWalAuth,
   onAttachLocalMemWal
 }: {
@@ -1974,6 +2209,9 @@ function SettingsAppPage({
   setDelegateKey: React.Dispatch<React.SetStateAction<string>>;
   onImport: () => void;
   notice: MemWalNotice | null;
+  canImportSdkCredentials: boolean;
+  previewBusy: boolean;
+  onPreviewDemo: () => void;
   showDevMemWalAuth: boolean;
   onAttachLocalMemWal: () => void;
 }) {
@@ -2003,15 +2241,25 @@ function SettingsAppPage({
 
       <section className="settingsCard">
         <div className="sectionHead">
-          <h2>{hasMemWalDelegate ? "Rotate SDK credentials" : sdkImportTitle}</h2>
-          <span>encrypted server-side</span>
+          <h2>{hasMemWalDelegate ? "Rotate SDK credentials" : canImportSdkCredentials ? sdkImportTitle : "Hosted demo mode"}</h2>
+          <span>{canImportSdkCredentials ? "encrypted server-side" : "public site"}</span>
         </div>
-        <p className="settingsCopy">{hasMemWalDelegate ? "Import again only if you rotate the delegate key in MemWal." : sdkImportBody}</p>
+        <p className="settingsCopy">
+          {hasMemWalDelegate
+            ? "Import again only if you rotate the delegate key in MemWal."
+            : canImportSdkCredentials
+              ? sdkImportBody
+              : "contextmem.pages.dev runs public demo/share flows. Full private SDK import is only enabled when the web app points at the local Fastify API."}
+        </p>
         <a className="sdkSetupLink" href={memwalDashboardUrl} target="_blank" rel="noreferrer">
           <ExternalLink size={13} />
           Open MemWal dashboard to create or copy credentials
         </a>
-        <SdkCredentialImportForm authenticated={me.authenticated} authBusy={authBusy} delegateAccountId={delegateAccountId} delegateKey={delegateKey} setDelegateAccountId={setDelegateAccountId} setDelegateKey={setDelegateKey} onImport={onImport} />
+        {canImportSdkCredentials ? (
+          <SdkCredentialImportForm authenticated={me.authenticated} authBusy={authBusy} delegateAccountId={delegateAccountId} delegateKey={delegateKey} setDelegateAccountId={setDelegateAccountId} setDelegateKey={setDelegateKey} onImport={onImport} />
+        ) : (
+          <HostedCredentialGate notice={notice} previewBusy={previewBusy} onPreviewDemo={onPreviewDemo} />
+        )}
       </section>
 
       <AccountSecretCard />
@@ -2299,6 +2547,33 @@ function SavedSdkCredentialStatus({ accountId }: { accountId?: string }) {
   );
 }
 
+function HostedCredentialGate({ notice, previewBusy, onPreviewDemo, panel = false }: { notice: MemWalNotice | null; previewBusy: boolean; onPreviewDemo: () => void; panel?: boolean }) {
+  return (
+    <div className={`hostedCredentialGate ${panel ? "panelMode" : ""}`}>
+      <div className="hostedCredentialIcon">
+        <ShieldCheck size={22} />
+      </div>
+      <span>Public hosted demo</span>
+      <h2>Do not paste delegate private keys here.</h2>
+      <p>
+        This public Worker only runs demo extraction and share pages today. Full MemWal SDK import is enabled in the local ContextMeM app where the Fastify API stores delegate keys server-side.
+      </p>
+      <div className="hostedCredentialActions">
+        <button type="button" onClick={onPreviewDemo} disabled={previewBusy}>
+          {previewBusy ? <LoaderCircle className="spinIcon" size={16} /> : <Play size={16} />}
+          {previewBusy ? "Preview running" : "Run public preview"}
+        </button>
+        <a href={memwalDashboardUrl} target="_blank" rel="noreferrer">
+          <ExternalLink size={14} />
+          Open MemWal dashboard
+        </a>
+      </div>
+      <code>Local full app: VITE_CONTEXTMEM_API_BASE=http://localhost:8791</code>
+      <MemWalNoticeCard notice={notice} centered={panel} />
+    </div>
+  );
+}
+
 function LockedPreview({
   authenticated,
   authBusy,
@@ -2307,8 +2582,11 @@ function LockedPreview({
   delegateKey,
   setDelegateAccountId,
   setDelegateKey,
-  onImport
-}: SdkCredentialImportFormProps & { notice: MemWalNotice | null }) {
+  onImport,
+  canImportSdkCredentials,
+  previewBusy,
+  onPreviewDemo
+}: SdkCredentialImportFormProps & { notice: MemWalNotice | null; canImportSdkCredentials: boolean; previewBusy: boolean; onPreviewDemo: () => void }) {
   return (
     <div className="lockedPreview">
       <div className="blurredDemo" aria-hidden="true">
@@ -2325,18 +2603,22 @@ function LockedPreview({
           <pre>{`Walrus Site package\n- verified Sui object provenance\n- resource manifest and blob IDs\n- markdown and visual system export\n- MemWal recall namespace`}</pre>
         </div>
       </div>
-      <Auth1
-        variant="panel"
-        authenticated={authenticated}
-        authBusy={authBusy}
-        delegateAccountId={delegateAccountId}
-        delegateKey={delegateKey}
-        setDelegateAccountId={setDelegateAccountId}
-        setDelegateKey={setDelegateKey}
-        onImport={onImport}
-        dashboardUrl={memwalDashboardUrl}
-        noticeSlot={<MemWalNoticeCard notice={notice} centered />}
-      />
+      {canImportSdkCredentials ? (
+        <Auth1
+          variant="panel"
+          authenticated={authenticated}
+          authBusy={authBusy}
+          delegateAccountId={delegateAccountId}
+          delegateKey={delegateKey}
+          setDelegateAccountId={setDelegateAccountId}
+          setDelegateKey={setDelegateKey}
+          onImport={onImport}
+          dashboardUrl={memwalDashboardUrl}
+          noticeSlot={<MemWalNoticeCard notice={notice} centered />}
+        />
+      ) : (
+        <HostedCredentialGate notice={notice} previewBusy={previewBusy} onPreviewDemo={onPreviewDemo} panel />
+      )}
     </div>
   );
 }
@@ -2898,9 +3180,7 @@ function CompareAppPage({ history, authToken }: { history: RunHistoryItem[]; aut
         headers: authHeaders(authToken)
       });
       if (!response.ok) throw new Error(await readResponseError(response));
-      const body = await response.json() as { content?: string; encoding?: string };
-      const text = body.content ?? "";
-      const manifest = JSON.parse(text) as ArtifactManifest;
+      const manifest = (await response.json()) as ArtifactManifest;
       if (side === "left") setLeftManifest(manifest);
       else setRightManifest(manifest);
     } catch (err) {
@@ -3293,12 +3573,12 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
   const [tokens, setTokens] = useState<HostedNamespaceToken[]>([]);
   const [newTokenLabel, setNewTokenLabel] = useState("agent import");
   const [freshToken, setFreshToken] = useState<string | null>(null);
-  const [extractTarget, setExtractTarget] = useState("https://example.com/");
+  const [extractTarget, setExtractTarget] = useState("https://rememe.wal.app/");
   const [extractNamespace, setExtractNamespace] = useState("");
   const [extractJob, setExtractJob] = useState<HostedExtractionJob | null>(null);
   const [schedules, setSchedules] = useState<HostedSchedule[]>([]);
   const [alerts, setAlerts] = useState<ContextAlert[]>([]);
-  const [scheduleTarget, setScheduleTarget] = useState("https://example.com/");
+  const [scheduleTarget, setScheduleTarget] = useState("https://rememe.wal.app/");
   const [scheduleNamespace, setScheduleNamespace] = useState("");
   const [scheduleInterval, setScheduleInterval] = useState(24);
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -4015,20 +4295,30 @@ function VisualDiffPanel({ diff, run, authToken }: { diff: VisualDiff; run: RunR
               {page.afterScreenshot ? (
                 <div className="visualAfterCanvas">
                   <img src={artifactFileUrl(run.manifest.runId, page.afterScreenshot, authToken)} alt={`${page.routePath} after`} />
-                  {page.boxes?.length ? (
-                    <svg className="visualBoxes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                      {page.boxes.map((box, index) => (
-                        <rect
-                          key={`${box.label}-${index}`}
-                          x={box.x}
-                          y={box.y}
-                          width={box.width}
-                          height={box.height}
-                          className={`visualBox ${box.tone}`}
-                        />
-                      ))}
-                    </svg>
-                  ) : null}
+                  {page.boxes?.length ? (() => {
+                    const maxX = Math.max(...page.boxes.map((box) => box.x + box.width), 1);
+                    const maxY = Math.max(...page.boxes.map((box) => box.y + box.height), 1);
+                    return (
+                      <svg
+                        className="visualBoxes"
+                        viewBox={`0 0 ${maxX} ${maxY}`}
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                      >
+                        {page.boxes.map((box, index) => (
+                          <rect
+                            key={`${box.label}-${index}`}
+                            x={box.x}
+                            y={box.y}
+                            width={box.width}
+                            height={box.height}
+                            className={`visualBox ${box.tone}`}
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        ))}
+                      </svg>
+                    );
+                  })() : null}
                 </div>
               ) : (
                 <div className="visualPlaceholder">This page was removed in the latest run.</div>
