@@ -8,8 +8,8 @@ Live demo: https://contextmem.pages.dev/
 
 ```sh
 bun install
-bun run contextmem web scrape https://example.com
-bun run contextmem walrus inspect 0xYOUR_SITE_OBJECT_ID
+bun run contextmem web scrape https://rememe.wal.app/
+bun run contextmem walrus inspect https://rememe.wal.app/
 bun run dev
 ```
 

@@ -1806,6 +1806,7 @@ function LandingPage({
                     {demoPreview.phase === "failed" ? <AlertCircle size={16} /> : demoActive ? <LoaderCircle className="spinIcon" size={16} /> : <CheckCircle2 size={16} />}
                   </span>
                   <div>
+                    <small className="heroDemoStatusLabel">Public demo preview</small>
                     <strong>{demoPreview.message}</strong>
                     <span>{previewTarget}</span>
                   </div>

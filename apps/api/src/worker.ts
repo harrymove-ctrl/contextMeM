@@ -512,6 +512,9 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
   }
   if ((request.method === "POST" || request.method === "GET" || request.method === "DELETE") && isMcpPath(url.pathname)) {
     const namespace = namespaceFromMcpUrl(url);
+    if (request.method === "GET" && !acceptsEventStream(request)) {
+      return mcpBrowserLandingResponse(request, env, namespace);
+    }
     const mcpStore = maybeWithMemWalRecall(store, env, request);
     let server;
     if (namespace) {
@@ -544,6 +547,105 @@ function namespaceFromMcpUrl(url: URL): string | undefined {
   const encoded = url.pathname.slice("/mcp/".length).replace(/\/+$/, "");
   if (!encoded) return undefined;
   return decodeURIComponent(encoded);
+}
+
+function acceptsEventStream(request: Request): boolean {
+  const accept = request.headers.get("accept") ?? "";
+  return accept.includes("text/event-stream") || accept.includes("application/json");
+}
+
+async function mcpBrowserLandingResponse(request: Request, env: WorkerEnv, namespace?: string): Promise<Response> {
+  const mcpUrl = new URL(request.url);
+  mcpUrl.search = "";
+  const url = mcpUrl.toString();
+  let summary: HostedNamespaceSummary | undefined;
+  if (namespace) {
+    summary = await new CloudflareNamespaceStore(env).getNamespace(namespace);
+  }
+  const title = summary?.displayName ?? namespace ?? "ContextMeM hosted MCP";
+  const target = summary?.target ?? "(namespace not found)";
+  const safeNamespace = namespace ?? "<namespace>";
+  const claudeSnippet = JSON.stringify(
+    {
+      mcpServers: {
+        [`contextmem-${safeNamespace.replace(/[^a-zA-Z0-9_-]/g, "-")}`]: {
+          command: "npx",
+          args: ["-y", "mcp-remote", url]
+        }
+      }
+    },
+    null,
+    2
+  );
+  const cursorSnippet = JSON.stringify({ contextmem: { url } }, null, 2);
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(title)} — ContextMeM MCP</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:760px;margin:32px auto;padding:0 20px;color:#0f172a;background:#f8fafc;}
+    h1{font-size:22px;margin:0 0 6px;}
+    h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:#475569;margin:28px 0 8px;}
+    code{background:#e2e8f0;padding:1px 6px;border-radius:4px;font-size:13px;}
+    pre{background:#0f172a;color:#e2e8f0;padding:14px;border-radius:10px;overflow-x:auto;font-size:12px;line-height:1.5;}
+    .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 22px;}
+    .note{background:#fffbeb;border:1px solid #fde68a;color:#78350f;padding:12px 14px;border-radius:10px;font-size:13px;}
+    a{color:#1d4ed8;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>${escapeHtml(title)}</h1>
+    <p><strong>This URL is an MCP endpoint, not a browser page.</strong> Use it inside an MCP client (Claude Desktop, Cursor, Codex, Smithery, or any other MCP host).</p>
+    <p><code>${escapeHtml(url)}</code></p>
+    <div class="note">target: ${escapeHtml(target)} · namespace: ${escapeHtml(safeNamespace)}${summary?.visibility === "private" ? " · requires read token" : ""}</div>
+
+    <h2>Claude Desktop / Codex</h2>
+    <pre>${escapeHtml(claudeSnippet)}</pre>
+
+    <h2>Cursor (generic MCP)</h2>
+    <pre>${escapeHtml(cursorSnippet)}</pre>
+
+    <h2>Test from a terminal</h2>
+    <pre>curl -X POST ${escapeHtml(url)} \\
+  -H 'content-type: application/json' \\
+  -H 'accept: application/json, text/event-stream' \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"probe","version":"1"}}}'</pre>
+
+    <p style="margin-top:24px;font-size:13px;color:#64748b;">
+      Browse the public directory at <a href="https://contextmem.pages.dev/showcase">contextmem.pages.dev/showcase</a>.
+    </p>
+  </div>
+</body>
+</html>`;
+  return cors(
+    new Response(html, {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=300"
+      }
+    })
+  );
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case "\"":
+        return "&quot;";
+      default:
+        return "&#39;";
+    }
+  });
 }
 
 function matchNamespaceTokenPath(pathname: string): { namespace: string; tokenId?: string } | undefined {

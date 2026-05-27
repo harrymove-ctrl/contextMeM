@@ -2939,7 +2939,17 @@ textarea {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
-  align-items: center;
+  align-items: start;
+}
+
+.heroDemoStatusLabel {
+  display: block;
+  color: var(--cm-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
 }
 
 .heroDemoStatusIcon {
