@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, MessageSquare, Palette, Play, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, Zap } from "lucide-react";
+import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, Hash, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, Maximize2, MessageSquare, Palette, Play, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, X, Zap } from "lucide-react";
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
 import "./styles.css";
@@ -2292,10 +2292,58 @@ function BuildConsolePage({
   isHostedApiBase: boolean;
 }) {
   const visibleTab = buildTabs.some(([label]) => label === activeTab) ? activeTab : "Markdown";
+  const [resultsExpanded, setResultsExpanded] = useState(false);
   const applyBuildProfile = (profile: BuildProfile) => {
     setBuildProfile(profile);
     setOutputs(buildProfileDefaults[profile]);
   };
+
+  useEffect(() => {
+    if (!resultsExpanded) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setResultsExpanded(false);
+    }
+    window.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [resultsExpanded]);
+
+  const runId = run?.manifest.runId ?? null;
+  const shareId = hostedBuildResult?.shareId ?? null;
+  const shareUrl = hostedBuildResult?.shareUrl ?? null;
+
+  const resultsBody = (
+    <>
+      <ResultsMetaBar runId={runId} shareId={shareId} shareUrl={shareUrl} expanded={resultsExpanded} onToggleExpand={() => setResultsExpanded((value) => !value)} />
+      <div className="stats">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div className="stat" key={stat.label}>
+              <Icon size={18} />
+              <span>{stat.label}</span>
+              <strong>{String(stat.value)}</strong>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="tabs">
+        {buildTabs.map(([label, Icon]) => (
+          <button key={label} className={visibleTab === label ? "selected" : ""} onClick={() => setActiveTab(label)}>
+            <Icon size={15} />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <ResultPane tab={visibleTab} artifact={artifact} run={run} busy={busy} error={error?.startsWith("MemWal") ? null : error} setArtifact={setArtifact} history={history} refreshHistory={refreshHistory} authToken={authToken} accountLabel={accountLabel} />
+    </>
+  );
 
   return (
     <section className="workspace appWorkspace">
@@ -2404,31 +2452,16 @@ function BuildConsolePage({
         {error ? <div className={artifact || error.startsWith("MemWal") ? "notice" : "error"}>{artifact && !error.startsWith("MemWal") ? `Partial context kept: ${error}` : error}</div> : null}
       </aside>
 
-      <section className="results appResults">
-        <div className="stats">
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <div className="stat" key={stat.label}>
-                <Icon size={18} />
-                <span>{stat.label}</span>
-                <strong>{String(stat.value)}</strong>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="tabs">
-          {buildTabs.map(([label, Icon]) => (
-            <button key={label} className={visibleTab === label ? "selected" : ""} onClick={() => setActiveTab(label)}>
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <ResultPane tab={visibleTab} artifact={artifact} run={run} busy={busy} error={error?.startsWith("MemWal") ? null : error} setArtifact={setArtifact} history={history} refreshHistory={refreshHistory} authToken={authToken} accountLabel={accountLabel} />
+      <section className="results appResults" aria-hidden={resultsExpanded}>
+        {resultsExpanded ? <div className="resultsExpandPlaceholder">Output expanded — close the overlay to return.</div> : resultsBody}
       </section>
+      {resultsExpanded ? (
+        <div className="resultsExpandModal" role="dialog" aria-modal="true" aria-label="Build output (expanded)" onClick={() => setResultsExpanded(false)}>
+          <div className="resultsExpandModalInner" onClick={(event) => event.stopPropagation()}>
+            {resultsBody}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -2981,6 +3014,50 @@ function MarkdownPanel({ pages, namespace, onPageEdited }: { pages: MarkdownPage
 
 function pageEditKey(page: MarkdownPage): string {
   return page.artifactPath ?? page.url;
+}
+
+function ResultsMetaBar({ runId, shareId, shareUrl, expanded, onToggleExpand }: { runId: string | null; shareId: string | null; shareUrl: string | null; expanded: boolean; onToggleExpand: () => void }) {
+  const [copiedJob, setCopiedJob] = useState(false);
+  async function copyJobId() {
+    if (!runId) return;
+    try {
+      await navigator.clipboard.writeText(runId);
+      setCopiedJob(true);
+      setTimeout(() => setCopiedJob(false), 1600);
+    } catch {
+      setCopiedJob(false);
+    }
+  }
+  return (
+    <div className="resultsMetaBar">
+      <div className="resultsMetaBarFacts">
+        {runId ? (
+          <button type="button" className="resultsMetaChip" onClick={() => void copyJobId()} title={runId} aria-label={`Job ID ${runId}, click to copy`}>
+            <Hash size={13} />
+            <span>job</span>
+            <code>{compactHash(runId)}</code>
+            {copiedJob ? <small>copied</small> : null}
+          </button>
+        ) : (
+          <span className="resultsMetaChip resultsMetaChipMuted">
+            <Hash size={13} />
+            <span>no active run</span>
+          </span>
+        )}
+        {shareId && shareUrl ? (
+          <Link className="resultsMetaShareLink" to={`/share/${shareId}`} title={shareUrl}>
+            <Share2 size={13} />
+            Open share page
+            <ArrowDownRight size={13} />
+          </Link>
+        ) : null}
+      </div>
+      <button type="button" className="resultsMetaExpandButton" onClick={onToggleExpand} aria-label={expanded ? "Close expanded view" : "Expand output to fullscreen"}>
+        {expanded ? <X size={15} /> : <Maximize2 size={15} />}
+        {expanded ? "Close" : "Expand"}
+      </button>
+    </div>
+  );
 }
 
 function HostedBuildBanner({ result }: { result: { shareId: string; namespace: string; shareUrl: string; mcpUrl: string } }) {
