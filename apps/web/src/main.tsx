@@ -2934,8 +2934,12 @@ function MarkdownPanel({ pages, namespace, onPageEdited }: { pages: MarkdownPage
     }
   }
 
+  const [selectedKey, setSelectedKey] = useState<string>(() => pageEditKey(pages[0]!));
+  const selectedPage = pages.find((page) => pageEditKey(page) === selectedKey) ?? pages[0]!;
+  const selectedValue = draftFor(selectedPage);
+  const selectedDirty = drafts[pageEditKey(selectedPage)] !== undefined && drafts[pageEditKey(selectedPage)] !== selectedPage.markdown;
   return (
-    <div className="panel markdownPanel">
+    <div className="panel markdownPanel markdownDocs">
       <div className="markdownToolbar">
         <div>
           <strong>Markdown</strong>
@@ -2957,57 +2961,82 @@ function MarkdownPanel({ pages, namespace, onPageEdited }: { pages: MarkdownPage
         <div className={`markdownSaveNotice ${saveNotice.tone}`}>{saveNotice.message}</div>
       ) : null}
 
-      {pages.map((page, index) => {
-        const key = pageEditKey(page);
-        const value = draftFor(page);
-        const dirty = drafts[key] !== undefined && drafts[key] !== page.markdown;
-        return (
-          <article className="page markdownPage" key={`${page.url}-${index}`}>
-            <div className="pageHead markdownPageHead">
-              <div>
-                <strong>{page.title ?? page.routePath ?? page.url}</strong>
-                <span>{page.routePath ?? page.url}</span>
-              </div>
-              <span>{page.source?.blobId ?? formatBytes(value.length)}{page.artifactPath ? ` · ${page.artifactPath}` : ""}</span>
-            </div>
-
-            {mode === "preview" ? (
-              <div className="markdownBody">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: MarkdownLink }}>
-                  {value}
-                </ReactMarkdown>
-              </div>
-            ) : canEdit ? (
-              <>
-                <textarea
-                  className="markdownRawEditor"
-                  value={value}
-                  onChange={(event) => setDraft(page, event.target.value)}
-                  spellCheck={false}
-                  rows={Math.min(24, Math.max(8, value.split("\n").length))}
-                />
-                <div className="markdownEditActions">
+      <div className="markdownDocsLayout">
+        <aside className="markdownPageNav" aria-label="Markdown pages">
+          <div className="markdownPageNavHead">
+            <span>Pages</span>
+            <small>{pages.length}</small>
+          </div>
+          <ul>
+            {pages.map((page) => {
+              const key = pageEditKey(page);
+              const draft = draftFor(page);
+              const isDirty = drafts[key] !== undefined && drafts[key] !== page.markdown;
+              return (
+                <li key={key}>
                   <button
                     type="button"
-                    className="primary"
-                    disabled={!dirty || savingPath === page.artifactPath}
-                    onClick={() => void savePage(page)}
+                    className={key === selectedKey ? "selected" : ""}
+                    onClick={() => setSelectedKey(key)}
+                    title={page.routePath ?? page.url}
                   >
-                    {savingPath === page.artifactPath ? "Saving…" : dirty ? "Save to namespace" : "Saved"}
+                    <span className="markdownPageNavTitle">{page.title ?? page.routePath ?? page.url}</span>
+                    <span className="markdownPageNavMeta">
+                      <small>{formatBytes(draft.length)}</small>
+                      {isDirty ? <em>edited</em> : null}
+                    </span>
                   </button>
-                  {dirty ? (
-                    <button type="button" className="ghost" onClick={() => resetDraft(page)}>
-                      Discard changes
-                    </button>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <pre className="markdownRaw">{value}</pre>
-            )}
-          </article>
-        );
-      })}
+                </li>
+              );
+            })}
+          </ul>
+        </aside>
+
+        <article className="page markdownPage markdownDocsBody" key={selectedKey}>
+          <div className="pageHead markdownPageHead">
+            <div>
+              <strong>{selectedPage.title ?? selectedPage.routePath ?? selectedPage.url}</strong>
+              <span>{selectedPage.routePath ?? selectedPage.url}</span>
+            </div>
+            <span>{selectedPage.source?.blobId ?? formatBytes(selectedValue.length)}{selectedPage.artifactPath ? ` · ${selectedPage.artifactPath}` : ""}</span>
+          </div>
+
+          {mode === "preview" ? (
+            <div className="markdownBody">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: MarkdownLink }}>
+                {selectedValue}
+              </ReactMarkdown>
+            </div>
+          ) : canEdit ? (
+            <>
+              <textarea
+                className="markdownRawEditor"
+                value={selectedValue}
+                onChange={(event) => setDraft(selectedPage, event.target.value)}
+                spellCheck={false}
+                rows={Math.min(36, Math.max(12, selectedValue.split("\n").length))}
+              />
+              <div className="markdownEditActions">
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={!selectedDirty || savingPath === selectedPage.artifactPath}
+                  onClick={() => void savePage(selectedPage)}
+                >
+                  {savingPath === selectedPage.artifactPath ? "Saving…" : selectedDirty ? "Save to namespace" : "Saved"}
+                </button>
+                {selectedDirty ? (
+                  <button type="button" className="ghost" onClick={() => resetDraft(selectedPage)}>
+                    Discard changes
+                  </button>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <pre className="markdownRaw">{selectedValue}</pre>
+          )}
+        </article>
+      </div>
     </div>
   );
 }
@@ -3415,7 +3444,10 @@ function StructurePanel({ data, run, authToken }: { data?: SiteStructure; run: R
   if (!data) {
     return (
       <div className="panel structurePanel">
-        <div className="subEmpty">No site structure artifact yet. Re-run extraction to generate /context/site-structure.json.</div>
+        <div className="tabEmptyState">
+          <strong>Site structure not in this run</strong>
+          <p>This run was built before site-structure extraction shipped. Re-run the Build to get a tree of pages, resources, and Walrus assets — saved as <code>/context/site-structure.json</code>.</p>
+        </div>
       </div>
     );
   }
@@ -3804,8 +3836,12 @@ function firstReadableSentence(markdown?: string): string | undefined {
 
 function shouldUseClientAiFallback(status: number | null, message: string, artifact: ArtifactManifest): boolean {
   if (!artifact.pages.length) return false;
-  if (!isLocalApiBase(API_BASE)) return true;
-  return status === 404 || /not found|ai query|openai/i.test(message);
+  // Hosted worker now serves /api/runs/:id/ai-query via Workers AI.
+  // Only fall back to the client-only stub when the endpoint is truly missing
+  // (404 / 501) or the network is unreachable. Real LLM/runtime errors should
+  // surface to the user instead of being silently masked.
+  if (status === 404 || status === 501) return true;
+  return isLocalApiBase(API_BASE) && /not found|ai query|openai/i.test(message);
 }
 
 type AiChatTurn = { id: string; question: string; result: AiQueryResult; at: string };
@@ -3915,7 +3951,7 @@ function AiQueryPanel({
           <div className="aiChatEmpty">
             <MessageSquare size={20} />
             <strong>Ask anything about this context</strong>
-            <span>Suggested prompts are tuned to this namespace and account. Hosted demo jobs answer from extracted context when the server AI route is unavailable.</span>
+            <span>Suggested prompts are tuned to this namespace and account. Hosted runs query Workers AI server-side over the extracted pages; client-side fallback only kicks in if the worker endpoint is unreachable.</span>
           </div>
         ) : (
           turns.map((turn) => (
@@ -5609,7 +5645,16 @@ function DesignSystemPanel({ data, fallback, run, authToken }: { data?: DesignSy
 }
 
 function StyleguideFallbackPanel({ data }: { data?: ArtifactManifest["styleguide"] }) {
-  if (!data) return <JsonPanel data={{ status: "No design-system artifact" }} />;
+  if (!data) {
+    return (
+      <div className="panel">
+        <div className="tabEmptyState">
+          <strong>Design system tokens not in this run</strong>
+          <p>Re-run the Build to extract a token snapshot — palette, font scale, spacing, radii, shadows — from the home page's inline CSS, saved as <code>/context/design-system.json</code>.</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="panel">
       <div className="swatches">
@@ -5639,7 +5684,16 @@ function TokenChips({ label, values }: { label: string; values: string[] }) {
 }
 
 function BrandPanel({ data }: { data?: ArtifactManifest["brand"] }) {
-  if (!data) return <JsonPanel data={{ status: "No brand artifact" }} />;
+  if (!data) {
+    return (
+      <div className="panel brandPanel">
+        <div className="tabEmptyState">
+          <strong>Brand profile not in this run</strong>
+          <p>Re-run the Build to extract a brand profile — favicon, OG image, palette from inline CSS, font families, and social links — saved as <code>/context/brand.json</code>.</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="panel brandPanel">
       <div className="brandSummary">

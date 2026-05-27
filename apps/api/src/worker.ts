@@ -25,6 +25,11 @@ export type WorkerEnv = {
   MEMWAL_AUTHORIZATION?: string;
   MEMWAL_BEARER?: string;
   MEMWAL_ACCOUNT_ID?: string;
+  AI?: WorkersAiBinding;
+};
+
+type WorkersAiBinding = {
+  run(model: string, options: { messages: Array<{ role: "system" | "user" | "assistant"; content: string }>; max_tokens?: number; temperature?: number; }): Promise<{ response?: string; result?: { response?: string } } | string>;
 };
 
 const defaultHostedWorkerBaseUrl = "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev";
@@ -466,6 +471,7 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     if (request.method === "GET" && hostedRunRoute.action === "artifact-file") return getHostedRunArtifactFile(request, env, hostedRunRoute.runId);
     if (request.method === "GET" && hostedRunRoute.action === "publish-readiness") return getHostedRunPublishReadiness(request, env, hostedRunRoute.runId);
     if (request.method === "POST" && hostedRunRoute.action === "share") return shareHostedRun(request, env, hostedRunRoute.runId);
+    if (request.method === "POST" && hostedRunRoute.action === "ai-query") return aiQueryRun(request, env, hostedRunRoute.runId);
   }
   if (request.method === "POST" && url.pathname === "/api/demo/extractions") {
     return createDemoExtraction(request, env, ctx);
@@ -1129,6 +1135,81 @@ async function shareHostedRun(request: Request, env: WorkerEnv, runId: string): 
   return json({ share: shareLinkFromImport(shareId, shareNamespace, shareInput, imported, now, request, env), url: `${workerBaseUrl(request, env)}/share/${shareId}` }, 201);
 }
 
+async function aiQueryRun(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const job = await getExtractionJob(env, runId);
+  if (!job) return jsonError("RUN_NOT_FOUND", "Run not found.", 404);
+  const isDemo = String(job.ownerId).startsWith("demo:");
+  if (!isDemo) {
+    const auth = readHostedRunAuth(request);
+    if (!auth || auth.ownerId !== job.ownerId) return jsonError("HOSTED_DELEGATE_REQUIRED", "Hosted runs require MemWal SDK delegate headers.", 401, "Import your MemWal credentials in /app/settings to query this run.");
+  }
+  const input = z.object({ question: z.string().min(1).max(2000), schema: z.unknown().optional() }).parse(await request.json().catch(() => ({})));
+  const manifest = await artifactManifestForJob(env, job).catch(() => undefined);
+  if (!manifest) return jsonError("MANIFEST_MISSING", "No manifest available for this run.", 404);
+  const pages = Array.isArray((manifest as Record<string, unknown>).pages) ? ((manifest as Record<string, unknown>).pages as Array<{ url?: string; routePath?: string; title?: string; markdown?: string; artifactPath?: string }>) : [];
+  const contextSnippets = pages.slice(0, 8).map((page, index) => {
+    const body = (page.markdown ?? "").slice(0, 3000);
+    return `### Source ${index + 1}: ${page.title ?? page.routePath ?? page.url ?? ""}\nURL: ${page.url ?? "n/a"}\nRoute: ${page.routePath ?? "n/a"}\n\n${body}`;
+  });
+  const systemPrompt = "You are ContextMeM, an assistant that answers questions about a website. Use ONLY the provided context. If the answer is not in the context, say you don't have enough information. Reply with a single short JSON object on the FIRST line containing keys answer (string), key_points (array of 3-6 short strings), and confidence (0-1). After the JSON, write a short human paragraph. Do not invent sources.";
+  const userPrompt = `Question: ${input.question}\n\nContext (from extracted Walrus Site pages):\n\n${contextSnippets.join("\n\n---\n\n")}`;
+  let answerText = "";
+  let usedProvider = "workers-ai:@cf/meta/llama-3.1-8b-instruct";
+  if (!env.AI) {
+    usedProvider = "fallback:no-ai-binding";
+    answerText = `{"answer":"This worker is missing the Workers AI binding. Re-deploy with the AI binding configured.","key_points":["No env.AI binding available"],"confidence":0}\n\nAdd the \`ai\` binding to wrangler.jsonc and run \`wrangler deploy\`.`;
+  } else {
+    try {
+      const aiResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        max_tokens: 800,
+        temperature: 0.2
+      });
+      if (typeof aiResponse === "string") answerText = aiResponse;
+      else if (typeof (aiResponse as { response?: string })?.response === "string") answerText = (aiResponse as { response: string }).response;
+      else if (typeof (aiResponse as { result?: { response?: string } })?.result?.response === "string") answerText = (aiResponse as { result: { response: string } }).result.response;
+      else answerText = JSON.stringify(aiResponse);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      usedProvider = `error:${message.slice(0, 80)}`;
+      answerText = `{"answer":"AI call failed: ${message.replace(/[\\"]/g, "")}","key_points":[],"confidence":0}`;
+    }
+  }
+  let parsedData: Record<string, unknown> = { answer: answerText.trim() };
+  let confidence = 0.5;
+  const firstBrace = answerText.indexOf("{");
+  const firstNewline = answerText.indexOf("\n");
+  const jsonSlice = firstBrace === 0 && firstNewline > 0 ? answerText.slice(0, firstNewline) : null;
+  if (jsonSlice) {
+    try {
+      const parsed = JSON.parse(jsonSlice) as Record<string, unknown>;
+      parsedData = parsed;
+      if (typeof parsed.confidence === "number") confidence = Math.max(0, Math.min(1, parsed.confidence));
+      const paragraph = answerText.slice(firstNewline).trim();
+      if (paragraph) parsedData.explanation = paragraph;
+    } catch {
+      parsedData = { answer: answerText.trim() };
+    }
+  }
+  const sources = pages.slice(0, 8).map((page) => ({
+    url: page.url ?? "",
+    routePath: page.routePath,
+    resourcePath: page.artifactPath,
+    quote: (page.markdown ?? "").slice(0, 240)
+  }));
+  return json({
+    target: job.target,
+    schema: input.schema ?? null,
+    data: parsedData,
+    confidence,
+    usedProvider,
+    sources
+  });
+}
+
 async function requireHostedRunAccess(request: Request, env: WorkerEnv, runId: string): Promise<PublicExtractionJob> {
   const auth = requireHostedRunAuth(request);
   const job = await getExtractionJob(env, runId);
@@ -1743,6 +1824,11 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
       }
     ]
   };
+  (manifest as Record<string, unknown>).siteStructure = siteStructure;
+  const brand = buildBrandProfile({ html: home.text, target, title, description, metadata, walrusHeaders });
+  (manifest as Record<string, unknown>).brand = brand;
+  const designSystem = await buildDesignSystem({ html: home.text, target });
+  (manifest as Record<string, unknown>).designSystem = designSystem;
   const llms = [
     `# ${title}`,
     "",
@@ -1772,6 +1858,8 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     { path: "/context/manifest.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest, null, 2) },
     { path: "/context/metadata.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify({ title, description, metadata, walrus: walrusHeaders }, null, 2) },
     { path: "/context/site-structure.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(siteStructure, null, 2) },
+    { path: "/context/brand.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(brand, null, 2) },
+    { path: "/context/design-system.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(designSystem, null, 2) },
     { path: "/context/resources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(resources.map((resource) => ({ url: resource.url.toString(), label: resource.label, kind: resource.kind })), null, 2) }
   ];
   fetchedPages.forEach((page, index) => {
@@ -2927,6 +3015,182 @@ function dedupeByUrl<T extends { url: URL }>(items: T[]): T[] {
     output.push(item);
   }
   return output;
+}
+
+const SOCIAL_HOSTS = ["twitter.com", "x.com", "github.com", "linkedin.com", "t.me", "telegram.me", "discord.gg", "discord.com", "youtube.com", "instagram.com", "facebook.com", "mastodon.social", "warpcast.com", "farcaster.xyz", "bsky.app"];
+
+function collectInlineStyles(html: string): string {
+  let combined = "";
+  const styleRegex = /<style\b[^>]*>([\s\S]*?)<\/style>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = styleRegex.exec(html))) combined += `\n${match[1] ?? ""}`;
+  return combined;
+}
+
+function extractHexColors(text: string): string[] {
+  const freq = new Map<string, number>();
+  const regex = /#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text))) {
+    let hex = `#${match[1]!.toLowerCase()}`;
+    if (hex.length === 4) hex = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+    if (hex === "#000000" || hex === "#ffffff") { freq.set(hex, (freq.get(hex) ?? 0) + 1); continue; }
+    freq.set(hex, (freq.get(hex) ?? 0) + 1);
+  }
+  return Array.from(freq.entries()).sort((a, b) => b[1] - a[1]).map(([hex]) => hex);
+}
+
+function extractCssValues(css: string, property: string): string[] {
+  const freq = new Map<string, number>();
+  const regex = new RegExp(`${property}\\s*:\\s*([^;}\\n]+)`, "gi");
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(css))) {
+    const value = (match[1] ?? "").trim().replace(/!important$/, "").trim();
+    if (!value || value.length > 200) continue;
+    freq.set(value, (freq.get(value) ?? 0) + 1);
+  }
+  return Array.from(freq.entries()).sort((a, b) => b[1] - a[1]).map(([value]) => value);
+}
+
+function extractCssVariables(css: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const regex = /(--[a-zA-Z0-9_-]+)\s*:\s*([^;}\n]+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(css))) {
+    const name = match[1]!;
+    const value = (match[2] ?? "").trim();
+    if (value.length > 200) continue;
+    if (!(name in out)) out[name] = value;
+  }
+  return out;
+}
+
+function buildBrandProfile(input: { html: string; target: URL; title?: string; description?: string; metadata: Record<string, string>; walrusHeaders: Record<string, string> }): {
+  name?: string;
+  domain?: string;
+  description?: string;
+  colors: string[];
+  fonts: string[];
+  logos: Array<{ src?: string; absoluteUrl?: string; role?: string; contentType?: string; alt?: string; type?: string }>;
+  socials: string[];
+  confidence: number;
+} {
+  const { html, target, title, description, metadata } = input;
+  const siteName = metadata["og:site_name"] || metadata["application-name"] || (title ? title.split("|")[0]!.trim() : undefined);
+  const inlineStyles = collectInlineStyles(html);
+  const fontFamilies = extractCssValues(inlineStyles, "font-family")
+    .flatMap((value) => value.split(",").map((token) => token.trim().replace(/^["']|["']$/g, "")))
+    .filter((font) => font && !/^(inherit|initial|unset|revert)$/i.test(font));
+  const fonts = Array.from(new Set(fontFamilies)).slice(0, 12);
+  const colors = extractHexColors(inlineStyles).slice(0, 16);
+  if (metadata["theme-color"] && /^#?[0-9a-fA-F]{3,6}$/.test(metadata["theme-color"])) {
+    const themeHex = metadata["theme-color"].startsWith("#") ? metadata["theme-color"].toLowerCase() : `#${metadata["theme-color"].toLowerCase()}`;
+    if (!colors.includes(themeHex)) colors.unshift(themeHex);
+  }
+  const logos: Array<{ absoluteUrl?: string; role?: string; contentType?: string; alt?: string; type?: string }> = [];
+  const iconRegex = /<link\b[^>]*rel=["']([^"']*(?:icon|apple-touch-icon)[^"']*)["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
+  let iconMatch: RegExpExecArray | null;
+  while ((iconMatch = iconRegex.exec(html))) {
+    try {
+      const url = new URL(iconMatch[2]!, target);
+      logos.push({ absoluteUrl: url.toString(), role: iconMatch[1]!.includes("apple") ? "apple-touch-icon" : "favicon", type: "icon" });
+    } catch { /* ignore */ }
+  }
+  if (metadata["og:image"]) {
+    try { logos.push({ absoluteUrl: new URL(metadata["og:image"], target).toString(), role: "og-image", type: "image" }); } catch { /* ignore */ }
+  }
+  const socials = new Set<string>();
+  const linkRegex = /<a\b[^>]*href=["']([^"']+)["'][^>]*>/gi;
+  let linkMatch: RegExpExecArray | null;
+  while ((linkMatch = linkRegex.exec(html))) {
+    try {
+      const url = new URL(linkMatch[1]!, target);
+      if (SOCIAL_HOSTS.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`))) socials.add(url.toString());
+    } catch { /* ignore */ }
+  }
+  let confidence = 0;
+  if (siteName) confidence += 0.25;
+  if (description) confidence += 0.15;
+  if (logos.length) confidence += 0.2;
+  if (colors.length >= 3) confidence += 0.2;
+  if (fonts.length) confidence += 0.1;
+  if (socials.size) confidence += 0.1;
+  return {
+    name: siteName,
+    domain: target.hostname,
+    description,
+    colors,
+    fonts,
+    logos,
+    socials: Array.from(socials).slice(0, 12),
+    confidence: Math.min(1, Number(confidence.toFixed(2)))
+  };
+}
+
+async function buildDesignSystem(input: { html: string; target: URL }): Promise<Record<string, unknown>> {
+  const { html, target } = input;
+  const inlineStyles = collectInlineStyles(html);
+  const fontFamiliesRaw = extractCssValues(inlineStyles, "font-family")
+    .flatMap((value) => value.split(",").map((token) => token.trim().replace(/^["']|["']$/g, "")))
+    .filter((font) => font && !/^(inherit|initial|unset|revert)$/i.test(font));
+  const fontFamilies = Array.from(new Set(fontFamiliesRaw)).slice(0, 8);
+  const fontSizes = extractCssValues(inlineStyles, "font-size").slice(0, 12);
+  const spacingPool = [...extractCssValues(inlineStyles, "padding"), ...extractCssValues(inlineStyles, "margin"), ...extractCssValues(inlineStyles, "gap")];
+  const spacingFreq = new Map<string, number>();
+  for (const value of spacingPool) {
+    for (const token of value.split(/\s+/)) {
+      if (/^-?\d/.test(token) && /(px|rem|em|%)$/.test(token)) spacingFreq.set(token, (spacingFreq.get(token) ?? 0) + 1);
+    }
+  }
+  const spacing = Array.from(spacingFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([value]) => value);
+  const radii = extractCssValues(inlineStyles, "border-radius").slice(0, 8);
+  const shadows = extractCssValues(inlineStyles, "box-shadow").slice(0, 6);
+  const borders = extractCssValues(inlineStyles, "border").slice(0, 6);
+  const palette = extractHexColors(inlineStyles).slice(0, 14);
+  const cssVariables = extractCssVariables(inlineStyles);
+  const tokenColors = palette.slice(0, 8).map((hex, index) => ({
+    name: index === 0 ? "primary" : index === 1 ? "secondary" : `accent-${index}`,
+    value: hex,
+    role: index === 0 ? "primary" : index === 1 ? "secondary" : "accent"
+  }));
+  const tailwindThemePartial = palette.length ? `// tailwind palette (top ${palette.length})\ncolors: {\n${palette.map((hex, index) => `  brand${index + 1}: "${hex}"`).join(",\n")}\n}` : "";
+  const tokensCss = Object.entries(cssVariables).slice(0, 40).map(([name, value]) => `${name}: ${value};`).join("\n");
+  return {
+    identity: {
+      name: undefined,
+      domain: target.hostname,
+      description: undefined,
+      confidence: palette.length >= 4 ? 0.6 : 0.3
+    },
+    tokens: {
+      colors: tokenColors,
+      rawPalette: palette,
+      cssVariables,
+      typography: {
+        fontFamilies,
+        scale: fontSizes.map((size, index) => ({ name: `size-${index + 1}`, fontSize: size })),
+        headings: []
+      },
+      spacing,
+      radii,
+      shadows,
+      borders,
+      layout: { breakpoints: [], maxWidths: [], zIndices: [] }
+    },
+    components: [],
+    assets: [],
+    motion: [],
+    exports: {
+      figmaTokens: JSON.stringify({ colors: palette, fonts: fontFamilies }, null, 2),
+      styleDictionary: JSON.stringify({ color: Object.fromEntries(palette.map((hex, index) => [`brand-${index + 1}`, { value: hex }])) }, null, 2),
+      tailwindTheme: tailwindThemePartial,
+      tokensCss,
+      webBrandKit: `Domain: ${target.hostname}\nColors: ${palette.slice(0, 6).join(", ")}\nFonts: ${fontFamilies.slice(0, 4).join(", ")}`,
+      videoBrandKit: `Primary: ${palette[0] ?? "n/a"}\nSecondary: ${palette[1] ?? "n/a"}`,
+      markdown: `# Design tokens\n\n**Domain:** ${target.hostname}\n\n**Palette:** ${palette.slice(0, 8).join(", ")}\n\n**Fonts:** ${fontFamilies.slice(0, 4).join(", ")}`,
+      rawJson: ""
+    }
+  };
 }
 
 function htmlToText(html: string): string {

@@ -24,6 +24,9 @@
       "bucket_name": "contextmem-context"
     }
   ],
+  "ai": {
+    "binding": "AI"
+  },
   "queues": {
     "producers": [
       {
