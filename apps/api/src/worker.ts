@@ -483,6 +483,13 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     const suffix = decodeURIComponent(url.pathname.slice("/api/share-links/".length));
     if (suffix.endsWith("/og.svg")) return getShareLinkOgSvg(request, env, suffix.slice(0, -"/og.svg".length));
     if (suffix.endsWith("/artifacts")) return getShareLinkArtifacts(request, env, suffix.slice(0, -"/artifacts".length));
+    const fileMarker = "/file?";
+    const fileIndex = suffix.indexOf(fileMarker);
+    if (fileIndex > 0) {
+      const shareId = suffix.slice(0, fileIndex);
+      const fileQuery = new URLSearchParams(suffix.slice(fileIndex + fileMarker.length));
+      return getShareLinkFile(request, env, shareId, fileQuery.get("path") ?? "");
+    }
     return getShareLink(request, env, suffix);
   }
   if (request.method === "POST" && url.pathname === "/api/namespaces/import") {
@@ -1197,6 +1204,24 @@ async function getShareLinkArtifacts(request: Request, env: WorkerEnv, shareId: 
   const share = await getShareLinkRow(env, shareId);
   if (!share) return json({ error: "Share link not found." }, 404);
   return json({ share: publicShareLink(share, request, env), artifacts: await new CloudflareNamespaceStore(env).listArtifacts(share.namespace) });
+}
+
+async function getShareLinkFile(_request: Request, env: WorkerEnv, shareId: string, artifactPath: string): Promise<Response> {
+  const share = await getShareLinkRow(env, shareId);
+  if (!share) return json({ error: "Share link not found." }, 404);
+  if (!artifactPath) return json({ error: "Missing path query parameter." }, 400);
+  const artifact = await new CloudflareNamespaceStore(env).readArtifact(share.namespace, artifactPath);
+  if (!artifact) return json({ error: "Artifact not found in this share." }, 404);
+  const isText = artifact.encoding === "utf8";
+  return cors(
+    new Response(isText ? artifact.content : artifact.content, {
+      status: 200,
+      headers: {
+        "content-type": artifact.contentType ?? (isText ? "text/plain; charset=utf-8" : "application/octet-stream"),
+        "cache-control": "public, max-age=120"
+      }
+    })
+  );
 }
 
 async function getShareLinkOgSvg(_request: Request, env: WorkerEnv, shareId: string): Promise<Response> {

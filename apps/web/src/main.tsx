@@ -1296,57 +1296,210 @@ function SharePage() {
             </aside>
           </section>
 
-          <section className="shareGrid">
-            <article className="panel shareCard">
-              <div className="sectionHead">
-                <h2>AI Summary</h2>
-                <span>{manifest?.aiQuery ? "persisted" : "package"}</span>
-              </div>
-              {manifest?.aiQuery ? <AiResultData data={manifest.aiQuery.data} /> : <p>{pages.slice(0, 3).map((page) => page.title ?? page.routePath ?? page.url).join(" · ") || "No summary available yet."}</p>}
-            </article>
-            <article className="panel shareCard">
-              <div className="sectionHead">
-                <h2>Artifacts</h2>
-                <span>{artifacts.length} files</span>
-              </div>
-              <div className="shareArtifactList">
-                {artifacts.slice(0, 12).map((artifact) => (
-                  <div key={artifact.path}>
-                    <FileText size={14} />
-                    <code>{artifact.path}</code>
-                    <span>{artifact.kind}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </section>
-
-          <section className="shareGrid">
-            <article className="panel shareCard wide">
-              <div className="sectionHead">
-                <h2>Pages</h2>
-                <span>{pages.length} extracted</span>
-              </div>
-              <div className="sharePageList">
-                {pages.slice(0, 8).map((page) => (
-                  <a key={page.url} href={page.url} target="_blank" rel="noreferrer">
-                    <strong>{page.title ?? page.routePath ?? page.url}</strong>
-                    <span>{page.routePath ?? page.url}</span>
-                  </a>
-                ))}
-              </div>
-            </article>
-            <article className="panel shareCard">
-              <div className="sectionHead">
-                <h2>MCP CTA</h2>
-                <span>read-only</span>
-              </div>
-              <pre>{JSON.stringify({ url: share.mcpUrl, namespace: share.namespace }, null, 2)}</pre>
-            </article>
-          </section>
+          {manifest ? <ShareContentTabs manifest={manifest as ArtifactManifest} artifacts={artifacts} mcpUrl={share.mcpUrl} namespace={share.namespace} shareId={shareId} /> : null}
         </>
       )}
     </main>
+  );
+}
+
+function ShareContentTabs({ manifest, artifacts, mcpUrl, namespace, shareId }: { manifest: ArtifactManifest; artifacts: ArtifactFileRecord[]; mcpUrl: string; namespace: string; shareId: string }) {
+  const availableTabs = useMemo(() => {
+    const tabs: Array<{ key: string; label: string; count?: number }> = [];
+    if (manifest.pages?.length) tabs.push({ key: "markdown", label: "Markdown", count: manifest.pages.length });
+    if (manifest.siteStructure?.nodes?.length) tabs.push({ key: "structure", label: "Structure" });
+    if (manifest.images?.length) tabs.push({ key: "images", label: "Images", count: manifest.images.length });
+    if (manifest.brand) tabs.push({ key: "brand", label: "Brand" });
+    if (manifest.designSystem || manifest.styleguide) tabs.push({ key: "design", label: "Design System" });
+    if (manifest.aiQuery) tabs.push({ key: "ai", label: "AI Summary" });
+    if (manifest.walrus?.resources?.length) tabs.push({ key: "walrus", label: "Walrus Resources", count: manifest.walrus.resources.length });
+    tabs.push({ key: "artifacts", label: "Artifacts", count: artifacts.length });
+    tabs.push({ key: "mcp", label: "MCP install" });
+    return tabs;
+  }, [manifest, artifacts]);
+  const [active, setActive] = useState<string>(availableTabs[0]?.key ?? "markdown");
+
+  return (
+    <section className="shareContent panel">
+      <nav className="shareTabs" role="tablist" aria-label="Share content sections">
+        {availableTabs.map((tab) => (
+          <button
+            key={tab.key}
+            role="tab"
+            aria-selected={active === tab.key}
+            className={active === tab.key ? "selected" : ""}
+            onClick={() => setActive(tab.key)}
+            type="button"
+          >
+            {tab.label}
+            {typeof tab.count === "number" ? <span className="shareTabBadge">{tab.count}</span> : null}
+          </button>
+        ))}
+      </nav>
+      <div className="shareTabBody">
+        {active === "markdown" ? <MarkdownPanel pages={manifest.pages} /> : null}
+        {active === "structure" ? <ShareStructurePreview structure={manifest.siteStructure} /> : null}
+        {active === "images" ? <ShareImagesGrid manifest={manifest} /> : null}
+        {active === "brand" ? <BrandPanel data={manifest.brand} /> : null}
+        {active === "design" ? <ShareDesignPreview manifest={manifest} /> : null}
+        {active === "ai" ? (
+          <div className="panel">
+            <div className="sectionHead"><h2>AI Summary</h2><span>{manifest.aiQuery?.usedProvider ?? "stored"}</span></div>
+            {manifest.aiQuery ? <AiResultData data={manifest.aiQuery.data} /> : <p className="subEmpty">No AI summary on this run.</p>}
+          </div>
+        ) : null}
+        {active === "walrus" ? <WalrusResourcesPanel data={manifest.walrus} /> : null}
+        {active === "artifacts" ? <ShareArtifactList artifacts={artifacts} shareId={shareId} /> : null}
+        {active === "mcp" ? <ShareMcpInstall mcpUrl={mcpUrl} namespace={namespace} /> : null}
+      </div>
+    </section>
+  );
+}
+
+function ShareStructurePreview({ structure }: { structure?: SiteStructure }) {
+  if (!structure) return <div className="panel subEmpty">No site structure captured.</div>;
+  return (
+    <div className="panel">
+      <div className="sectionHead">
+        <h2>Site structure</h2>
+        <span>{structure.summary.pages} pages · {structure.summary.assets} assets · {structure.summary.walrusResources} Walrus resources</span>
+      </div>
+      <ShareStructureNodes nodes={structure.nodes} depth={0} />
+    </div>
+  );
+}
+
+function ShareStructureNodes({ nodes, depth }: { nodes: SiteStructureNode[]; depth: number }) {
+  return (
+    <ul className="shareStructureTree" style={{ paddingLeft: depth === 0 ? 0 : 16 }}>
+      {nodes.map((node) => (
+        <li key={node.id}>
+          <strong>{node.label}</strong>
+          {node.path ? <code>{node.path}</code> : null}
+          <span className="shareStructureKind">{node.kind}</span>
+          {node.children?.length ? <ShareStructureNodes nodes={node.children} depth={depth + 1} /> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ShareImagesGrid({ manifest }: { manifest: ArtifactManifest }) {
+  if (!manifest.images.length) return <div className="panel subEmpty">No images extracted.</div>;
+  return (
+    <div className="grid">
+      {manifest.images.map((image, index) => {
+        const previewUrl = imagePreviewUrl(image, manifest);
+        const displayUrl = imageDisplayUrl(image, manifest);
+        return (
+          <article className="imageCard" key={`${image.absoluteUrl}-${index}`}>
+            <div className="imagePreview">
+              {previewUrl ? <img src={previewUrl} alt={image.alt ?? image.role ?? image.type ?? "Extracted image"} loading="lazy" /> : <span>{image.type ?? "asset"}</span>}
+            </div>
+            <div className="imageMeta">
+              <strong>{image.role ?? image.contentType ?? image.type ?? "image"}</strong>
+              {image.alt ? <span>{image.alt}</span> : null}
+              <code>{displayUrl}</code>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function ShareDesignPreview({ manifest }: { manifest: ArtifactManifest }) {
+  const data = manifest.designSystem;
+  const fallback = manifest.styleguide;
+  if (!data && !fallback) return <div className="panel subEmpty">No design tokens captured.</div>;
+  const colors = data?.tokens.colors ?? (fallback?.colors.palette ?? []).map((value, index) => ({ name: `color-${index}`, value, role: "raw" }));
+  const fonts = data?.tokens.typography.fontFamilies ?? fallback?.typography.fontFamilies ?? [];
+  return (
+    <div className="panel">
+      <div className="sectionHead">
+        <h2>Design tokens</h2>
+        <span>{colors.length} colors · {fonts.length} font families</span>
+      </div>
+      <div className="comparePalette" style={{ marginTop: 12 }}>
+        {colors.slice(0, 24).map((token) => (
+          <span key={`${token.name}-${token.value}`} style={{ background: token.value }} title={`${token.name} → ${token.value}`}>
+            <small>{token.name}</small>
+          </span>
+        ))}
+      </div>
+      <div className="compareFonts" style={{ marginTop: 12 }}>
+        {fonts.slice(0, 8).map((font) => <code key={font}>{font}</code>)}
+      </div>
+    </div>
+  );
+}
+
+function ShareArtifactList({ artifacts, shareId }: { artifacts: ArtifactFileRecord[]; shareId: string }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [content, setContent] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function toggle(artifact: ArtifactFileRecord) {
+    if (open === artifact.path) {
+      setOpen(null);
+      return;
+    }
+    setOpen(artifact.path);
+    if (content[artifact.path]) return;
+    if (!artifact.previewable) return;
+    setBusy(artifact.path);
+    try {
+      const url = `${API_BASE}/api/share-links/${encodeURIComponent(shareId)}/file?path=${encodeURIComponent(artifact.path)}`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(await readResponseError(resp));
+      const text = await resp.text();
+      setContent((prev) => ({ ...prev, [artifact.path]: text.slice(0, 30000) }));
+    } catch (err) {
+      setContent((prev) => ({ ...prev, [artifact.path]: err instanceof Error ? `(failed: ${err.message})` : "(failed to load)" }));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="panel">
+      <div className="sectionHead">
+        <h2>Artifacts</h2>
+        <span>{artifacts.length} files · click to preview</span>
+      </div>
+      <div className="shareArtifactList">
+        {artifacts.map((artifact) => (
+          <div key={artifact.path}>
+            <button type="button" onClick={() => void toggle(artifact)} className="shareArtifactRow">
+              <FileText size={14} />
+              <code>{artifact.path}</code>
+              <span>{artifact.kind}</span>
+            </button>
+            {open === artifact.path ? (
+              <pre className="shareArtifactPreview">
+                {busy === artifact.path ? "Loading…" : content[artifact.path] ?? "(no preview)"}
+              </pre>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ShareMcpInstall({ mcpUrl, namespace }: { mcpUrl: string; namespace: string }) {
+  const slug = namespace.replace(/[^a-zA-Z0-9_-]/g, "-");
+  const claudeSnippet = JSON.stringify({ mcpServers: { [`contextmem-${slug}`]: { command: "npx", args: ["-y", "mcp-remote", mcpUrl] } } }, null, 2);
+  const cursorSnippet = JSON.stringify({ contextmem: { url: mcpUrl } }, null, 2);
+  return (
+    <div className="panel">
+      <div className="sectionHead"><h2>Install in your MCP client</h2><span>read-only</span></div>
+      <p className="subEmpty" style={{ margin: "8px 0 16px" }}>Endpoint: <code>{mcpUrl}</code></p>
+      <h3 style={{ margin: "8px 0 6px", fontSize: 13 }}>Claude Desktop / Codex</h3>
+      <pre>{claudeSnippet}</pre>
+      <h3 style={{ margin: "16px 0 6px", fontSize: 13 }}>Cursor (generic)</h3>
+      <pre>{cursorSnippet}</pre>
+    </div>
   );
 }
 
@@ -2550,6 +2703,9 @@ function SdkCredentialImportForm({
       onImport={onImport}
       dashboardUrl={memwalDashboardUrl}
       delegateStorage={isLocalApiBase(API_BASE) ? "server" : "browser"}
+      description={isLocalApiBase(API_BASE)
+        ? "Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted server-side and unlocks verified Walrus context."
+        : "Paste your MemWal account ID and delegate private key. On the public site they are stored in this browser only, sent as request headers for private hosted runs, and never persisted by the Worker."}
     />
   );
 }

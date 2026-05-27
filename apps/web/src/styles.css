@@ -3750,6 +3750,149 @@ textarea {
   opacity: 0.72;
 }
 
+.shareContent {
+  margin-top: 20px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.shareTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 12px 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.shareTabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  position: relative;
+  top: 1px;
+}
+
+.shareTabs button:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.shareTabs button.selected {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-bottom-color: #ffffff;
+}
+
+.shareTabBadge {
+  display: inline-flex;
+  padding: 0 6px;
+  background: #e2e8f0;
+  color: #1e293b;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+}
+
+.shareTabs button.selected .shareTabBadge {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.shareTabBody {
+  padding: 16px;
+}
+
+.shareStructureTree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.shareStructureTree li {
+  margin: 4px 0;
+  padding: 4px 0;
+  border-left: 1px dashed #cbd5f5;
+  padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shareStructureTree li strong {
+  color: #0f172a;
+}
+
+.shareStructureTree li code {
+  font-size: 11px;
+  color: #475569;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+}
+
+.shareStructureKind {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.shareArtifactRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: #1e293b;
+}
+
+.shareArtifactRow:hover {
+  background: #f1f5f9;
+  border-color: #cbd5f5;
+}
+
+.shareArtifactRow code {
+  flex: 1;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+  font-size: 12px;
+}
+
+.shareArtifactRow span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.shareArtifactPreview {
+  margin: 6px 0 14px;
+  padding: 12px 14px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (max-width: 540px) {
   .hostedCredentialInput {
     grid-template-columns: 1fr;
