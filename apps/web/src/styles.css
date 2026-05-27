@@ -7874,3 +7874,18 @@ textarea:focus {
   border-radius: 4px;
   background: #eef2f7;
 }
+
+.frameworkBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #78350f;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}

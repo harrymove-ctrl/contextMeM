@@ -17,6 +17,7 @@ type DesignSystem = {
     primaryLogo?: { url?: string; resourcePath?: string };
     favicon?: { url?: string; resourcePath?: string };
   };
+  framework?: { name: string; defaultsSubtracted: number };
   tokens: {
     colors: Array<{ name: string; value: string; role: string; source?: unknown }>;
     rawPalette: string[];
@@ -5475,6 +5476,8 @@ function DesignSystemPanel({ data, fallback, run, authToken }: { data?: DesignSy
     ["Raw JSON", data.exports.rawJson, data]
   ] as const;
 
+  const brandTokenCount = data.tokens.colors.length + data.tokens.spacing.length + data.tokens.radii.length + data.tokens.shadows.length;
+  const confidenceLabel = data.identity.confidence >= 0.66 ? "high" : data.identity.confidence >= 0.33 ? "partial" : "framework-only";
   return (
     <div className="panel designPanel">
       <section className="designHero">
@@ -5482,30 +5485,48 @@ function DesignSystemPanel({ data, fallback, run, authToken }: { data?: DesignSy
           <span>Design System</span>
           <h2>{data.identity.name ?? data.identity.domain ?? "Extracted identity"}</h2>
           {data.identity.description ? <p>{data.identity.description}</p> : null}
+          {data.framework ? (
+            <small className="frameworkBadge" title={`${data.framework.defaultsSubtracted} framework defaults filtered out`}>
+              Built on {data.framework.name} — {data.framework.defaultsSubtracted} defaults filtered
+            </small>
+          ) : null}
         </div>
         <div className="designScore">
           <strong>{Math.round(data.identity.confidence * 100)}%</strong>
-          <span>confidence</span>
+          <span>{confidenceLabel}</span>
         </div>
       </section>
+
+      {brandTokenCount === 0 ? (
+        <div className="tabEmptyState">
+          <strong>No brand-distinct tokens detected</strong>
+          <p>{data.framework ? `This site uses ${data.framework.name}; its default tokens were filtered out and nothing brand-distinct remained.` : "Inline CSS contained only framework or system defaults."} Try a fresh Build, or render-then-sample is required to surface real brand tokens (Tier 2 — not shipped yet).</p>
+        </div>
+      ) : null}
 
       <section className="designStats">
         <div>
           <span>Tokens</span>
-          <strong>{data.tokens.colors.length + data.tokens.spacing.length + data.tokens.radii.length + data.tokens.shadows.length}</strong>
+          <strong>{brandTokenCount}</strong>
         </div>
-        <div>
-          <span>Components</span>
-          <strong>{data.components.length}</strong>
-        </div>
-        <div>
-          <span>Assets</span>
-          <strong>{data.assets.length}</strong>
-        </div>
-        <div>
-          <span>Motion</span>
-          <strong>{data.motion.length}</strong>
-        </div>
+        {data.assets.length > 0 ? (
+          <div>
+            <span>Assets</span>
+            <strong>{data.assets.length}</strong>
+          </div>
+        ) : null}
+        {data.components.length > 0 ? (
+          <div>
+            <span>Components</span>
+            <strong>{data.components.length}</strong>
+          </div>
+        ) : null}
+        {data.motion.length > 0 ? (
+          <div>
+            <span>Motion</span>
+            <strong>{data.motion.length}</strong>
+          </div>
+        ) : null}
       </section>
 
       <section className="designSection">
@@ -5552,11 +5573,11 @@ function DesignSystemPanel({ data, fallback, run, authToken }: { data?: DesignSy
         <article>
           <div className="sectionHead">
             <h2>Layout Primitives</h2>
-            <span>spacing, radii, shadow</span>
+            <span>raw values observed</span>
           </div>
-          <TokenChips label="Spacing" values={data.tokens.spacing} />
-          <TokenChips label="Radii" values={data.tokens.radii} />
-          <TokenChips label="Shadows" values={data.tokens.shadows} />
+          <TokenChips label="Spacing (raw)" values={data.tokens.spacing} />
+          <TokenChips label="Radii (raw)" values={data.tokens.radii} />
+          <TokenChips label="Shadows (raw)" values={data.tokens.shadows} />
         </article>
       </section>
 

@@ -1844,9 +1844,11 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
   };
   (manifest as Record<string, unknown>).siteStructure = siteStructure;
   const styleBundle = await collectAllStyles(home.text, target).catch(() => collectInlineStyles(home.text));
-  const brand = buildBrandProfile({ html: home.text, target, title, description, metadata, walrusHeaders, css: styleBundle });
+  const framework = detectDocsFramework(home.text, metadata);
+  const varMap = buildCssVarMap(styleBundle);
+  const brand = buildBrandProfile({ html: home.text, target, title, description, metadata, walrusHeaders, css: styleBundle, framework, varMap });
   (manifest as Record<string, unknown>).brand = brand;
-  const designSystem = await buildDesignSystem({ html: home.text, target, css: styleBundle });
+  const designSystem = await buildDesignSystem({ html: home.text, target, css: styleBundle, framework, varMap });
   // Cross-pollinate: surface brand identity + logo assets in the design system tab.
   const dsRecord = designSystem as Record<string, unknown>;
   const dsIdentity = dsRecord.identity as Record<string, unknown>;
@@ -3100,6 +3102,122 @@ function collectInlineStyles(html: string): string {
   return combined;
 }
 
+type DocsFramework = "docusaurus" | "mintlify" | "nextra" | "vitepress" | "gitbook" | null;
+
+type FrameworkFingerprint = {
+  colors: Set<string>;
+  fonts: Set<string>;
+  fontFamilyPrefixes: string[];
+  varPrefixes: string[];
+};
+
+const FRAMEWORK_DEFAULTS: Record<Exclude<DocsFramework, null>, FrameworkFingerprint> = {
+  docusaurus: {
+    // Infima neutral ramp + common defaults observed across Docusaurus 2/3.
+    colors: new Set([
+      "#ffffff", "#000000",
+      "#fbffea", "#e0e2e6", "#d0d7de", "#ebedf0", "#eef2f5", "#f5f6f7", "#f6f8fa", "#fafbfc",
+      "#1c1e21", "#18191a", "#242526", "#2b2d2f", "#0f0f0f",
+      "#3578e5", "#25c2a0", "#606770"
+    ]),
+    fonts: new Set([
+      "system-ui", "-apple-system", "blinkmacsystemfont", "segoe ui", "helvetica neue", "arial",
+      "sans-serif", "ui-monospace", "sfmono-regular", "menlo", "monaco", "consolas",
+      "liberation mono", "courier new", "monospace", "noto sans", "noto color emoji", "apple color emoji"
+    ]),
+    fontFamilyPrefixes: [],
+    varPrefixes: ["--ifm-", "--docusaurus-", "--docsearch-"]
+  },
+  mintlify: {
+    colors: new Set(["#ffffff", "#000000", "#0f172a", "#f8fafc", "#e2e8f0", "#94a3b8", "#64748b"]),
+    fonts: new Set(["inter", "system-ui", "-apple-system", "sans-serif", "ui-monospace", "menlo", "monaco"]),
+    fontFamilyPrefixes: [],
+    varPrefixes: ["--mintlify-"]
+  },
+  nextra: {
+    colors: new Set(["#ffffff", "#000000", "#171717", "#525252", "#737373", "#a3a3a3"]),
+    fonts: new Set(["inter", "system-ui", "-apple-system", "sans-serif", "ui-monospace"]),
+    fontFamilyPrefixes: [],
+    varPrefixes: ["--nextra-"]
+  },
+  vitepress: {
+    colors: new Set(["#ffffff", "#000000", "#213547", "#42b883", "#f6f6f7", "#e2e2e3"]),
+    fonts: new Set(["inter", "system-ui", "-apple-system", "sans-serif", "menlo", "monaco"]),
+    fontFamilyPrefixes: [],
+    varPrefixes: ["--vp-"]
+  },
+  gitbook: {
+    colors: new Set(["#ffffff", "#000000", "#0f172a", "#64748b", "#94a3b8"]),
+    fonts: new Set(["inter", "system-ui", "-apple-system", "sans-serif"]),
+    fontFamilyPrefixes: [],
+    varPrefixes: ["--gitbook-"]
+  }
+};
+
+function detectDocsFramework(html: string, metadata: Record<string, string>): DocsFramework {
+  const generator = (metadata["generator"] ?? "").toLowerCase();
+  if (generator.includes("docusaurus")) return "docusaurus";
+  if (generator.includes("vitepress")) return "vitepress";
+  if (generator.includes("nextra")) return "nextra";
+  if (generator.includes("mintlify")) return "mintlify";
+  const sample = html.slice(0, 20000).toLowerCase();
+  if (sample.includes("data-theme=\"docusaurus\"") || sample.includes("theme-doc-") || sample.includes("--ifm-")) return "docusaurus";
+  if (sample.includes("mintlify") || sample.includes("--mintlify-")) return "mintlify";
+  if (sample.includes("nextra-") || sample.includes("--nextra-")) return "nextra";
+  if (sample.includes("vitepress") || sample.includes("--vp-")) return "vitepress";
+  if (sample.includes("gitbook")) return "gitbook";
+  return null;
+}
+
+// Build a :root + [data-theme] custom-property map from a CSS bundle. Used to
+// substitute var(--name) refs with their resolved value before serializing.
+function buildCssVarMap(css: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const blockRegex = /(:root|\[data-theme[^\]]*\]|html)\s*\{([^}]+)\}/g;
+  let blockMatch: RegExpExecArray | null;
+  while ((blockMatch = blockRegex.exec(css))) {
+    const block = blockMatch[2] ?? "";
+    const decRegex = /(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+);/g;
+    let decMatch: RegExpExecArray | null;
+    while ((decMatch = decRegex.exec(block))) {
+      const name = decMatch[1]!;
+      const value = (decMatch[2] ?? "").trim();
+      if (value.length < 200 && !(name in out)) out[name] = value;
+    }
+  }
+  return out;
+}
+
+// Resolve var(--name [, fallback]) refs by looking up the var map.
+// Handles 1-level nested fallback: var(--a, var(--b, lit)).
+function resolveCssVarRef(value: string, varMap: Record<string, string>, depth = 0): string {
+  if (depth > 4) return value;
+  return value.replace(/var\(\s*(--[a-zA-Z0-9_-]+)\s*(?:,\s*([^)]+))?\)/g, (_match, name: string, fallback?: string) => {
+    const resolved = varMap[name];
+    if (resolved && !/var\(/.test(resolved)) return resolved;
+    if (resolved) return resolveCssVarRef(resolved, varMap, depth + 1);
+    if (fallback) return resolveCssVarRef(fallback.trim(), varMap, depth + 1);
+    return _match; // unresolvable — keep as-is so caller can drop
+  });
+}
+
+function isVarUnresolved(value: string): boolean {
+  return /var\(/.test(value);
+}
+
+function isFrameworkColor(hex: string, framework: DocsFramework): boolean {
+  if (!framework) return false;
+  return FRAMEWORK_DEFAULTS[framework].colors.has(hex.toLowerCase());
+}
+
+function isFrameworkFont(font: string, framework: DocsFramework): boolean {
+  if (!framework) return false;
+  const fp = FRAMEWORK_DEFAULTS[framework];
+  const lowered = font.toLowerCase().replace(/^["']|["']$/g, "").trim();
+  if (fp.fonts.has(lowered)) return true;
+  return fp.fontFamilyPrefixes.some((prefix) => lowered.startsWith(prefix));
+}
+
 const FONT_CSS_HOSTS = new Set(["fonts.googleapis.com", "fonts.bunny.net", "use.typekit.net", "rsms.me"]);
 
 async function collectAllStyles(html: string, target: URL): Promise<string> {
@@ -3180,7 +3298,7 @@ function extractCssVariables(css: string): Record<string, string> {
   return out;
 }
 
-function buildBrandProfile(input: { html: string; target: URL; title?: string; description?: string; metadata: Record<string, string>; walrusHeaders: Record<string, string>; css?: string }): {
+function buildBrandProfile(input: { html: string; target: URL; title?: string; description?: string; metadata: Record<string, string>; walrusHeaders: Record<string, string>; css?: string; framework?: DocsFramework; varMap?: Record<string, string> }): {
   name?: string;
   domain?: string;
   description?: string;
@@ -3189,15 +3307,24 @@ function buildBrandProfile(input: { html: string; target: URL; title?: string; d
   logos: Array<{ src?: string; absoluteUrl?: string; role?: string; contentType?: string; alt?: string; type?: string }>;
   socials: string[];
   confidence: number;
+  framework?: { name: string; defaultsSubtracted: number };
 } {
-  const { html, target, title, description, metadata, css } = input;
+  const { html, target, title, description, metadata, css, framework = null, varMap = {} } = input;
   const siteName = metadata["og:site_name"] || metadata["application-name"] || (title ? title.split("|")[0]!.trim() : undefined);
   const inlineStyles = css ?? collectInlineStyles(html);
-  const fontFamilies = extractCssValues(inlineStyles, "font-family")
+  const rawFontFamilies = extractCssValues(inlineStyles, "font-family")
+    .map((value) => isVarUnresolved(value) ? resolveCssVarRef(value, varMap) : value)
     .flatMap((value) => value.split(",").map((token) => token.trim().replace(/^["']|["']$/g, "")))
-    .filter((font) => font && !/^(inherit|initial|unset|revert)$/i.test(font));
-  const fonts = Array.from(new Set(fontFamilies)).slice(0, 12);
-  const colors = extractHexColors(inlineStyles).slice(0, 16);
+    .filter((font) => font && !/^(inherit|initial|unset|revert)$/i.test(font))
+    .filter((font) => !isVarUnresolved(font));
+  const fontsBeforeFilter = Array.from(new Set(rawFontFamilies));
+  const fonts = fontsBeforeFilter.filter((font) => !isFrameworkFont(font, framework)).slice(0, 12);
+  const fontsSubtracted = fontsBeforeFilter.length - fonts.length;
+  const rawColors = extractHexColors(inlineStyles);
+  const colorsBeforeFilter = rawColors.slice(0, 32);
+  const colors = colorsBeforeFilter.filter((hex) => !isFrameworkColor(hex, framework)).slice(0, 16);
+  const colorsSubtracted = colorsBeforeFilter.length - colors.length;
+  const defaultsSubtracted = colorsSubtracted + fontsSubtracted;
   if (metadata["theme-color"] && /^#?[0-9a-fA-F]{3,6}$/.test(metadata["theme-color"])) {
     const themeHex = metadata["theme-color"].startsWith("#") ? metadata["theme-color"].toLowerCase() : `#${metadata["theme-color"].toLowerCase()}`;
     if (!colors.includes(themeHex)) colors.unshift(themeHex);
@@ -3223,13 +3350,18 @@ function buildBrandProfile(input: { html: string; target: URL; title?: string; d
       if (SOCIAL_HOSTS.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`))) socials.add(url.toString());
     } catch { /* ignore */ }
   }
-  let confidence = 0;
-  if (siteName) confidence += 0.25;
-  if (description) confidence += 0.15;
-  if (logos.length) confidence += 0.2;
-  if (colors.length >= 3) confidence += 0.2;
-  if (fonts.length) confidence += 0.1;
-  if (socials.size) confidence += 0.1;
+  // Honest confidence: count brand-DISTINCT-from-framework signals.
+  // Logo + OG image + non-default colors surviving subtraction + named site + socials.
+  // A site whose only "signals" are framework defaults will land near 0.
+  let signals = 0;
+  if (siteName) signals += 1;
+  if (logos.find((logo) => logo.role === "og-image")) signals += 1;
+  if (logos.find((logo) => logo.role === "favicon" || logo.role === "apple-touch-icon")) signals += 0.5;
+  if (colors.length >= 2) signals += 1; // post-subtraction count
+  if (fonts.length >= 1) signals += 0.5; // post-subtraction count
+  if (socials.size) signals += 0.5;
+  if (description) signals += 0.5;
+  const confidence = Math.min(1, Number((signals / 5).toFixed(2)));
   return {
     name: siteName,
     domain: target.hostname,
@@ -3238,44 +3370,84 @@ function buildBrandProfile(input: { html: string; target: URL; title?: string; d
     fonts,
     logos,
     socials: Array.from(socials).slice(0, 12),
-    confidence: Math.min(1, Number(confidence.toFixed(2)))
+    confidence,
+    ...(framework ? { framework: { name: framework, defaultsSubtracted } } : {})
   };
 }
 
-async function buildDesignSystem(input: { html: string; target: URL; css?: string }): Promise<Record<string, unknown>> {
-  const { html, target, css } = input;
+async function buildDesignSystem(input: { html: string; target: URL; css?: string; framework?: DocsFramework; varMap?: Record<string, string> }): Promise<Record<string, unknown>> {
+  const { html, target, css, framework = null, varMap = {} } = input;
   const inlineStyles = css ?? collectInlineStyles(html);
-  const fontFamiliesRaw = extractCssValues(inlineStyles, "font-family")
+  // Font families: resolve var refs, drop unresolved, filter framework defaults.
+  const rawFontValues = extractCssValues(inlineStyles, "font-family")
+    .map((value) => isVarUnresolved(value) ? resolveCssVarRef(value, varMap) : value);
+  const fontFamiliesRaw = rawFontValues
     .flatMap((value) => value.split(",").map((token) => token.trim().replace(/^["']|["']$/g, "")))
-    .filter((font) => font && !/^(inherit|initial|unset|revert)$/i.test(font));
-  const fontFamilies = Array.from(new Set(fontFamiliesRaw)).slice(0, 8);
-  const fontSizes = extractCssValues(inlineStyles, "font-size").slice(0, 12);
+    .filter((font) => font && !/^(inherit|initial|unset|revert)$/i.test(font))
+    .filter((font) => !isVarUnresolved(font));
+  const fontFamiliesBeforeFilter = Array.from(new Set(fontFamiliesRaw));
+  const fontFamilies = fontFamiliesBeforeFilter.filter((font) => !isFrameworkFont(font, framework)).slice(0, 8);
+  const fontFamiliesSubtracted = fontFamiliesBeforeFilter.length - fontFamilies.length;
+  const fontSizesRaw = extractCssValues(inlineStyles, "font-size")
+    .map((value) => isVarUnresolved(value) ? resolveCssVarRef(value, varMap) : value)
+    .filter((value) => !isVarUnresolved(value));
+  const fontSizes = fontSizesRaw.slice(0, 12);
   const spacingPool = [...extractCssValues(inlineStyles, "padding"), ...extractCssValues(inlineStyles, "margin"), ...extractCssValues(inlineStyles, "gap")];
   const spacingFreq = new Map<string, number>();
-  for (const value of spacingPool) {
+  for (const rawValue of spacingPool) {
+    const value = isVarUnresolved(rawValue) ? resolveCssVarRef(rawValue, varMap) : rawValue;
+    if (isVarUnresolved(value)) continue;
     for (const token of value.split(/\s+/)) {
       if (/^-?\d/.test(token) && /(px|rem|em|%)$/.test(token)) spacingFreq.set(token, (spacingFreq.get(token) ?? 0) + 1);
     }
   }
   const spacing = Array.from(spacingFreq.entries()).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([value]) => value);
-  const radii = extractCssValues(inlineStyles, "border-radius").slice(0, 8);
-  const shadows = extractCssValues(inlineStyles, "box-shadow").slice(0, 6);
-  const borders = extractCssValues(inlineStyles, "border").slice(0, 6);
-  const palette = extractHexColors(inlineStyles).slice(0, 14);
-  const cssVariables = extractCssVariables(inlineStyles);
+  const radii = extractCssValues(inlineStyles, "border-radius")
+    .map((value) => isVarUnresolved(value) ? resolveCssVarRef(value, varMap) : value)
+    .filter((value) => !isVarUnresolved(value))
+    .slice(0, 8);
+  const shadows = extractCssValues(inlineStyles, "box-shadow")
+    .map((value) => isVarUnresolved(value) ? resolveCssVarRef(value, varMap) : value)
+    .filter((value) => !isVarUnresolved(value))
+    .slice(0, 6);
+  const borders = extractCssValues(inlineStyles, "border")
+    .map((value) => isVarUnresolved(value) ? resolveCssVarRef(value, varMap) : value)
+    .filter((value) => !isVarUnresolved(value))
+    .slice(0, 6);
+  const paletteRaw = extractHexColors(inlineStyles).slice(0, 24);
+  const palette = paletteRaw.filter((hex) => !isFrameworkColor(hex, framework)).slice(0, 14);
+  const paletteSubtracted = paletteRaw.length - palette.length;
+  // Drop framework-prefix custom properties from the surfaced css var snapshot.
+  // The user sees only brand-distinct custom properties.
+  const cssVariablesAll = extractCssVariables(inlineStyles);
+  const frameworkVarPrefixes = framework ? FRAMEWORK_DEFAULTS[framework].varPrefixes : [];
+  const cssVariables: Record<string, string> = {};
+  for (const [name, value] of Object.entries(cssVariablesAll)) {
+    if (frameworkVarPrefixes.some((prefix) => name.startsWith(prefix))) continue;
+    cssVariables[name] = value;
+  }
   const tokenColors = palette.slice(0, 8).map((hex, index) => ({
     name: index === 0 ? "primary" : index === 1 ? "secondary" : `accent-${index}`,
     value: hex,
     role: index === 0 ? "primary" : index === 1 ? "secondary" : "accent"
   }));
-  const tailwindThemePartial = palette.length ? `// tailwind palette (top ${palette.length})\ncolors: {\n${palette.map((hex, index) => `  brand${index + 1}: "${hex}"`).join(",\n")}\n}` : "";
+  const tailwindThemePartial = palette.length ? `// tailwind palette (top ${palette.length}, framework defaults subtracted)\ncolors: {\n${palette.map((hex, index) => `  brand${index + 1}: "${hex}"`).join(",\n")}\n}` : "";
   const tokensCss = Object.entries(cssVariables).slice(0, 40).map(([name, value]) => `${name}: ${value};`).join("\n");
+  // Honest confidence: based on signals that survived subtraction.
+  // 0 if the entire token set is framework defaults.
+  let signals = 0;
+  if (palette.length >= 2) signals += 1;
+  if (fontFamilies.length >= 1) signals += 1;
+  if (Object.keys(cssVariables).length >= 1) signals += 0.5;
+  if (spacing.length >= 3) signals += 0.5;
+  if (radii.length >= 1) signals += 0.5;
+  const identityConfidence = Math.min(1, Number((signals / 3).toFixed(2)));
   return {
     identity: {
       name: undefined,
       domain: target.hostname,
       description: undefined,
-      confidence: palette.length >= 4 ? 0.6 : 0.3
+      confidence: identityConfidence
     },
     tokens: {
       colors: tokenColors,
@@ -3295,14 +3467,15 @@ async function buildDesignSystem(input: { html: string; target: URL; css?: strin
     components: [],
     assets: [],
     motion: [],
+    ...(framework ? { framework: { name: framework, defaultsSubtracted: paletteSubtracted + fontFamiliesSubtracted } } : {}),
     exports: {
       figmaTokens: JSON.stringify({ colors: palette, fonts: fontFamilies }, null, 2),
       styleDictionary: JSON.stringify({ color: Object.fromEntries(palette.map((hex, index) => [`brand-${index + 1}`, { value: hex }])) }, null, 2),
       tailwindTheme: tailwindThemePartial,
       tokensCss,
-      webBrandKit: `Domain: ${target.hostname}\nColors: ${palette.slice(0, 6).join(", ")}\nFonts: ${fontFamilies.slice(0, 4).join(", ")}`,
-      videoBrandKit: `Primary: ${palette[0] ?? "n/a"}\nSecondary: ${palette[1] ?? "n/a"}`,
-      markdown: `# Design tokens\n\n**Domain:** ${target.hostname}\n\n**Palette:** ${palette.slice(0, 8).join(", ")}\n\n**Fonts:** ${fontFamilies.slice(0, 4).join(", ")}`,
+      webBrandKit: `Domain: ${target.hostname}\nColors: ${palette.slice(0, 6).join(", ") || "(none — framework defaults only)"}\nFonts: ${fontFamilies.slice(0, 4).join(", ") || "(none — framework defaults only)"}`,
+      videoBrandKit: palette.length ? `Primary: ${palette[0]}\nSecondary: ${palette[1] ?? "n/a"}` : "Brand colors not detected (framework defaults only)",
+      markdown: `# Design tokens\n\n**Domain:** ${target.hostname}\n${framework ? `**Framework:** ${framework} — default tokens filtered\n` : ""}\n**Palette:** ${palette.slice(0, 8).join(", ") || "(none — framework defaults only)"}\n\n**Fonts:** ${fontFamilies.slice(0, 4).join(", ") || "(none — framework defaults only)"}`,
       rawJson: ""
     }
   };
