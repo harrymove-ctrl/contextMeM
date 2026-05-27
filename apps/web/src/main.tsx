@@ -562,7 +562,8 @@ function ContextMemExperience() {
   const runNetwork = "mainnet";
   const hasMemWalDelegate = Boolean(me.authenticated && me.account?.hasDelegateKey);
   const canBuild = Boolean(hasMemWalDelegate);
-  const canImportSdkCredentials = isLocalApiBase(API_BASE);
+  const canImportSdkCredentials = true;
+  const isHostedApiBase = !isLocalApiBase(API_BASE);
   const quotaLabel = me.authenticated ? (me.quota.unlimited ? "full" : `${me.quota.remaining}/${me.quota.limit}`) : "import";
   const primaryActionLabel = busy ? "Running" : hasMemWalDelegate ? "Build context" : "Import credentials";
   const compactPrimaryActionLabel = busy ? "Running" : hasMemWalDelegate ? "Build" : "Import";
@@ -665,6 +666,28 @@ function ContextMemExperience() {
   }
 
   async function loadMe(token = sessionToken) {
+    if (isHostedApiBase) {
+      const stored = readHostedDelegate();
+      if (stored) {
+        setMe({
+          authenticated: true,
+          account: {
+            id: `hosted:${stored.memwalAccountId.slice(0, 12)}`,
+            ownerAddress: stored.memwalAccountId,
+            provider: "unknown",
+            memwalAccountId: stored.memwalAccountId,
+            hasDelegateKey: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          quota: { limit: 0, used: 0, remaining: 0, unlimited: true },
+          access: { canPreview: true, canRun: true, reason: "hosted client-side delegate" }
+        });
+        return;
+      }
+      setMe(anonymousMe);
+      return;
+    }
     try {
       const response = await fetch(`${API_BASE}/api/me`, { headers: authHeaders(token) });
       if (!response.ok) throw new Error(await readResponseError(response));
@@ -683,6 +706,7 @@ function ContextMemExperience() {
 
   function logout() {
     window.localStorage.removeItem("contextmem.session");
+    window.localStorage.removeItem("contextmem.hostedDelegate");
     setSessionToken("");
     setMe(anonymousMe);
     setRun(null);
@@ -729,12 +753,47 @@ function ContextMemExperience() {
   }
 
   async function importDelegate() {
-    if (!canImportSdkCredentials) {
-      const message = "Hosted demo mode does not accept delegate private keys. Use public preview here, or run the local ContextMeM API for full MemWal SDK import.";
-      setDelegateKey("");
-      setError(null);
-      setAuthHint(message);
+    const accountId = delegateAccountId.trim();
+    const key = delegateKey.trim();
+    if (!accountId || key.length < 12) {
+      const message = "Paste both your MemWal account ID and a delegate private key (12+ chars).";
+      setError(message);
       setMemwalNotice({ tone: "warning", message });
+      return;
+    }
+    if (isHostedApiBase) {
+      try {
+        window.localStorage.setItem(
+          "contextmem.hostedDelegate",
+          JSON.stringify({ memwalAccountId: accountId, delegateKey: key })
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Could not persist delegate to browser storage.";
+        setError(message);
+        setMemwalNotice({ tone: "warning", message });
+        return;
+      }
+      setMe({
+        authenticated: true,
+        account: {
+          id: `hosted:${accountId.slice(0, 12)}`,
+          ownerAddress: accountId,
+          provider: "unknown",
+          memwalAccountId: accountId,
+          hasDelegateKey: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        quota: { limit: 0, used: 0, remaining: 0, unlimited: true },
+        access: { canPreview: true, canRun: true, reason: "hosted client-side delegate" }
+      });
+      setDelegateAccountId("");
+      setDelegateKey("");
+      setAuthHint("MemWal delegate stored in this browser only. It never leaves your device.");
+      setMemwalNotice({
+        tone: "success",
+        message: "Delegate stored locally in your browser. It is sent per-request as an MCP header; the public Worker does not persist it."
+      });
       return;
     }
     setAuthBusy(true);
@@ -743,7 +802,7 @@ function ContextMemExperience() {
       const response = await fetch(`${API_BASE}/api/memwal/import-delegate`, {
         method: "POST",
         headers: sessionToken ? authHeaders(sessionToken, { "content-type": "application/json" }) : { "content-type": "application/json" },
-        body: JSON.stringify({ memwalAccountId: delegateAccountId.trim(), delegateKey: delegateKey.trim() })
+        body: JSON.stringify({ memwalAccountId: accountId, delegateKey: key })
       });
       if (!response.ok) throw new Error(await readResponseError(response));
       const result = (await response.json()) as DelegateImportResponse;
@@ -2244,25 +2303,21 @@ function SettingsAppPage({
 
       <section className="settingsCard">
         <div className="sectionHead">
-          <h2>{hasMemWalDelegate ? "Rotate SDK credentials" : canImportSdkCredentials ? sdkImportTitle : "Hosted demo mode"}</h2>
-          <span>{canImportSdkCredentials ? "encrypted server-side" : "public site"}</span>
+          <h2>{hasMemWalDelegate ? "Rotate SDK credentials" : sdkImportTitle}</h2>
+          <span>{isLocalApiBase(API_BASE) ? "encrypted server-side" : "stored in this browser only"}</span>
         </div>
         <p className="settingsCopy">
           {hasMemWalDelegate
             ? "Import again only if you rotate the delegate key in MemWal."
-            : canImportSdkCredentials
+            : isLocalApiBase(API_BASE)
               ? sdkImportBody
-              : "contextmem.pages.dev runs public demo/share flows. Full private SDK import is only enabled when the web app points at the local Fastify API."}
+              : "Paste your MemWal account ID and delegate private key. On the public site the delegate is stored in this browser's localStorage only and sent as a per-request MCP header — the Worker never persists it."}
         </p>
         <a className="sdkSetupLink" href={memwalDashboardUrl} target="_blank" rel="noreferrer">
           <ExternalLink size={13} />
           Open MemWal dashboard to create or copy credentials
         </a>
-        {canImportSdkCredentials ? (
-          <SdkCredentialImportForm authenticated={me.authenticated} authBusy={authBusy} delegateAccountId={delegateAccountId} delegateKey={delegateKey} setDelegateAccountId={setDelegateAccountId} setDelegateKey={setDelegateKey} onImport={onImport} />
-        ) : (
-          <HostedCredentialGate notice={notice} previewBusy={previewBusy} onPreviewDemo={onPreviewDemo} />
-        )}
+        <SdkCredentialImportForm authenticated={me.authenticated} authBusy={authBusy} delegateAccountId={delegateAccountId} delegateKey={delegateKey} setDelegateAccountId={setDelegateAccountId} setDelegateKey={setDelegateKey} onImport={onImport} />
       </section>
 
       <AccountSecretCard />
@@ -2648,6 +2703,9 @@ function LockedPreview({
           onImport={onImport}
           dashboardUrl={memwalDashboardUrl}
           noticeSlot={<MemWalNoticeCard notice={notice} centered />}
+          description={isLocalApiBase(API_BASE)
+            ? "Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted server-side and unlocks verified Walrus context."
+            : "Paste your MemWal account ID and delegate private key. On the public site they are stored in this browser only and sent as a per-request MCP header — the Worker never persists them."}
         />
       ) : (
         <HostedCredentialGate notice={notice} previewBusy={previewBusy} onPreviewDemo={onPreviewDemo} panel target={target} setTarget={setTarget} />
@@ -4973,7 +5031,8 @@ function artifactFileUrl(runId: string | undefined, artifactPath: string, access
 }
 
 function authHeaders(token: string, base: Record<string, string> = {}): Record<string, string> {
-  return token ? { ...base, authorization: `Bearer ${token}` } : base;
+  const merged = { ...base, ...hostedDelegateHeaders() };
+  return token ? { ...merged, authorization: `Bearer ${token}` } : merged;
 }
 
 function isLocalApiBase(value: string): boolean {
@@ -4983,6 +5042,31 @@ function isLocalApiBase(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function readHostedDelegate(): { memwalAccountId: string; delegateKey: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem("contextmem.hostedDelegate");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { memwalAccountId?: unknown; delegateKey?: unknown };
+    const accountId = typeof parsed.memwalAccountId === "string" ? parsed.memwalAccountId : "";
+    const key = typeof parsed.delegateKey === "string" ? parsed.delegateKey : "";
+    if (!accountId || key.length < 12) return null;
+    return { memwalAccountId: accountId, delegateKey: key };
+  } catch {
+    return null;
+  }
+}
+
+function hostedDelegateHeaders(): Record<string, string> {
+  const stored = readHostedDelegate();
+  if (!stored) return {};
+  const bearer = stored.delegateKey.startsWith("Bearer ") ? stored.delegateKey : `Bearer ${stored.delegateKey}`;
+  return {
+    "x-memwal-authorization": bearer,
+    "x-memwal-account-id": stored.memwalAccountId
+  };
 }
 
 function isUnavailableMessage(message: string): boolean {

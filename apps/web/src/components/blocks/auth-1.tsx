@@ -14,6 +14,7 @@ type Auth1Props = {
   noticeSlot?: ReactNode;
   variant?: "compact" | "panel";
   onBack?: () => void;
+  description?: string;
 };
 
 const proofCards = [
@@ -50,7 +51,8 @@ export function Auth1({
   dashboardUrl,
   noticeSlot,
   variant = "panel",
-  onBack
+  onBack,
+  description
 }: Auth1Props) {
   const [showKey, setShowKey] = useState(false);
   const id = useId();
@@ -77,7 +79,7 @@ export function Auth1({
             <span>{authenticated ? "Delegate key required" : "SDK credentials required"}</span>
             <h2>{compact ? "Import SDK credentials" : "Import MemWal SDK credentials"}</h2>
             <p>
-              Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted and unlocks verified Walrus context.
+              {description ?? "Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted and unlocks verified Walrus context."}
             </p>
           </motion.div>
 
