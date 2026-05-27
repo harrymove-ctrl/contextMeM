@@ -826,6 +826,10 @@ function ContextMemExperience() {
       setError("Import MemWal SDK credentials before building context.");
       return;
     }
+    if (isHostedApiBase) {
+      await startRunHosted();
+      return;
+    }
     setBusy(true);
     setError(null);
     setRun(null);
@@ -858,6 +862,77 @@ function ContextMemExperience() {
         setActiveTab("Walrus Resources");
       }
       await Promise.allSettled([refreshHistory(), loadMe(sessionToken)]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startRunHosted() {
+    const requestedTarget = target.trim();
+    if (!requestedTarget) {
+      setError("Paste a Walrus Site URL, Walrus object ID, or public web URL.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setRun(null);
+    setArtifact(null);
+    try {
+      const createRes = await fetch(`${API_BASE}/api/demo/extractions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ target: requestedTarget })
+      });
+      if (!createRes.ok) throw new Error(await readResponseError(createRes));
+      let body = (await createRes.json()) as { job: HostedExtractionJob };
+      const jobId = body.job.id;
+      for (let attempt = 0; attempt < 60 && (body.job.status === "queued" || body.job.status === "running"); attempt += 1) {
+        await delay(900);
+        const poll = await fetch(`${API_BASE}/api/demo/extractions/${encodeURIComponent(jobId)}`);
+        if (!poll.ok) throw new Error(await readResponseError(poll));
+        const next = (await poll.json()) as { job?: HostedExtractionJob } | HostedExtractionJob;
+        body = { job: ("job" in next ? next.job : next) as HostedExtractionJob };
+      }
+      if (body.job.status !== "completed") {
+        throw new Error(body.job.error ?? "Hosted context build did not finish in time.");
+      }
+      const result = (body.job.result ?? {}) as { share?: { id?: string } };
+      const shareId = result.share?.id;
+      if (!shareId) throw new Error("Hosted build completed without a share artifact.");
+      const [shareResp, artifactResp] = await Promise.all([
+        fetch(`${API_BASE}/api/share-links/${encodeURIComponent(shareId)}`),
+        fetch(`${API_BASE}/api/share-links/${encodeURIComponent(shareId)}/artifacts`)
+      ]);
+      if (!shareResp.ok) throw new Error(await readResponseError(shareResp));
+      const shareData = (await shareResp.json()) as { manifest?: ArtifactManifest };
+      const manifest = shareData.manifest;
+      if (manifest) {
+        setArtifact(manifest);
+        setActiveTab(manifest.designSystem ? "Design System" : manifest.walrus ? "Walrus Resources" : "Markdown");
+        setRun({
+          manifest: {
+            runId: body.job.id,
+            target: body.job.target,
+            namespace: body.job.namespace,
+            artifactDir: `share/${shareId}`,
+            mode: body.job.target.includes(".wal.app") ? "walrus" : "web",
+            status: "completed",
+            pages: manifest.pages?.length ?? 0,
+            images: manifest.images?.length ?? 0,
+            resources: manifest.walrus?.resources?.length ?? 0,
+            errors: [],
+            updatedAt: new Date().toISOString(),
+            walrus: manifest.walrus
+          } as unknown as RunResponse["manifest"]
+        });
+      }
+      setAuthHint(`Hosted build complete. Public share: /share/${shareId}`);
+      if (artifactResp.ok) {
+        // artifact list refreshed - not used directly, the manifest already populates tabs
+        void artifactResp;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -900,6 +975,13 @@ function ContextMemExperience() {
     if (!run) return;
     if (!hasMemWalDelegate) {
       setError("Import MemWal SDK credentials before remembering context.");
+      return;
+    }
+    if (isHostedApiBase) {
+      setMemwalNotice({
+        tone: "info",
+        message: "Remember/recall round-trip needs the local ContextMeM API. On the public site the share page already exposes verified context via the hosted MCP namespace shown in the result."
+      });
       return;
     }
     setBusy(true);
