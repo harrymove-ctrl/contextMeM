@@ -483,12 +483,8 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     const suffix = decodeURIComponent(url.pathname.slice("/api/share-links/".length));
     if (suffix.endsWith("/og.svg")) return getShareLinkOgSvg(request, env, suffix.slice(0, -"/og.svg".length));
     if (suffix.endsWith("/artifacts")) return getShareLinkArtifacts(request, env, suffix.slice(0, -"/artifacts".length));
-    const fileMarker = "/file?";
-    const fileIndex = suffix.indexOf(fileMarker);
-    if (fileIndex > 0) {
-      const shareId = suffix.slice(0, fileIndex);
-      const fileQuery = new URLSearchParams(suffix.slice(fileIndex + fileMarker.length));
-      return getShareLinkFile(request, env, shareId, fileQuery.get("path") ?? "");
+    if (suffix.endsWith("/file")) {
+      return getShareLinkFile(request, env, suffix.slice(0, -"/file".length), url.searchParams.get("path") ?? "");
     }
     return getShareLink(request, env, suffix);
   }
