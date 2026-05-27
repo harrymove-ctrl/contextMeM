@@ -1035,6 +1035,7 @@ function ContextMemExperience() {
           <MemoryAppPage artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={sessionToken} onRemember={remember} busy={busy} />
         )}
       />
+      <Route path="/app/compare" element={renderShell("Compare", "Pick two runs and review brand, design tokens, and key facts side-by-side.", <CompareAppPage history={history} authToken={sessionToken} />)} />
       <Route path="/app/publish" element={renderShell("Publish", "Check readiness and copy the commands needed to publish the context package.", <PublishPanel run={run} authToken={sessionToken} />)} />
       <Route path="/app/namespaces" element={renderShell("Namespaces", "Manage hosted ContextMCP namespaces, tokens, public directory entries, and Cloudflare extraction jobs.", <NamespacesAppPage authToken={sessionToken} />)} />
       <Route
@@ -1073,6 +1074,7 @@ const appNavItems = [
   { to: "/app/artifacts", label: "Artifacts", icon: FolderOpen },
   { to: "/app/runs", label: "Runs", icon: History },
   { to: "/app/memory", label: "Memory", icon: Brain },
+  { to: "/app/compare", label: "Compare", icon: GitCompare },
   { to: "/app/publish", label: "Publish", icon: LayoutGrid },
   { to: "/app/namespaces", label: "Namespaces", icon: Database },
   { to: "/app/settings", label: "Settings", icon: Settings }
@@ -2866,6 +2868,169 @@ function ArtifactViewerPanel({ run, authToken }: { run: RunResponse | null; auth
   );
 }
 
+function CompareAppPage({ history, authToken }: { history: RunHistoryItem[]; authToken: string }) {
+  const [leftRunId, setLeftRunId] = useState<string>("");
+  const [rightRunId, setRightRunId] = useState<string>("");
+  const [leftManifest, setLeftManifest] = useState<ArtifactManifest | null>(null);
+  const [rightManifest, setRightManifest] = useState<ArtifactManifest | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"left" | "right" | null>(null);
+
+  useEffect(() => {
+    if (history.length >= 2 && !leftRunId && !rightRunId) {
+      const first = history[0];
+      const second = history[1];
+      if (first) setLeftRunId(first.runId);
+      if (second) setRightRunId(second.runId);
+    }
+  }, [history, leftRunId, rightRunId]);
+
+  async function loadManifest(runId: string, side: "left" | "right") {
+    if (!runId) {
+      if (side === "left") setLeftManifest(null);
+      else setRightManifest(null);
+      return;
+    }
+    setBusy(side);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/runs/${encodeURIComponent(runId)}/artifact-file?path=context/manifest.json`, {
+        headers: authHeaders(authToken)
+      });
+      if (!response.ok) throw new Error(await readResponseError(response));
+      const body = await response.json() as { content?: string; encoding?: string };
+      const text = body.content ?? "";
+      const manifest = JSON.parse(text) as ArtifactManifest;
+      if (side === "left") setLeftManifest(manifest);
+      else setRightManifest(manifest);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  useEffect(() => {
+    void loadManifest(leftRunId, "left");
+  }, [leftRunId]);
+  useEffect(() => {
+    void loadManifest(rightRunId, "right");
+  }, [rightRunId]);
+
+  return (
+    <section className="comparePage">
+      <header className="compareHead">
+        <label>
+          <span>Left run</span>
+          <select value={leftRunId} onChange={(event) => setLeftRunId(event.target.value)}>
+            <option value="">— pick a run —</option>
+            {history.map((item) => (
+              <option key={item.runId} value={item.runId}>
+                {compactTarget(item.target)} · {item.mode} · {new Date(item.updatedAt).toLocaleDateString()}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Right run</span>
+          <select value={rightRunId} onChange={(event) => setRightRunId(event.target.value)}>
+            <option value="">— pick a run —</option>
+            {history.map((item) => (
+              <option key={item.runId} value={item.runId}>
+                {compactTarget(item.target)} · {item.mode} · {new Date(item.updatedAt).toLocaleDateString()}
+              </option>
+            ))}
+          </select>
+        </label>
+      </header>
+
+      {error ? (
+        <div className="errorState panel">
+          <p>{error}</p>
+          <FailureExplainer message={error} />
+        </div>
+      ) : null}
+
+      {busy ? <div className="subEmpty">Loading manifest…</div> : null}
+
+      <div className="compareGrid">
+        <CompareColumn label="Left" manifest={leftManifest} />
+        <CompareColumn label="Right" manifest={rightManifest} />
+      </div>
+    </section>
+  );
+}
+
+function CompareColumn({ label, manifest }: { label: string; manifest: ArtifactManifest | null }) {
+  if (!manifest) {
+    return <div className="compareColumn panel subEmpty">No run selected for {label.toLowerCase()}.</div>;
+  }
+  const colors = manifest.brand?.colors?.slice(0, 8) ?? manifest.styleguide?.colors.palette.slice(0, 8) ?? [];
+  const fonts = manifest.brand?.fonts ?? manifest.styleguide?.typography.fontFamilies ?? [];
+  const pages = manifest.pages.slice(0, 6);
+  const designColors = manifest.designSystem?.tokens.colors.slice(0, 8) ?? [];
+  return (
+    <article className="compareColumn panel">
+      <header>
+        <span>{label}</span>
+        <strong>{manifest.brand?.name ?? manifest.brand?.domain ?? compactTarget(manifest.target)}</strong>
+        <code>{compactTarget(manifest.target)}</code>
+      </header>
+
+      <section className="compareSection">
+        <h3>Brand</h3>
+        {manifest.brand?.description ? <p>{manifest.brand.description}</p> : <p className="subEmpty">No brand description extracted.</p>}
+        <div className="comparePalette">
+          {colors.length ? colors.map((color) => (
+            <span key={color} style={{ background: color }} title={color}>
+              <small>{color}</small>
+            </span>
+          )) : <span className="subEmpty">No palette</span>}
+        </div>
+        <div className="compareFonts">
+          {fonts.slice(0, 4).map((font) => <code key={font}>{font}</code>)}
+        </div>
+      </section>
+
+      <section className="compareSection">
+        <h3>Design tokens</h3>
+        {designColors.length ? (
+          <div className="comparePalette">
+            {designColors.map((token) => (
+              <span key={`${token.name}-${token.value}`} style={{ background: token.value }} title={`${token.name} → ${token.value}`}>
+                <small>{token.name}</small>
+              </span>
+            ))}
+          </div>
+        ) : <p className="subEmpty">No design system extracted.</p>}
+      </section>
+
+      <section className="compareSection">
+        <h3>Pages ({manifest.pages.length})</h3>
+        <ul className="compareList">
+          {pages.map((page) => (
+            <li key={page.url}>
+              <strong>{page.title ?? page.routePath ?? page.url}</strong>
+              <span>{page.routePath ?? page.url}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {manifest.walrus ? (
+        <section className="compareSection">
+          <h3>Walrus</h3>
+          <p>
+            <code>{manifest.walrus.site.siteObjectId.slice(0, 18)}…</code>
+            {manifest.walrus.site.suinsName ? <> · {manifest.walrus.site.suinsName}</> : null}
+          </p>
+          <small>{manifest.walrus.resources.length} resources verified</small>
+        </section>
+      ) : null}
+    </article>
+  );
+}
+
 function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: string }) {
   const [readiness, setReadiness] = useState<PublishReadiness | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -3811,32 +3976,85 @@ function DiffSummary({ diff }: { diff: SiteSnapshotDiff }) {
 }
 
 function VisualDiffPanel({ diff, run, authToken }: { diff: VisualDiff; run: RunResponse; authToken: string }) {
-  const changedPages = diff.pages.filter((page) => page.status !== "unchanged").slice(0, 4);
+  const [showAll, setShowAll] = useState(false);
+  const changedPages = diff.pages.filter((page) => page.status !== "unchanged");
+  const visible = showAll ? changedPages : changedPages.slice(0, 6);
   if (!changedPages.length) return <div className="memoryEmptyResult">No changed page screenshots.</div>;
+  const counts = changedPages.reduce(
+    (acc, page) => {
+      acc[page.status] = (acc[page.status] ?? 0) + 1;
+      return acc;
+    },
+    { added: 0, removed: 0, changed: 0, unchanged: 0 } as Record<VisualDiff["pages"][number]["status"], number>
+  );
   return (
     <div className="visualDiffList">
-      {changedPages.map((page) => (
+      <header className="visualDiffSummary">
+        <span className="visualBadge added">+{counts.added} new</span>
+        <span className="visualBadge removed">-{counts.removed} removed</span>
+        <span className="visualBadge changed">~{counts.changed} changed</span>
+        <small>Generated {new Date(diff.generatedAt).toLocaleString()}</small>
+      </header>
+      {visible.map((page) => (
         <article key={page.routePath} className={`visualDiffCard ${page.status}`}>
           <div className="visualDiffHead">
             <strong>{page.routePath}</strong>
-            <span>{page.status}</span>
+            <span className={`visualBadge ${page.status}`}>{page.status === "added" ? "new page" : page.status}</span>
           </div>
           <div className="visualPair">
-            {page.beforeScreenshot ? <img src={artifactFileUrl(diff.compareRunId, page.beforeScreenshot, authToken)} alt={`${page.routePath} before`} /> : <div>new</div>}
-            {page.afterScreenshot ? <img src={artifactFileUrl(run.manifest.runId, page.afterScreenshot, authToken)} alt={`${page.routePath} after`} /> : <div>removed</div>}
+            <figure>
+              <figcaption>before</figcaption>
+              {page.beforeScreenshot ? (
+                <img src={artifactFileUrl(diff.compareRunId, page.beforeScreenshot, authToken)} alt={`${page.routePath} before`} />
+              ) : (
+                <div className="visualPlaceholder">This page did not exist in the prior run.</div>
+              )}
+            </figure>
+            <figure className="visualAfter">
+              <figcaption>after</figcaption>
+              {page.afterScreenshot ? (
+                <div className="visualAfterCanvas">
+                  <img src={artifactFileUrl(run.manifest.runId, page.afterScreenshot, authToken)} alt={`${page.routePath} after`} />
+                  {page.boxes?.length ? (
+                    <svg className="visualBoxes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                      {page.boxes.map((box, index) => (
+                        <rect
+                          key={`${box.label}-${index}`}
+                          x={box.x}
+                          y={box.y}
+                          width={box.width}
+                          height={box.height}
+                          className={`visualBox ${box.tone}`}
+                        />
+                      ))}
+                    </svg>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="visualPlaceholder">This page was removed in the latest run.</div>
+              )}
+            </figure>
           </div>
-          {page.markdownDiff ? (
+          {page.markdownDiff && (page.markdownDiff.added.length || page.markdownDiff.removed.length) ? (
             <div className="markdownMiniDiff">
-              {page.markdownDiff.added.slice(0, 3).map((line) => (
-                <p key={`add-${line}`}>+ {line}</p>
+              {page.markdownDiff.added.slice(0, 8).map((line, index) => (
+                <p key={`add-${index}`}>+ {line}</p>
               ))}
-              {page.markdownDiff.removed.slice(0, 3).map((line) => (
-                <p key={`remove-${line}`} className="removed">- {line}</p>
+              {page.markdownDiff.removed.slice(0, 8).map((line, index) => (
+                <p key={`remove-${index}`} className="removed">- {line}</p>
               ))}
+              {page.markdownDiff.added.length + page.markdownDiff.removed.length > 16 ? (
+                <small>… {(page.markdownDiff.added.length - 8) + (page.markdownDiff.removed.length - 8)} more lines</small>
+              ) : null}
             </div>
           ) : null}
         </article>
       ))}
+      {changedPages.length > 6 ? (
+        <button type="button" className="visualDiffMore" onClick={() => setShowAll((value) => !value)}>
+          {showAll ? "Show fewer pages" : `Show ${changedPages.length - 6} more page${changedPages.length - 6 === 1 ? "" : "s"}`}
+        </button>
+      ) : null}
     </div>
   );
 }
