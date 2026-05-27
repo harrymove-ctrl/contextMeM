@@ -204,8 +204,16 @@ type ArtifactFileRecord = {
   downloadable: boolean;
 };
 
+type AiDatapoint = {
+  name: string;
+  description: string;
+  type: "text" | "number" | "boolean" | "list" | "object";
+  example?: unknown;
+};
+
 type AiQueryResult = {
   target: string;
+  schema?: AiDatapoint[];
   data: Record<string, unknown>;
   confidence: number;
   usedProvider: string;
@@ -514,6 +522,8 @@ function App() {
 function ContextMemExperience() {
   const navigate = useNavigate();
   const [target, setTarget] = useState(launchOptions.target);
+  const [customNamespace, setCustomNamespace] = useState("");
+  const [customDisplayName, setCustomDisplayName] = useState("");
   const [mode, setMode] = useState<"auto" | "web" | "walrus">(launchOptions.mode);
   const [buildProfile, setBuildProfile] = useState<BuildProfile>("balanced");
   const [outputs, setOutputs] = useState<string[]>(buildProfileDefaults.balanced);
@@ -884,7 +894,11 @@ function ContextMemExperience() {
       const createRes = await fetch(`${API_BASE}/api/demo/extractions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ target: requestedTarget })
+        body: JSON.stringify({
+          target: requestedTarget,
+          ...(customNamespace.trim() ? { namespace: customNamespace.trim() } : {}),
+          ...(customDisplayName.trim() ? { displayName: customDisplayName.trim() } : {})
+        })
       });
       if (!createRes.ok) throw new Error(await readResponseError(createRes));
       let body = (await createRes.json()) as { job: HostedExtractionJob };
@@ -1126,11 +1140,17 @@ function ContextMemExperience() {
       history={history}
       refreshHistory={refreshHistory}
       authToken={sessionToken}
+      accountLabel={me.account?.memwalAccountId ?? me.account?.ownerAddress ?? ""}
       primaryActionLabel={primaryActionLabel}
       onStartRun={startRun}
       onRemember={remember}
       hasMemWalDelegate={hasMemWalDelegate}
       hostedBuildResult={hostedBuildResult}
+      customNamespace={customNamespace}
+      setCustomNamespace={setCustomNamespace}
+      customDisplayName={customDisplayName}
+      setCustomDisplayName={setCustomDisplayName}
+      isHostedApiBase={isHostedApiBase}
     />
   );
 
@@ -1196,7 +1216,7 @@ function ContextMemExperience() {
         element={renderShell(
           "Artifacts",
           "Browse generated markdown, manifests, screenshots, and file previews for the selected run.",
-          <ArtifactsAppPage stats={stats} run={run} artifact={artifact} authToken={sessionToken} setArtifact={setArtifact} />
+          <ArtifactsAppPage stats={stats} run={run} artifact={artifact} authToken={sessionToken} setArtifact={setArtifact} history={history} accountLabel={me.account?.memwalAccountId ?? me.account?.ownerAddress ?? ""} />
         )}
       />
       <Route
@@ -1241,6 +1261,7 @@ function ContextMemExperience() {
             onPreviewDemo={startDemoExtraction}
             showDevMemWalAuth={showDevMemWalAuth}
             onAttachLocalMemWal={attachLocalMemWal}
+            onLogout={logout}
           />
         )}
       />
@@ -2227,11 +2248,17 @@ function BuildConsolePage({
   history,
   refreshHistory,
   authToken,
+  accountLabel,
   primaryActionLabel,
   onStartRun,
   onRemember,
   hasMemWalDelegate,
-  hostedBuildResult
+  hostedBuildResult,
+  customNamespace,
+  setCustomNamespace,
+  customDisplayName,
+  setCustomDisplayName,
+  isHostedApiBase
 }: {
   target: string;
   setTarget: React.Dispatch<React.SetStateAction<string>>;
@@ -2252,11 +2279,17 @@ function BuildConsolePage({
   history: RunHistoryItem[];
   refreshHistory: () => Promise<void>;
   authToken: string;
+  accountLabel: string;
   primaryActionLabel: string;
   onStartRun: () => void;
   onRemember: () => void;
   hasMemWalDelegate: boolean;
   hostedBuildResult: { shareId: string; namespace: string; shareUrl: string; mcpUrl: string } | null;
+  customNamespace: string;
+  setCustomNamespace: React.Dispatch<React.SetStateAction<string>>;
+  customDisplayName: string;
+  setCustomDisplayName: React.Dispatch<React.SetStateAction<string>>;
+  isHostedApiBase: boolean;
 }) {
   const visibleTab = buildTabs.some(([label]) => label === activeTab) ? activeTab : "Markdown";
   const applyBuildProfile = (profile: BuildProfile) => {
@@ -2308,6 +2341,34 @@ function BuildConsolePage({
             ))}
           </div>
         </div>
+
+        {isHostedApiBase ? (
+          <details className="field customNamespaceField">
+            <summary>Namespace · custom (optional)</summary>
+            <div className="namespaceFields">
+              <label>
+                <span>Namespace slug</span>
+                <input
+                  type="text"
+                  value={customNamespace}
+                  onChange={(event) => setCustomNamespace(event.target.value.replace(/[^a-zA-Z0-9_:.-]/g, ""))}
+                  placeholder="seal-docs (becomes demo:seal-docs)"
+                  spellCheck={false}
+                />
+              </label>
+              <label>
+                <span>Display name</span>
+                <input
+                  type="text"
+                  value={customDisplayName}
+                  onChange={(event) => setCustomDisplayName(event.target.value)}
+                  placeholder="Seal Docs (shown on share page)"
+                />
+              </label>
+              <small>Leave blank to auto-generate <code>demo:&lt;hostname&gt;:&lt;random&gt;</code>.</small>
+            </div>
+          </details>
+        ) : null}
 
         <div className="field">
           <span>Outputs</span>
@@ -2366,13 +2427,29 @@ function BuildConsolePage({
           ))}
         </div>
 
-        <ResultPane tab={visibleTab} artifact={artifact} run={run} busy={busy} error={error?.startsWith("MemWal") ? null : error} setArtifact={setArtifact} history={history} refreshHistory={refreshHistory} authToken={authToken} />
+        <ResultPane tab={visibleTab} artifact={artifact} run={run} busy={busy} error={error?.startsWith("MemWal") ? null : error} setArtifact={setArtifact} history={history} refreshHistory={refreshHistory} authToken={authToken} accountLabel={accountLabel} />
       </section>
     </section>
   );
 }
 
-function ArtifactsAppPage({ stats, run, artifact, authToken, setArtifact }: { stats: MetricItem[]; run: RunResponse | null; artifact: ArtifactManifest | null; authToken: string; setArtifact: React.Dispatch<React.SetStateAction<ArtifactManifest | null>> }) {
+function ArtifactsAppPage({
+  stats,
+  run,
+  artifact,
+  authToken,
+  setArtifact,
+  history,
+  accountLabel
+}: {
+  stats: MetricItem[];
+  run: RunResponse | null;
+  artifact: ArtifactManifest | null;
+  authToken: string;
+  setArtifact: React.Dispatch<React.SetStateAction<ArtifactManifest | null>>;
+  history: RunHistoryItem[];
+  accountLabel: string;
+}) {
   return (
     <section className="appPanelStack">
       <div className="stats">
@@ -2387,7 +2464,7 @@ function ArtifactsAppPage({ stats, run, artifact, authToken, setArtifact }: { st
           );
         })}
       </div>
-      {artifact && run ? <AiQueryPanel artifact={artifact} run={run} setArtifact={setArtifact} authToken={authToken} /> : null}
+      {artifact && run ? <AiQueryPanel artifact={artifact} run={run} setArtifact={setArtifact} authToken={authToken} history={history} accountLabel={accountLabel} /> : null}
       {artifact ? <ArtifactViewerPanel run={run} authToken={authToken} /> : <div className="panel subEmpty">No artifact package selected yet. Build or reopen a run to inspect generated files.</div>}
     </section>
   );
@@ -2468,7 +2545,8 @@ function SettingsAppPage({
   previewBusy,
   onPreviewDemo,
   showDevMemWalAuth,
-  onAttachLocalMemWal
+  onAttachLocalMemWal,
+  onLogout
 }: {
   me: AccountMe;
   quotaLabel: string;
@@ -2485,6 +2563,7 @@ function SettingsAppPage({
   onPreviewDemo: () => void;
   showDevMemWalAuth: boolean;
   onAttachLocalMemWal: () => void;
+  onLogout: () => void;
 }) {
   return (
     <section className="settingsGrid">
@@ -2507,6 +2586,16 @@ function SettingsAppPage({
           </div>
         </div>
         {hasMemWalDelegate ? <SavedSdkCredentialStatus accountId={me.account?.memwalAccountId} /> : null}
+        <div className="settingsActionRow">
+          <button className="secondary danger" type="button" disabled={!me.authenticated} onClick={onLogout}>
+            <KeyRound size={15} />
+            Log out account
+          </button>
+          <Link className="settingsLinkButton" to="/app/namespaces">
+            <Database size={15} />
+            Manage namespaces
+          </Link>
+        </div>
         <MemWalNoticeCard notice={notice} />
       </section>
 
@@ -2529,6 +2618,8 @@ function SettingsAppPage({
         <SdkCredentialImportForm authenticated={me.authenticated} authBusy={authBusy} delegateAccountId={delegateAccountId} delegateKey={delegateKey} setDelegateAccountId={setDelegateAccountId} setDelegateKey={setDelegateKey} onImport={onImport} />
       </section>
 
+      <SettingsUsageGuide authenticated={me.authenticated} onLogout={onLogout} />
+
       {isLocalApiBase(API_BASE) ? <AccountSecretCard /> : null}
 
       {showDevMemWalAuth ? (
@@ -2543,6 +2634,43 @@ function SettingsAppPage({
           </button>
         </section>
       ) : null}
+    </section>
+  );
+}
+
+function SettingsUsageGuide({ authenticated, onLogout }: { authenticated: boolean; onLogout: () => void }) {
+  return (
+    <section className="settingsCard settingsUsageGuide">
+      <div className="sectionHead">
+        <h2>How to use this account</h2>
+        <span>logout · MCP · namespace name</span>
+      </div>
+      <div className="usageGuideGrid">
+        <article>
+          <strong>Log out</strong>
+          <p>Use this when you want to remove the MemWal delegate from this browser and clear the active run state.</p>
+          <button className="secondary danger" type="button" disabled={!authenticated} onClick={onLogout}>
+            <KeyRound size={14} />
+            Log out now
+          </button>
+        </article>
+        <article>
+          <strong>Use MCP</strong>
+          <p>Build or publish a namespace, open Namespaces, copy the MCP URL, then add it to Codex, Claude Desktop, Cursor, or any MCP client.</p>
+          <Link className="settingsLinkButton" to="/app/namespaces">
+            <Server size={14} />
+            Open Namespaces
+          </Link>
+        </article>
+        <article>
+          <strong>Set namespace name</strong>
+          <p>Namespace is the stable ID agents connect to. Display name is the friendly label shown in this UI and share pages.</p>
+          <Link className="settingsLinkButton" to="/app/publish">
+            <LayoutGrid size={14} />
+            Publish / name namespace
+          </Link>
+        </article>
+      </div>
     </section>
   );
 }
@@ -2599,7 +2727,8 @@ function ResultPane({
   setArtifact,
   history,
   refreshHistory,
-  authToken
+  authToken,
+  accountLabel
 }: {
   tab: string;
   artifact: ArtifactManifest | null;
@@ -2610,6 +2739,7 @@ function ResultPane({
   history: RunHistoryItem[];
   refreshHistory: () => Promise<void>;
   authToken: string;
+  accountLabel: string;
 }) {
   const runErrors = run?.manifest.errors.filter(Boolean) ?? [];
   const runFailure = run?.manifest.status === "failed" ? runErrors[0] ?? "Context build failed." : null;
@@ -2707,7 +2837,7 @@ function ResultPane({
 
   if (tab === "Brand") return <BrandPanel data={artifact.brand} />;
   if (tab === "Design System" || tab === "Styleguide") return <DesignSystemPanel data={artifact.designSystem} fallback={artifact.styleguide} run={run} authToken={authToken} />;
-  if (tab === "AI Query") return <AiQueryPanel artifact={artifact} run={run} setArtifact={setArtifact} authToken={authToken} />;
+  if (tab === "AI Query") return <AiQueryPanel artifact={artifact} run={run} setArtifact={setArtifact} authToken={authToken} history={history} accountLabel={accountLabel} />;
   if (tab === "Artifacts") return <ArtifactViewerPanel run={run} authToken={authToken} />;
   if (tab === "Walrus Resources") return <WalrusResourcesPanel data={artifact.walrus} />;
   if (tab === "Walrus History") return <WalrusHistoryPanel run={run} walrus={artifact.walrus} authToken={authToken} />;
@@ -2887,8 +3017,106 @@ function HostedBuildBanner({ result }: { result: { shareId: string; namespace: s
           {copied === "mcp" ? "Copied" : "Copy"}
         </button>
       </div>
+      <McpPlayground mcpUrl={result.mcpUrl} namespace={result.namespace} />
     </div>
   );
+}
+
+function McpPlayground({ mcpUrl, namespace }: { mcpUrl: string; namespace: string }) {
+  const [busy, setBusy] = useState<"tools" | "read" | null>(null);
+  const [output, setOutput] = useState<string>("");
+  const [readPath, setReadPath] = useState<string>("/site/index.md");
+
+  async function rpc(method: string, params: Record<string, unknown>) {
+    const response = await fetch(mcpUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        ...hostedDelegateHeaders()
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params })
+    });
+    return response.text();
+  }
+
+  async function listTools() {
+    setBusy("tools");
+    setOutput("");
+    try {
+      await rpc("initialize", {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "contextmem-playground", version: "0.1.0" }
+      });
+      const body = await rpc("tools/list", {});
+      setOutput(formatRpcResult(body));
+    } catch (err) {
+      setOutput(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function readArtifact() {
+    if (!readPath.trim()) return;
+    setBusy("read");
+    setOutput("");
+    try {
+      await rpc("initialize", {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "contextmem-playground", version: "0.1.0" }
+      });
+      const body = await rpc("tools/call", {
+        name: "contextmem_read_artifact",
+        arguments: { path: readPath.trim(), namespace }
+      });
+      setOutput(formatRpcResult(body));
+    } catch (err) {
+      setOutput(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="mcpPlayground">
+      <strong>Try this MCP endpoint</strong>
+      <div className="mcpPlaygroundActions">
+        <button type="button" onClick={() => void listTools()} disabled={busy !== null}>
+          {busy === "tools" ? "Listing…" : "tools/list"}
+        </button>
+        <input
+          type="text"
+          value={readPath}
+          onChange={(event) => setReadPath(event.target.value)}
+          placeholder="/site/index.md"
+          spellCheck={false}
+        />
+        <button type="button" onClick={() => void readArtifact()} disabled={busy !== null || !readPath.trim()}>
+          {busy === "read" ? "Reading…" : "read_artifact"}
+        </button>
+      </div>
+      {output ? <pre className="mcpPlaygroundOutput">{output}</pre> : <small>Run `tools/list` to see what your namespace exposes, or `read_artifact` to fetch a file like `/site/index.md` or `/llms.txt`.</small>}
+    </div>
+  );
+}
+
+function formatRpcResult(raw: string): string {
+  try {
+    const trimmed = raw
+      .split("\n")
+      .map((line) => (line.startsWith("data: ") ? line.slice(6) : line))
+      .filter((line) => line.trim().length > 0)
+      .join("\n");
+    const parsed = JSON.parse(trimmed) as { result?: unknown; error?: unknown };
+    if (parsed.error) return JSON.stringify(parsed.error, null, 2);
+    if (parsed.result) return JSON.stringify(parsed.result, null, 2).slice(0, 6000);
+    return JSON.stringify(parsed, null, 2).slice(0, 6000);
+  } catch {
+    return raw.slice(0, 6000);
+  }
 }
 
 function MarkdownLink(props: MarkdownAnchorProps) {
@@ -3281,49 +3509,304 @@ function StructureTreeNode({
   );
 }
 
-const aiQuickPrompts: Array<{ label: string; question: string }> = [
-  { label: "What pricing?", question: "What is the pricing model, plans, and any free tier on this site?" },
-  { label: "Brand voice", question: "Describe the brand voice and tone in 3 short bullets with quotes." },
-  { label: "API endpoints", question: "List the developer API endpoints, auth model, and example payloads." },
-  { label: "Target users", question: "Who is this product for? List the primary personas and the jobs-to-be-done." },
-  { label: "Tech stack", question: "What frameworks, infrastructure, and integrations does this site expose?" },
-  { label: "Install steps", question: "How does a new developer install or integrate this product in under 5 minutes?" }
+type AiQuickPrompt = { label: string; question: string };
+type NamespaceRecommendation = { title: string; detail: string };
+
+const fallbackAiPrompts: AiQuickPrompt[] = [
+  { label: "Namespace summary", question: "Summarize this namespace for a developer agent. Include the best pages and confidence level." },
+  { label: "What to remember?", question: "What should this account remember about this namespace for future agent recall?" },
+  { label: "API endpoints", question: "List any developer API endpoints, SDKs, auth model, and example payloads found in this context." },
+  { label: "Install steps", question: "How does a new developer install or integrate this product in under 5 minutes?" },
+  { label: "Risks / gaps", question: "What important information is missing or low-confidence in this extracted context?" }
 ];
+
+function buildNamespaceAiPrompts(artifact: ArtifactManifest, run: RunResponse | null, accountLabel: string, history: RunHistoryItem[]): AiQuickPrompt[] {
+  const namespace = namespaceLabel(artifact, run);
+  const siteName = siteDisplayName(artifact);
+  const account = accountLabel ? compactHash(accountLabel) : "this account";
+  const hasWalrus = Boolean(artifact.walrus?.resources.length);
+  const previousRuns = history.filter((item) => item.namespace === run?.manifest.namespace && item.runId !== run?.manifest.runId);
+  const topics = topicHintsFromArtifact(artifact);
+  const prompts: AiQuickPrompt[] = [
+    {
+      label: "For this account",
+      question: `What should account ${account} do next with namespace ${namespace}? Include MCP usage, memory recommendations, and the most relevant extracted pages.`
+    },
+    {
+      label: "What to remember?",
+      question: `Create a concise memory note for account ${account} about ${siteName} from namespace ${namespace}. Include stable facts and open gaps.`
+    },
+    {
+      label: "Best pages",
+      question: `Which extracted pages in namespace ${namespace} are most useful for a developer agent, and why?`
+    },
+    hasWalrus
+      ? {
+          label: "Walrus proof",
+          question: `Explain the Walrus resources and verification signals for ${namespace}. Which resources should an agent trust first?`
+        }
+      : {
+          label: "Context quality",
+          question: `How complete is this namespace for ${siteName}? Identify missing pages or weak evidence.`
+        },
+    previousRuns.length
+      ? {
+          label: "Recent changes",
+          question: `Compare this namespace against previous runs for the same account. What likely changed and what should be rechecked?`
+        }
+      : {
+          label: "First snapshot",
+          question: `This appears to be the first snapshot for ${namespace}. What baseline should the account keep for later comparisons?`
+        }
+  ];
+
+  if (topics.includes("developerDocs")) {
+    prompts.push({ label: "SDK / APIs", question: `Extract SDK setup, API endpoints, auth requirements, and integration steps from ${namespace}.` });
+  }
+  if (topics.includes("pricing")) {
+    prompts.push({ label: "Pricing", question: `Find pricing, plans, limits, free tier, and commercial terms for ${siteName}.` });
+  }
+  if (artifact.designSystem || artifact.brand) {
+    prompts.push({ label: "Brand voice", question: `Summarize the brand voice, design tokens, and visual system for ${siteName} using this namespace.` });
+  }
+
+  return uniquePrompts(prompts.concat(fallbackAiPrompts)).slice(0, 7);
+}
+
+function buildNamespaceRecommendations(artifact: ArtifactManifest, run: RunResponse | null, accountLabel: string, history: RunHistoryItem[]): NamespaceRecommendation[] {
+  const namespace = namespaceLabel(artifact, run);
+  const siteName = siteDisplayName(artifact);
+  const account = accountLabel ? `account ${compactHash(accountLabel)}` : "this account";
+  const pageCount = artifact.pages.length;
+  const resourceCount = artifact.walrus?.resources.length ?? 0;
+  const imageCount = artifact.images.length;
+  const previousRuns = history.filter((item) => item.namespace === run?.manifest.namespace && item.runId !== run?.manifest.runId);
+  const mcpUrl = namespaceMcpUrl(namespace);
+
+  return [
+    {
+      title: "Use as agent context",
+      detail: `${namespace} has ${pageCount} pages${resourceCount ? ` and ${resourceCount} Walrus resources` : ""}. Query the MCP namespace before asking agents to reason about ${siteName}.`
+    },
+    {
+      title: `Recommended for ${account}`,
+      detail: `Save the namespace, target, top pages, MCP URL, and known gaps as recall context so future chats do not restart from a blank crawl.`
+    },
+    {
+      title: "MCP endpoint",
+      detail: mcpUrl
+    },
+    {
+      title: "Ask evidence-first questions",
+      detail: imageCount ? `Start with best pages, SDK/API details, and visual/brand assets. This run also has ${imageCount} extracted images.` : "Start with best pages, SDK/API details, target users, and missing evidence."
+    },
+    {
+      title: previousRuns.length ? "Compare with earlier run" : "Create a baseline",
+      detail: previousRuns.length ? `${previousRuns.length} related run${previousRuns.length === 1 ? "" : "s"} found for this namespace. Ask what changed before publishing or remembering.` : `No earlier run for this namespace is loaded. Treat this as the baseline for later alerts and diffs.`
+    }
+  ];
+}
+
+function uniquePrompts(prompts: AiQuickPrompt[]): AiQuickPrompt[] {
+  const seen = new Set<string>();
+  return prompts.filter((prompt) => {
+    const key = `${prompt.label}:${prompt.question}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function namespaceLabel(artifact: ArtifactManifest, run: RunResponse | null): string {
+  return run?.manifest.namespace || artifact.runId || safeDomain(artifact.target) || "current namespace";
+}
+
+function siteDisplayName(artifact: ArtifactManifest): string {
+  return artifact.designSystem?.identity.name || artifact.brand?.name || safeDomain(artifact.target) || artifact.target;
+}
+
+function safeDomain(value: string): string {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return value.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  }
+}
+
+function namespaceMcpUrl(namespace: string): string {
+  if (typeof window === "undefined") return `/mcp?namespace=${encodeURIComponent(namespace)}`;
+  return `${window.location.origin}/mcp?namespace=${encodeURIComponent(namespace)}`;
+}
+
+function topicHintsFromArtifact(artifact: ArtifactManifest): string[] {
+  const haystack = [artifact.target, artifact.brand?.description, artifact.designSystem?.identity.description, ...artifact.pages.slice(0, 8).flatMap((page) => [page.title, page.url, page.markdown.slice(0, 1400)])]
+    .filter(Boolean)
+    .join("\n")
+    .toLowerCase();
+  const topics: string[] = [];
+  if (/\b(api|sdk|developer|docs|quickstart|install|cli|endpoint|auth)\b/.test(haystack)) topics.push("developerDocs");
+  if (/\b(pricing|plan|billing|free tier|subscription|paid|quota|limit)\b/.test(haystack)) topics.push("pricing");
+  if (/\b(seal|encrypt|decrypt|access control|secret|private|policy)\b/.test(haystack)) topics.push("security");
+  if (/\b(walrus|sui|blob|object id|resource|quilt)\b/.test(haystack)) topics.push("walrus");
+  if (/\b(brand|design|token|color|font|component|style)\b/.test(haystack)) topics.push("brand");
+  return topics;
+}
+
+function buildClientAiQueryResult(artifact: ArtifactManifest, run: RunResponse | null, question: string, accountLabel: string, history: RunHistoryItem[]): AiQueryResult {
+  const namespace = namespaceLabel(artifact, run);
+  const siteName = siteDisplayName(artifact);
+  const account = accountLabel ? compactHash(accountLabel) : "this account";
+  const pages = relevantPagesForQuestion(artifact, question, 5);
+  const recommendations = buildNamespaceRecommendations(artifact, run, accountLabel, history);
+  const pageCount = artifact.pages.length;
+  const resourceCount = artifact.walrus?.resources.length ?? 0;
+  const lowerQuestion = question.toLowerCase();
+  const mcpUrl = namespaceMcpUrl(namespace);
+  const directFocus = lowerQuestion.includes("pricing")
+    ? "Pricing terms were not assumed. If no pricing page appears in the sources below, treat pricing as unknown and ask the site owner to add it to the namespace."
+    : lowerQuestion.includes("api") || lowerQuestion.includes("sdk") || lowerQuestion.includes("install")
+      ? "Focus on docs, SDK setup, auth, endpoints, and integration steps from the strongest extracted pages."
+      : lowerQuestion.includes("remember") || lowerQuestion.includes("account")
+        ? `For ${account}, remember the namespace, target, MCP URL, strongest pages, and any gaps that should be refreshed later.`
+        : "Use the namespace summary, strongest pages, and extracted Walrus proof before making product claims.";
+
+  return {
+    target: artifact.target,
+    data: {
+      answer: `From namespace ${namespace}, ${siteName} currently has ${pageCount} extracted page${pageCount === 1 ? "" : "s"}${resourceCount ? ` and ${resourceCount} verified Walrus resource${resourceCount === 1 ? "" : "s"}` : ""}. ${directFocus}`,
+      recommendedForThisAccount: recommendations.slice(0, 4).map((item) => `${item.title}: ${item.detail}`),
+      bestPagesToRead: pages.length ? pages.map((page) => `${page.routePath ?? safeDomain(page.url)} — ${page.title ?? firstReadableSentence(page.markdown) ?? page.url}`) : ["No page-level markdown was available in this artifact."],
+      agentNextSteps: [
+        `Query MCP namespace: ${mcpUrl}`,
+        `Ask: "What should account ${account} remember about ${namespace}?"`,
+        resourceCount ? "Verify Walrus resource paths before citing object/blob proof." : "Re-run with Walrus mode if object/resource proof is required."
+      ],
+      confidenceNote: "Client-side namespace answer. It uses the extracted manifest and page markdown because the hosted AI Query route is not available for public demo jobs yet."
+    },
+    confidence: pages.length ? 0.62 : 0.42,
+    usedProvider: "namespace heuristic",
+    sources: pages.map((page) => ({
+      url: page.url,
+      routePath: page.routePath,
+      resourcePath: page.source?.resourcePath ?? page.artifactPath,
+      blobId: page.source?.blobId,
+      quote: firstReadableSentence(page.markdown)
+    }))
+  };
+}
+
+function relevantPagesForQuestion(artifact: ArtifactManifest, question: string, limit: number): ArtifactManifest["pages"] {
+  const terms = question
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .filter((term) => term.length > 2 && !["the", "and", "for", "this", "that", "with", "from", "what", "how"].includes(term));
+
+  return artifact.pages
+    .map((page, index) => {
+      const text = [page.title, page.routePath, page.url, page.markdown.slice(0, 4000)].filter(Boolean).join(" ").toLowerCase();
+      const score = terms.reduce((sum, term) => sum + (text.includes(term) ? 2 : 0), 0) + (page.title ? 1 : 0) + Math.max(0, 4 - index) * 0.1;
+      return { page, score };
+    })
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit)
+    .map((item) => item.page);
+}
+
+function firstReadableSentence(markdown?: string): string | undefined {
+  if (!markdown) return undefined;
+  const cleaned = markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*]\([^)]*\)/g, " ")
+    .replace(/\[[^\]]+]\([^)]*\)/g, (match) => match.replace(/^\[|\]\([^)]*\)$/g, ""))
+    .replace(/[#*_>`~|-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const sentence = cleaned.split(/(?<=[.!?])\s+/).find((part) => part.length >= 48) ?? cleaned.slice(0, 180);
+  return sentence ? `${sentence.slice(0, 220)}${sentence.length > 220 ? "..." : ""}` : undefined;
+}
+
+function shouldUseClientAiFallback(status: number | null, message: string, artifact: ArtifactManifest): boolean {
+  if (!artifact.pages.length) return false;
+  if (!isLocalApiBase(API_BASE)) return true;
+  return status === 404 || /not found|ai query|openai/i.test(message);
+}
 
 type AiChatTurn = { id: string; question: string; result: AiQueryResult; at: string };
 
-function AiQueryPanel({ artifact, run, setArtifact, authToken }: { artifact: ArtifactManifest; run: RunResponse | null; setArtifact: React.Dispatch<React.SetStateAction<ArtifactManifest | null>>; authToken: string }) {
+function AiQueryPanel({
+  artifact,
+  run,
+  setArtifact,
+  authToken,
+  history,
+  accountLabel
+}: {
+  artifact: ArtifactManifest;
+  run: RunResponse | null;
+  setArtifact: React.Dispatch<React.SetStateAction<ArtifactManifest | null>>;
+  authToken: string;
+  history: RunHistoryItem[];
+  accountLabel: string;
+}) {
   const [question, setQuestion] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [schema, setSchema] = useState('{\n  "answer": { "type": "text", "description": "Direct answer to the question" },\n  "keyFacts": { "type": "list", "description": "Important facts with source support" }\n}');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [turns, setTurns] = useState<AiChatTurn[]>(() => (artifact.aiQuery ? [{ id: "initial", question: "(previous query)", result: artifact.aiQuery, at: "" }] : []));
+  const quickPrompts = useMemo(() => buildNamespaceAiPrompts(artifact, run, accountLabel, history), [artifact, run?.manifest.namespace, run?.manifest.runId, accountLabel, history]);
+  const recommendations = useMemo(() => buildNamespaceRecommendations(artifact, run, accountLabel, history), [artifact, run?.manifest.namespace, run?.manifest.runId, accountLabel, history]);
+  const namespace = namespaceLabel(artifact, run);
+
+  useEffect(() => {
+    setTurns(artifact.aiQuery ? [{ id: "initial", question: "(previous query)", result: artifact.aiQuery, at: "" }] : []);
+    setError(null);
+    setQuestion("");
+  }, [artifact.runId, artifact.target, run?.manifest.runId]);
+
+  function appendResult(prompt: string, nextResult: AiQueryResult) {
+    setArtifact((current) => (current ? { ...current, aiQuery: nextResult } : current));
+    setTurns((prev) => [...prev, { id: `${Date.now()}`, question: prompt, result: nextResult, at: new Date().toISOString() }]);
+    setQuestion("");
+  }
 
   async function runQuery(text?: string) {
     if (!run) return;
     const prompt = (text ?? question).trim();
     if (!prompt) return;
-    if (!isLocalApiBase(API_BASE)) {
-      setError("AI Query needs server-side OpenAI access — currently only the local Fastify API runs that. Run `bun run dev` locally to enable AI Query on the same run. The hosted MCP namespace already serves the verified extracted context to any agent.");
-      return;
-    }
     setBusy(true);
     setError(null);
+    let parsedSchema: unknown;
     try {
-      const parsedSchema = showAdvanced && schema.trim() ? JSON.parse(schema) : undefined;
+      parsedSchema = showAdvanced && schema.trim() ? JSON.parse(schema) : undefined;
+    } catch {
+      setError("Structured schema is not valid JSON.");
+      setBusy(false);
+      return;
+    }
+    try {
       const response = await fetch(`${API_BASE}/api/runs/${run.manifest.runId}/ai-query`, {
         method: "POST",
         headers: authHeaders(authToken, { "content-type": "application/json" }),
         body: JSON.stringify({ question: prompt, schema: parsedSchema })
       });
-      if (!response.ok) throw new Error(await readResponseError(response));
+      if (!response.ok) {
+        const message = await readResponseError(response);
+        if (shouldUseClientAiFallback(response.status, message, artifact)) {
+          appendResult(prompt, buildClientAiQueryResult(artifact, run, prompt, accountLabel, history));
+          return;
+        }
+        throw new Error(message);
+      }
       const nextResult = (await response.json()) as AiQueryResult;
-      setArtifact((current) => (current ? { ...current, aiQuery: nextResult } : current));
-      setTurns((prev) => [...prev, { id: `${Date.now()}`, question: prompt, result: nextResult, at: new Date().toISOString() }]);
-      setQuestion("");
+      appendResult(prompt, nextResult);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      if (shouldUseClientAiFallback(null, message, artifact)) {
+        appendResult(prompt, buildClientAiQueryResult(artifact, run, prompt, accountLabel, history));
+      } else {
+        setError(message);
+      }
     } finally {
       setBusy(false);
     }
@@ -3331,12 +3814,31 @@ function AiQueryPanel({ artifact, run, setArtifact, authToken }: { artifact: Art
 
   return (
     <div className="panel queryPanel aiChatPanel">
+      <section className="aiNamespaceBrief">
+        <div className="aiNamespaceBriefHead">
+          <span>
+            <Brain size={15} />
+            Recommended for this namespace
+          </span>
+          <code>{namespace}</code>
+          {accountLabel ? <small>{compactHash(accountLabel)}</small> : null}
+        </div>
+        <div className="aiRecommendationGrid">
+          {recommendations.slice(0, 4).map((item) => (
+            <article key={item.title}>
+              <strong>{item.title}</strong>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="aiChatStream" aria-live="polite">
         {turns.length === 0 ? (
           <div className="aiChatEmpty">
             <MessageSquare size={20} />
             <strong>Ask anything about this context</strong>
-            <span>Tap a suggested prompt below or type your own question. Answers cite specific pages from the run.</span>
+            <span>Suggested prompts are tuned to this namespace and account. Hosted demo jobs answer from extracted context when the server AI route is unavailable.</span>
           </div>
         ) : (
           turns.map((turn) => (
@@ -3373,7 +3875,7 @@ function AiQueryPanel({ artifact, run, setArtifact, authToken }: { artifact: Art
 
       <section className="aiChatComposer">
         <div className="memoryQuickPrompts aiPrompts">
-          {aiQuickPrompts.map((prompt) => (
+          {quickPrompts.map((prompt) => (
             <button key={prompt.label} type="button" onClick={() => void runQuery(prompt.question)} disabled={!run || busy}>
               {prompt.label}
             </button>
@@ -4020,6 +4522,7 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
   const [tokens, setTokens] = useState<HostedNamespaceToken[]>([]);
   const [newTokenLabel, setNewTokenLabel] = useState("agent import");
   const [freshToken, setFreshToken] = useState<string | null>(null);
+  const [metadataDraft, setMetadataDraft] = useState({ displayName: "", description: "", tags: "", visibility: "private" as "private" | "public", directoryEnabled: false });
   const [extractTarget, setExtractTarget] = useState("https://fmsprint.wal.app/");
   const [extractNamespace, setExtractNamespace] = useState("");
   const [extractJob, setExtractJob] = useState<HostedExtractionJob | null>(null);
@@ -4067,6 +4570,22 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, [authToken, selected?.namespace]);
 
+  useEffect(() => {
+    if (!selected) return;
+    setMetadataDraft({
+      displayName: selected.displayName ?? defaultDisplayName(selected.target),
+      description: selected.description ?? "",
+      tags: selected.tags?.join(", ") ?? "",
+      visibility: selected.visibility,
+      directoryEnabled: Boolean(selected.directoryEnabled)
+    });
+    setFreshToken(null);
+  }, [selected?.namespace]);
+
+  async function copyText(value: string) {
+    await navigator.clipboard.writeText(value);
+  }
+
   async function createToken() {
     if (!selected) return;
     setBusy("token");
@@ -4100,6 +4619,37 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
       if (!response.ok) throw new Error(await readResponseError(response));
       const tokenResponse = await fetch(`${API_BASE}/api/hosted/namespaces/${encodeURIComponent(selected.namespace)}/tokens`, { headers: authHeaders(authToken) });
       if (tokenResponse.ok) setTokens(((await tokenResponse.json()) as { tokens: HostedNamespaceToken[] }).tokens ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function updateSelectedNamespace() {
+    if (!selected) return;
+    setBusy("metadata");
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/hosted/namespaces/${encodeURIComponent(selected.namespace)}`, {
+        method: "PATCH",
+        headers: authHeaders(authToken, { "content-type": "application/json" }),
+        body: JSON.stringify({
+          displayName: metadataDraft.displayName || undefined,
+          description: metadataDraft.description || undefined,
+          visibility: metadataDraft.visibility,
+          directoryEnabled: metadataDraft.visibility === "public" && metadataDraft.directoryEnabled,
+          tags: metadataDraft.tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+        })
+      });
+      if (!response.ok) throw new Error(await readResponseError(response));
+      const body = (await response.json()) as { namespace?: HostedNamespaceSummary } | HostedNamespaceSummary;
+      const updated = ("namespace" in body && typeof body.namespace === "object" ? body.namespace : body) as HostedNamespaceSummary;
+      setSelected(updated);
+      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

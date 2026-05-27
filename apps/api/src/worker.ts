@@ -253,7 +253,9 @@ type ExtractionCreateInput = z.infer<typeof extractionCreateSchema>;
 
 const demoExtractionCreateSchema = z.object({
   target: z.string().min(1).max(500).optional(),
-  sample: z.boolean().default(false)
+  sample: z.boolean().default(false),
+  namespace: z.string().min(1).max(120).optional(),
+  displayName: z.string().min(1).max(120).optional()
 });
 
 const hostedRunCreateSchema = z.object({
@@ -1198,13 +1200,15 @@ async function createDemoExtraction(request: Request, env: WorkerEnv, ctx: Worke
   const target = validatePublicDemoTarget(input.sample ? demoSampleTarget(env) : input.target ?? demoSampleTarget(env));
   const sample = input.sample || !input.target;
   if (!sample) await consumeDemoQuota(request, env);
-  const namespace = normalizeNamespace(`demo:${slugNamespace(target.hostname)}:${createShortId()}`);
+  const namespace = input.namespace
+    ? normalizeNamespace(input.namespace.startsWith("demo:") ? input.namespace : `demo:${input.namespace}`)
+    : normalizeNamespace(`demo:${slugNamespace(target.hostname)}:${createShortId()}`);
   const jobInput: ExtractionCreateInput = {
     ownerId: demoOwnerId(request),
     target: target.toString(),
     namespace,
     visibility: "public",
-    displayName: displayNameFromTarget(target.toString()),
+    displayName: input.displayName?.trim() || displayNameFromTarget(target.toString()),
     description: "Public ContextMeM demo extraction",
     tags: ["demo", target.hostname.endsWith(".wal.app") ? "walrus" : "web"],
     directoryEnabled: false

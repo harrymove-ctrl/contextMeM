@@ -4042,6 +4042,122 @@ textarea {
   cursor: pointer;
 }
 
+.customNamespaceField {
+  border: 1px dashed #cbd5f5;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.customNamespaceField summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  color: #1e293b;
+}
+
+.namespaceFields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.namespaceFields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.namespaceFields input {
+  padding: 6px 10px;
+  border: 1px solid #cbd5f5;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.namespaceFields small {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.namespaceFields code {
+  background: #e2e8f0;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.mcpPlayground {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #cbd5f5;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mcpPlayground strong {
+  font-size: 12px;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mcpPlaygroundActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mcpPlaygroundActions button {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #1e293b;
+  background: #1e293b;
+  color: #f8fafc;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mcpPlaygroundActions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mcpPlaygroundActions input {
+  flex: 1;
+  min-width: 160px;
+  padding: 5px 9px;
+  border: 1px solid #cbd5f5;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+}
+
+.mcpPlaygroundOutput {
+  margin: 0;
+  padding: 10px 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.55;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mcpPlayground small {
+  color: #64748b;
+  font-size: 11px;
+}
+
 @media (max-width: 540px) {
   .hostedCredentialInput {
     grid-template-columns: 1fr;
@@ -5809,6 +5925,74 @@ textarea {
   max-height: calc(100vh - 220px);
 }
 
+.aiNamespaceBrief {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(29, 99, 237, 0.16);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(248, 251, 245, 0.94), rgba(255, 255, 255, 0.86));
+}
+
+.aiNamespaceBriefHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.aiNamespaceBriefHead span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.aiNamespaceBriefHead code,
+.aiNamespaceBriefHead small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+}
+
+.aiRecommendationGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.aiRecommendationGrid article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(203, 213, 225, 0.72);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.aiRecommendationGrid strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.aiRecommendationGrid p {
+  margin: 0;
+  color: #526072;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .aiChatStream {
   flex: 1;
   overflow-y: auto;
@@ -6966,6 +7150,14 @@ textarea:focus {
     max-height: none;
   }
 
+  .aiChatPanel {
+    max-height: none;
+  }
+
+  .aiRecommendationGrid {
+    grid-template-columns: 1fr;
+  }
+
   .shareHero,
   .shareGrid {
     grid-template-columns: 1fr;
@@ -7133,6 +7325,14 @@ textarea:focus {
   }
 
   .pageToolbar button {
+    width: 100%;
+  }
+
+  .aiChatForm {
+    grid-template-columns: 1fr;
+  }
+
+  .aiChatForm .run.inline {
     width: 100%;
   }
 
