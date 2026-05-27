@@ -3574,12 +3574,12 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
   const [tokens, setTokens] = useState<HostedNamespaceToken[]>([]);
   const [newTokenLabel, setNewTokenLabel] = useState("agent import");
   const [freshToken, setFreshToken] = useState<string | null>(null);
-  const [extractTarget, setExtractTarget] = useState("https://rememe.wal.app/");
+  const [extractTarget, setExtractTarget] = useState("https://fmsprint.wal.app/");
   const [extractNamespace, setExtractNamespace] = useState("");
   const [extractJob, setExtractJob] = useState<HostedExtractionJob | null>(null);
   const [schedules, setSchedules] = useState<HostedSchedule[]>([]);
   const [alerts, setAlerts] = useState<ContextAlert[]>([]);
-  const [scheduleTarget, setScheduleTarget] = useState("https://rememe.wal.app/");
+  const [scheduleTarget, setScheduleTarget] = useState("https://fmsprint.wal.app/");
   const [scheduleNamespace, setScheduleNamespace] = useState("");
   const [scheduleInterval, setScheduleInterval] = useState(24);
   const [webhookUrl, setWebhookUrl] = useState("");

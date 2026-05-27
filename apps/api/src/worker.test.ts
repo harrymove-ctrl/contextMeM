@@ -257,10 +257,10 @@ describe("ContextMeM hosted namespace Worker", () => {
       "https://example.com/about": "<html><head><title>About</title></head><body>Demo about page</body></html>",
       "https://example.com/robots.txt": "User-agent: *\nAllow: /",
       "https://example.com/sitemap.xml": "<urlset></urlset>",
-      "https://rememe.wal.app/": "<html><head><title>Rememe</title></head><body><a href=\"/about\">About Rememe</a></body></html>",
-      "https://rememe.wal.app/about": "<html><head><title>About Rememe</title></head><body>Rememe public Walrus Site context</body></html>",
-      "https://rememe.wal.app/robots.txt": "User-agent: *\nAllow: /",
-      "https://rememe.wal.app/sitemap.xml": "<urlset></urlset>"
+      "https://fmsprint.wal.app/": "<html><head><title>Drift Racer</title><meta name=\"description\" content=\"Drift-to-Chain on Sui Testnet\"></head><body><a href=\"/about\">About Drift Racer</a></body></html>",
+      "https://fmsprint.wal.app/about": "<html><head><title>About Drift Racer</title></head><body>Drift Racer public Walrus Site context for Sui product testing</body></html>",
+      "https://fmsprint.wal.app/robots.txt": "User-agent: *\nAllow: /",
+      "https://fmsprint.wal.app/sitemap.xml": "<urlset></urlset>"
     });
     try {
       const { handleWorkerRequest } = await worker();
@@ -274,7 +274,7 @@ describe("ContextMeM hosted namespace Worker", () => {
       );
       expect(sample.status).toBe(202);
       const sampleBody = (await sample.json()) as { job: { target: string; status: string } };
-      expect(sampleBody.job.target).toBe("https://rememe.wal.app/");
+      expect(sampleBody.job.target).toBe("https://fmsprint.wal.app/");
       expect(sampleBody.job.status).toBe("completed");
 
       const first = await handleWorkerRequest(

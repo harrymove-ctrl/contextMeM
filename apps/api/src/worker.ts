@@ -27,6 +27,9 @@ export type WorkerEnv = {
   MEMWAL_ACCOUNT_ID?: string;
 };
 
+const defaultHostedWorkerBaseUrl = "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev";
+const legacyInternalWorkerOrigin = "https://contextmem.worker";
+
 type WorkerExecutionContext = {
   props?: Record<string, unknown>;
   waitUntil?: (promise: Promise<unknown>) => void;
@@ -555,9 +558,10 @@ function acceptsEventStream(request: Request): boolean {
 }
 
 async function mcpBrowserLandingResponse(request: Request, env: WorkerEnv, namespace?: string): Promise<Response> {
-  const mcpUrl = new URL(request.url);
-  mcpUrl.search = "";
-  const url = mcpUrl.toString();
+  const url = namespace ? namespaceMcpUrl(request, env, namespace) : `${workerBaseUrl(request, env)}/mcp`;
+  if (namespace && new URL(request.url).toString() !== url) {
+    return cors(Response.redirect(url, 302));
+  }
   let summary: HostedNamespaceSummary | undefined;
   if (namespace) {
     summary = await new CloudflareNamespaceStore(env).getNamespace(namespace);
@@ -1555,6 +1559,7 @@ async function getExtractionJobRow(env: WorkerEnv, jobId: string): Promise<Extra
 async function getExtractionJob(env: WorkerEnv, jobId: string) {
   const row = await getExtractionJobRow(env, jobId);
   if (!row) return undefined;
+  const result = row.result_json ? normalizeExtractionResultLinks(JSON.parse(row.result_json) as Record<string, unknown>, row.namespace, env) : undefined;
   return {
     id: row.id,
     ownerId: row.owner_id,
@@ -1568,7 +1573,7 @@ async function getExtractionJob(env: WorkerEnv, jobId: string) {
     directoryEnabled: Boolean(row.directory_enabled),
     sourceType: row.source_type ?? "extract",
     error: row.error ?? undefined,
-    result: row.result_json ? JSON.parse(row.result_json) : undefined,
+    result,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at ?? undefined
@@ -1877,8 +1882,25 @@ function demoOwnerId(request: Request): string {
   return `demo:${clientIp(request).replace(/[^a-zA-Z0-9_.:-]/g, "_")}`;
 }
 
+function normalizeExtractionResultLinks(result: Record<string, unknown>, namespace: string, env: WorkerEnv): Record<string, unknown> {
+  const request = new Request(`${workerBaseUrlFromEnv(env)}/internal`);
+  const next: Record<string, unknown> = {
+    ...result,
+    mcpUrl: namespaceMcpUrl(request, env, namespace),
+    gatewayMcpUrl: `${workerBaseUrl(request, env)}/mcp`
+  };
+  const share = typeof result.share === "object" && result.share ? (result.share as Record<string, unknown>) : undefined;
+  if (share) {
+    next.share = {
+      ...share,
+      mcpUrl: namespaceMcpUrl(request, env, String(share.namespace ?? namespace))
+    };
+  }
+  return next;
+}
+
 function demoSampleTarget(env: WorkerEnv): string {
-  return env.CONTEXTMEM_DEMO_SAMPLE_TARGET ?? "https://rememe.wal.app/";
+  return env.CONTEXTMEM_DEMO_SAMPLE_TARGET ?? "https://fmsprint.wal.app/";
 }
 
 function redactImportFiles(files: NamespaceImportInput["files"]): NamespaceImportInput["files"] {
@@ -2093,8 +2115,17 @@ function allResults<T>(result: { results?: T[] } | T[]): T[] {
   return Array.isArray(result) ? result : result.results ?? [];
 }
 
+function workerBaseUrlFromEnv(env: WorkerEnv): string {
+  const configured = env.CONTEXTMEM_WORKER_BASE_URL?.trim().replace(/\/+$/, "");
+  if (configured && configured !== legacyInternalWorkerOrigin) return configured;
+  return defaultHostedWorkerBaseUrl;
+}
+
 function workerBaseUrl(request: Request, env: WorkerEnv): string {
-  return (env.CONTEXTMEM_WORKER_BASE_URL ?? new URL(request.url).origin).replace(/\/+$/, "");
+  const configured = env.CONTEXTMEM_WORKER_BASE_URL?.trim().replace(/\/+$/, "");
+  if (configured && configured !== legacyInternalWorkerOrigin) return configured;
+  const origin = new URL(request.url).origin.replace(/\/+$/, "");
+  return origin === legacyInternalWorkerOrigin ? defaultHostedWorkerBaseUrl : origin;
 }
 
 function namespaceMcpUrl(request: Request, env: WorkerEnv, namespace: string): string {

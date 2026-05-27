@@ -8,8 +8,8 @@ Live demo: https://contextmem.pages.dev/
 
 ```sh
 bun install
-bun run contextmem web scrape https://rememe.wal.app/
-bun run contextmem walrus inspect https://rememe.wal.app/
+bun run contextmem web scrape https://fmsprint.wal.app/
+bun run contextmem walrus inspect https://fmsprint.wal.app/
 bun run dev
 ```
 
