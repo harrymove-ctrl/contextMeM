@@ -1309,7 +1309,11 @@ async function createDemoExtraction(request: Request, env: WorkerEnv, ctx: Worke
     namespace,
     visibility: "public",
     displayName: input.displayName?.trim() || displayNameFromTarget(target.toString()),
-    description: "Public ContextMeM demo extraction",
+    // No placeholder description. The extractor pulls og:description from the
+    // page itself; the share page should fall back to display name + URL when
+    // the site provides no description, not to a generic "Public ContextMeM
+    // demo extraction" lie.
+    description: undefined,
     tags: ["demo", target.hostname.endsWith(".wal.app") ? "walrus" : "web"],
     directoryEnabled: false
   };
@@ -1743,7 +1747,14 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
   const fetchedAt = new Date().toISOString();
   const home = await fetchText(target.toString());
   const title = extractTitle(home.text) ?? job.display_name ?? target.hostname;
-  const description = extractDescription(home.text) ?? job.description ?? "";
+  // PREFER the page's actual meta description / og:description over whatever
+  // the job submitter passed in. The demo path injects a generic placeholder
+  // ("Public ContextMeM demo extraction") that has zero signal value — never
+  // surface it on the manifest if the page itself describes itself.
+  const pageDescription = extractDescription(home.text);
+  const description = pageDescription
+    ?? (job.description && !/^Public ContextMeM demo extraction$/i.test(job.description) ? job.description : undefined)
+    ?? "";
   const metadata = extractPageMetadata(home.text);
   const walrusHeaders = target.hostname.endsWith(".wal.app") ? extractWalrusHeaders(home.headers) : {};
   const links = extractLinks(home.text, target).slice(0, 120);
