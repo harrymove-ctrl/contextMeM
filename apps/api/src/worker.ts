@@ -26,6 +26,7 @@ export type WorkerEnv = {
   MEMWAL_BEARER?: string;
   MEMWAL_ACCOUNT_ID?: string;
   AI?: WorkersAiBinding;
+  FIRECRAWL_API_KEY?: string;
 };
 
 type WorkersAiBinding = {
@@ -230,7 +231,7 @@ const namespaceImportSchema = z.object({
 });
 
 type NamespaceImportInput = z.infer<typeof namespaceImportSchema>;
-type FetchedText = { text: string; contentType: string; headers: Record<string, string> };
+type FetchedText = { text: string; contentType: string; headers: Record<string, string>; markdown?: string; links?: string[]; engine?: "fetch" | "firecrawl" };
 
 const namespaceUpdateSchema = z.object({
   ownerId: z.string().min(1).max(200).optional(),
@@ -1744,7 +1745,7 @@ export async function processExtractionJob(jobId: string, env: WorkerEnv, reques
   const now = new Date().toISOString();
   await env.CONTEXTMEM_DB.prepare(`UPDATE contextmem_extraction_jobs SET status = 'running', updated_at = ? WHERE id = ?`).bind(now, jobId).run();
   try {
-    const extracted = await extractTargetContext(job);
+    const extracted = await extractTargetContext(job, env);
     const importResult = await storeNamespaceImport(
       {
         namespace: job.namespace,
@@ -1809,10 +1810,19 @@ async function createShareForExtraction(job: ExtractionJobRow, imported: Awaited
   };
 }
 
-async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: Record<string, unknown>; files: NamespaceImportInput["files"] }> {
+async function extractTargetContext(job: ExtractionJobRow, env: WorkerEnv): Promise<{ manifest: Record<string, unknown>; files: NamespaceImportInput["files"] }> {
   const target = new URL(job.target);
   const fetchedAt = new Date().toISOString();
-  const home = await fetchText(target.toString());
+  const home = await fetchPageContent(target.toString(), env);
+  const usingFirecrawl = home.engine === "firecrawl";
+  // Firecrawl scrapes the rendered page but does not expose Walrus response
+  // headers (x-walrus-site-object-id / x-wal-* / x-resource-*). For .wal.app
+  // targets we grab those once with a raw fetch so the Walrus provenance
+  // survives the engine swap.
+  let walrusHeaderSource = home.headers;
+  if (usingFirecrawl && target.hostname.endsWith(".wal.app")) {
+    walrusHeaderSource = await fetchText(target.toString()).then((raw) => raw.headers).catch(() => ({}));
+  }
   const title = extractTitle(home.text) ?? job.display_name ?? target.hostname;
   // PREFER the page's actual meta description / og:description over whatever
   // the job submitter passed in. The demo path injects a generic placeholder
@@ -1823,7 +1833,7 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     ?? (job.description && !/^Public ContextMeM demo extraction$/i.test(job.description) ? job.description : undefined)
     ?? "";
   const metadata = extractPageMetadata(home.text);
-  const walrusHeaders = target.hostname.endsWith(".wal.app") ? extractWalrusHeaders(home.headers) : {};
+  const walrusHeaders = target.hostname.endsWith(".wal.app") ? extractWalrusHeaders(walrusHeaderSource) : {};
   const links = extractLinks(home.text, target).slice(0, 120);
   const resources = dedupeByUrl([...extractResourceLinks(home.text, target), ...metadataResourceLinks(metadata, target)]).slice(0, 200);
   const imageResources = resources.filter((resource) => resource.kind === "image");
@@ -1847,15 +1857,21 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
   }
   for (const link of links) pushCandidate(link.url, link.label);
   for (const sitemapUrl of sitemapUrls) pushCandidate(sitemapUrl);
+  // Firecrawl /map gives far better URL coverage on JS-rendered docs sites than
+  // parsing anchors out of the home HTML. Merge it into the candidate set.
+  if (usingFirecrawl && env.FIRECRAWL_API_KEY) {
+    const mapped = await firecrawlMap(target.toString(), env.FIRECRAWL_API_KEY, 40).catch(() => [] as URL[]);
+    for (const mappedUrl of mapped) pushCandidate(mappedUrl);
+  }
   const PAGE_LIMIT = 15;
   const sameOriginPages = Array.from(candidateUrls.values()).slice(0, PAGE_LIMIT);
   const pageResults = await Promise.allSettled(
     sameOriginPages.map(async (link) => {
-      const page = await fetchText(link.url.toString());
+      const page = await fetchPageContent(link.url.toString(), env);
       return {
         url: link.url.toString(),
         title: extractTitle(page.text) ?? link.label ?? link.url.pathname,
-        text: htmlToText(page.text).slice(0, 25000),
+        text: (page.markdown ?? htmlToText(page.text)).slice(0, 25000),
         html: page.text
       };
     })
@@ -1870,12 +1886,12 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     generatedAt: fetchedAt,
     mode: target.hostname.endsWith(".wal.app") ? "walrus" : "web",
     status: "completed",
-    source: "cloudflare-fetch-extractor",
+    source: usingFirecrawl ? "firecrawl-v2" : "cloudflare-fetch-extractor",
     title,
     description,
     metadata,
     walrusHeaders: Object.keys(walrusHeaders).length ? walrusHeaders : undefined,
-    pages: [{ url: target.toString(), title, routePath: "/", artifactPath: "/site/index.md", markdown: htmlToText(home.text).slice(0, 40000), headings: [] as HeadingNode[] }, ...fetchedPages.map((page, index) => ({ url: page.url, title: page.title, routePath: new URL(page.url).pathname, artifactPath: `/site/page-${index + 1}.md`, markdown: page.text, headings: [] as HeadingNode[] }))],
+    pages: [{ url: target.toString(), title, routePath: "/", artifactPath: "/site/index.md", markdown: (home.markdown ?? htmlToText(home.text)).slice(0, 40000), headings: [] as HeadingNode[] }, ...fetchedPages.map((page, index) => ({ url: page.url, title: page.title, routePath: new URL(page.url).pathname, artifactPath: `/site/page-${index + 1}.md`, markdown: page.text, headings: [] as HeadingNode[] }))],
     images: imageResources.map((resource) => ({
       src: resource.url.toString(),
       absoluteUrl: resource.url.toString(),
@@ -2020,7 +2036,7 @@ async function extractTargetContext(job: ExtractionJobRow): Promise<{ manifest: 
     { path: "/llms.txt", contentType: "text/plain; charset=utf-8", encoding: "utf8", content: llms },
     { path: "/llms-full.txt", contentType: "text/plain; charset=utf-8", encoding: "utf8", content: llmsFullContent },
     { path: "/index.html", contentType: home.contentType, encoding: "utf8", content: home.text.slice(0, 500_000) },
-    { path: "/site/index.md", contentType: "text/markdown; charset=utf-8", encoding: "utf8", content: `# ${title}\n\n${htmlToText(home.text).slice(0, 12000)}` },
+    { path: "/site/index.md", contentType: "text/markdown; charset=utf-8", encoding: "utf8", content: `# ${title}\n\n${(home.markdown ?? htmlToText(home.text)).slice(0, 12000)}` },
     { path: "/context/manifest.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest, null, 2) },
     { path: "/context/metadata.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify({ title, description, metadata, walrus: walrusHeaders }, null, 2) },
     { path: "/context/site-structure.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(siteStructure, null, 2) },
@@ -2051,7 +2067,86 @@ async function fetchText(url: string): Promise<FetchedText> {
   const contentType = response.headers.get("content-type") ?? "text/html; charset=utf-8";
   const text = await response.text();
   if (text.length > 1_500_000) throw new Error(`Fetch response is too large for demo extraction: ${url}`);
-  return { text, contentType, headers: responseHeaderMap(response.headers) };
+  return { text, contentType, headers: responseHeaderMap(response.headers), engine: "fetch" };
+}
+
+const FIRECRAWL_BASE = "https://api.firecrawl.dev/v2";
+
+type FirecrawlScrapeData = {
+  markdown?: string;
+  html?: string;
+  rawHtml?: string;
+  links?: string[];
+  metadata?: { title?: string | string[]; description?: string | string[]; statusCode?: number; contentType?: string; url?: string; sourceURL?: string };
+};
+
+async function firecrawlScrape(url: string, apiKey: string): Promise<FetchedText> {
+  const response = await fetch(`${FIRECRAWL_BASE}/scrape`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      url,
+      formats: ["markdown", "rawHtml", "links"],
+      onlyMainContent: true,
+      blockAds: true,
+      timeout: 45000
+    })
+  });
+  if (!response.ok) throw new Error(`Firecrawl scrape ${response.status} for ${url}: ${(await response.text()).slice(0, 200)}`);
+  const body = (await response.json()) as { success?: boolean; data?: FirecrawlScrapeData; error?: string };
+  if (!body.success || !body.data) throw new Error(`Firecrawl scrape failed for ${url}: ${body.error ?? "no data"}`);
+  const data = body.data;
+  const html = data.rawHtml ?? data.html ?? "";
+  const contentType = (Array.isArray(data.metadata?.contentType) ? data.metadata?.contentType[0] : data.metadata?.contentType) ?? "text/html; charset=utf-8";
+  return {
+    text: html,
+    markdown: data.markdown ?? "",
+    links: Array.isArray(data.links) ? data.links : [],
+    contentType,
+    headers: {},
+    engine: "firecrawl"
+  };
+}
+
+async function firecrawlMap(url: string, apiKey: string, limit = 30): Promise<URL[]> {
+  const response = await fetch(`${FIRECRAWL_BASE}/map`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({ url, limit, sitemap: "include", ignoreQueryParameters: true })
+  });
+  if (!response.ok) throw new Error(`Firecrawl map ${response.status} for ${url}`);
+  const body = (await response.json()) as { success?: boolean; links?: Array<{ url?: string } | string> };
+  if (!body.success || !Array.isArray(body.links)) return [];
+  const urls: URL[] = [];
+  for (const entry of body.links) {
+    const raw = typeof entry === "string" ? entry : entry?.url;
+    if (!raw) continue;
+    try {
+      urls.push(new URL(raw));
+    } catch {
+      // skip malformed
+    }
+  }
+  return urls;
+}
+
+// Unified page fetch: Firecrawl when a key is configured (JS-rendered, clean
+// markdown), otherwise the raw fetch + htmlToText fallback. Returns rawHtml as
+// `text` so all downstream HTML enrichment (brand, design, headings, code
+// blocks) keeps working, plus `markdown` for page content.
+async function fetchPageContent(url: string, env: WorkerEnv): Promise<FetchedText> {
+  if (env.FIRECRAWL_API_KEY) {
+    try {
+      const result = await firecrawlScrape(url, env.FIRECRAWL_API_KEY);
+      if (!result.markdown && result.text) result.markdown = htmlToText(result.text).slice(0, 40000);
+      return result;
+    } catch (error) {
+      console.warn(`[firecrawl] falling back to raw fetch for ${url}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  const raw = await fetchText(url);
+  raw.markdown = htmlToText(raw.text);
+  return raw;
 }
 
 function normalizeCrawlKey(url: URL): string {
