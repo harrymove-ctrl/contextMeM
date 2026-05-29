@@ -1,4 +1,5 @@
-import type { AiQueryResult, BrandProfile, DesignSystem, PageArtifact, Styleguide, WalrusResourceRecord, WalrusSiteContext } from "@contextmem/core";
+import type { AiQueryResult, BrandProfile, ContextChunk, DesignSystem, MemoryWritePlan, PageArtifact, Styleguide, WalrusResourceRecord, WalrusSiteContext } from "@contextmem/core";
+import { planMemoryWrite } from "@contextmem/core/chunks";
 
 export type MemWalConfig = {
   url?: string;
@@ -20,6 +21,27 @@ export type SiteSnapshot = {
     site: WalrusSiteContext;
     resources: WalrusResourceRecord[];
   };
+};
+
+export type RememberDeltaInput = {
+  namespace: string;
+  target: string;
+  createdAt: string;
+  chunks: ContextChunk[];
+  priorChunks?: ContextChunk[];
+  artifactDigest?: string;
+  chunkGraphDigest?: string;
+};
+
+export type RememberDeltaResult = {
+  namespace: string;
+  writeMode: "full" | "delta";
+  written: number;
+  added: number;
+  changed: number;
+  skipped: number;
+  removed: number;
+  results: unknown[];
 };
 
 type JsonRpcResponse<T = unknown> = {
@@ -79,6 +101,58 @@ export class MemWalMcpClient {
     });
   }
 
+  /**
+   * Change-aware write: only persists chunks that were added or edited since the
+   * prior snapshot, plus one small snapshot-index memory. Avoids re-writing the
+   * whole corpus into MemWal on every re-scrape.
+   */
+  async rememberSnapshotDelta(input: RememberDeltaInput): Promise<RememberDeltaResult> {
+    const plan = planMemoryWrite(input.chunks, input.priorChunks ?? []);
+    const toWrite = [...plan.added, ...plan.changed];
+    const results: unknown[] = [];
+    for (const chunk of toWrite) {
+      results.push(
+        await this.callTool("memwal_remember", {
+          namespace: input.namespace,
+          content: chunk.text,
+          metadata: {
+            kind: "chunk",
+            chunkId: chunk.chunkId,
+            routePath: chunk.routePath,
+            heading: chunk.heading,
+            headingPath: chunk.headingPath,
+            contentHash: chunk.contentHash
+          }
+        })
+      );
+    }
+    results.push(
+      await this.callTool("memwal_remember", {
+        namespace: input.namespace,
+        content: renderSnapshotIndex(input),
+        metadata: {
+          kind: "snapshot-index",
+          target: input.target,
+          createdAt: input.createdAt,
+          artifactDigest: input.artifactDigest,
+          chunkGraphDigest: input.chunkGraphDigest,
+          chunkCount: input.chunks.length,
+          chunkIds: input.chunks.map((chunk) => chunk.chunkId)
+        }
+      })
+    );
+    return {
+      namespace: input.namespace,
+      writeMode: "delta",
+      written: toWrite.length,
+      added: plan.added.length,
+      changed: plan.changed.length,
+      skipped: plan.unchanged.length,
+      removed: plan.removed.length,
+      results
+    };
+  }
+
   async recallSiteContext(namespace: string, query: string): Promise<unknown> {
     return this.callTool("memwal_recall", {
       namespace,
@@ -131,6 +205,18 @@ export class MemWalMcpClient {
     if (this.sessionId) headers["mcp-session-id"] = this.sessionId;
     return headers;
   }
+}
+
+function renderSnapshotIndex(input: RememberDeltaInput): string {
+  return [
+    `ContextMeM snapshot index for ${input.target}`,
+    `Captured: ${input.createdAt}`,
+    `Chunks: ${input.chunks.length}`,
+    input.artifactDigest ? `artifactDigest: ${input.artifactDigest}` : undefined,
+    input.chunkGraphDigest ? `chunkGraphDigest: ${input.chunkGraphDigest}` : undefined
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function summarizeSnapshot(snapshot: SiteSnapshot): string {

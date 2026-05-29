@@ -27,7 +27,7 @@ Date: 2026-05-27 · Worker: `1ab254ef` · Pages: `index-C-QXnUPN.js`
 
 ### AI agent (MCP client — Claude Desktop, Cursor, Codex)
 
-Connects to `https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev/mcp?namespace=demo:impact-v2`. Tools/list returns **10 tools**:
+Connects to `https://contextmem-hosted-namespace-mcp.petlofi.workers.dev/mcp?namespace=demo:impact-v2`. Tools/list returns **10 tools**:
 - `context_info` / `contextmem_namespace_info` — namespace metadata
 - `list_context` / `contextmem_list_artifacts` — file listing (llms.txt, manifest, page-N.md, brand.json, design-system.json, …)
 - `read_context` / `contextmem_read_artifact` — read one artifact by path

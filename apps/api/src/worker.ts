@@ -32,7 +32,7 @@ type WorkersAiBinding = {
   run(model: string, options: { messages: Array<{ role: "system" | "user" | "assistant"; content: string }>; max_tokens?: number; temperature?: number; }): Promise<{ response?: string; result?: { response?: string } } | string>;
 };
 
-const defaultHostedWorkerBaseUrl = "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev";
+const defaultHostedWorkerBaseUrl = "https://contextmem-hosted-namespace-mcp.petlofi.workers.dev";
 const legacyInternalWorkerOrigin = "https://contextmem.worker";
 const hostedRunDefaultOutputs = ["markdown", "images", "brand", "styleguide", "sitemap"];
 
@@ -100,6 +100,9 @@ type TokenRow = {
   created_at: string;
   last_used_at?: string | null;
   revoked_at?: string | null;
+  scope?: string | null;
+  expires_at?: string | null;
+  snapshot_pin?: string | null;
 };
 
 type ArtifactRow = {
@@ -240,7 +243,10 @@ const namespaceUpdateSchema = z.object({
 
 const tokenCreateSchema = z.object({
   ownerId: z.string().min(1).max(200).optional(),
-  label: z.string().min(1).max(80).default("read token")
+  label: z.string().min(1).max(80).default("read token"),
+  scope: z.enum(["read"]).default("read"),
+  expiresInDays: z.number().int().min(1).max(365).optional(),
+  snapshotPin: z.string().min(1).max(120).optional()
 });
 
 const extractionCreateSchema = z.object({
@@ -309,7 +315,16 @@ const scheduleUpdateSchema = z.object({
 });
 
 export class CloudflareNamespaceStore implements HostedNamespaceStore {
-  constructor(private readonly env: WorkerEnv) {}
+  constructor(private readonly env: WorkerEnv, private readonly pin?: { namespace: string; versionId: string }) {}
+
+  /** Returns a store whose reads for `namespace` are pinned to a fixed version. */
+  pinnedTo(namespace: string, versionId: string): CloudflareNamespaceStore {
+    return new CloudflareNamespaceStore(this.env, { namespace, versionId });
+  }
+
+  private versionFor(namespace: string): string | undefined {
+    return this.pin && this.pin.namespace === namespace ? this.pin.versionId : undefined;
+  }
 
   async getNamespace(namespace: string): Promise<HostedNamespaceSummary | undefined> {
     const row = await this.env.CONTEXTMEM_DB.prepare(
@@ -323,17 +338,25 @@ export class CloudflareNamespaceStore implements HostedNamespaceStore {
   }
 
   async listArtifacts(namespace: string): Promise<HostedArtifactRecord[]> {
-    const result = await this.env.CONTEXTMEM_DB.prepare(
-      `SELECT a.path, a.content_type, a.kind, a.size, a.sha256, a.updated_at
-       FROM contextmem_namespace_artifacts a
-       JOIN contextmem_namespaces n
-         ON n.namespace = a.namespace
-        AND n.current_version_id = a.version_id
-       WHERE a.namespace = ?
-       ORDER BY a.path`
-    )
-      .bind(namespace)
-      .all<Omit<ArtifactRow, "namespace" | "version_id" | "r2_key">>();
+    const versionId = this.versionFor(namespace);
+    const statement = versionId
+      ? this.env.CONTEXTMEM_DB.prepare(
+          `SELECT a.path, a.content_type, a.kind, a.size, a.sha256, a.updated_at
+           FROM contextmem_namespace_artifacts a
+           WHERE a.namespace = ?
+             AND a.version_id = ?
+           ORDER BY a.path`
+        ).bind(namespace, versionId)
+      : this.env.CONTEXTMEM_DB.prepare(
+          `SELECT a.path, a.content_type, a.kind, a.size, a.sha256, a.updated_at
+           FROM contextmem_namespace_artifacts a
+           JOIN contextmem_namespaces n
+             ON n.namespace = a.namespace
+            AND n.current_version_id = a.version_id
+           WHERE a.namespace = ?
+           ORDER BY a.path`
+        ).bind(namespace);
+    const result = await statement.all<Omit<ArtifactRow, "namespace" | "version_id" | "r2_key">>();
     return allResults(result).map((row) => ({
       path: row.path,
       contentType: row.content_type,
@@ -346,17 +369,25 @@ export class CloudflareNamespaceStore implements HostedNamespaceStore {
 
   async readArtifact(namespace: string, artifactPath: string): Promise<HostedArtifactContent | undefined> {
     const normalizedPath = normalizeHostedArtifactPath(artifactPath);
-    const row = await this.env.CONTEXTMEM_DB.prepare(
-      `SELECT a.namespace, a.version_id, a.path, a.r2_key, a.content_type, a.kind, a.size, a.sha256, a.updated_at
-       FROM contextmem_namespace_artifacts a
-       JOIN contextmem_namespaces n
-         ON n.namespace = a.namespace
-        AND n.current_version_id = a.version_id
-       WHERE a.namespace = ?
-         AND a.path = ?`
-    )
-      .bind(namespace, normalizedPath)
-      .first<ArtifactRow>();
+    const versionId = this.versionFor(namespace);
+    const statement = versionId
+      ? this.env.CONTEXTMEM_DB.prepare(
+          `SELECT a.namespace, a.version_id, a.path, a.r2_key, a.content_type, a.kind, a.size, a.sha256, a.updated_at
+           FROM contextmem_namespace_artifacts a
+           WHERE a.namespace = ?
+             AND a.version_id = ?
+             AND a.path = ?`
+        ).bind(namespace, versionId, normalizedPath)
+      : this.env.CONTEXTMEM_DB.prepare(
+          `SELECT a.namespace, a.version_id, a.path, a.r2_key, a.content_type, a.kind, a.size, a.sha256, a.updated_at
+           FROM contextmem_namespace_artifacts a
+           JOIN contextmem_namespaces n
+             ON n.namespace = a.namespace
+            AND n.current_version_id = a.version_id
+           WHERE a.namespace = ?
+             AND a.path = ?`
+        ).bind(namespace, normalizedPath);
+    const row = await statement.first<ArtifactRow>();
     if (!row) return undefined;
 
     const object = await this.env.CONTEXTMEM_CONTEXT_BUCKET.get(row.r2_key);
@@ -384,25 +415,37 @@ export class CloudflareNamespaceStore implements HostedNamespaceStore {
     };
   }
 
-  async authorizeNamespace(namespace: string, token?: string): Promise<{ ok: true; summary: HostedNamespaceSummary } | { ok: false; status: number; message: string }> {
+  async authorizeNamespace(
+    namespace: string,
+    token?: string
+  ): Promise<{ ok: true; summary: HostedNamespaceSummary; versionId: string } | { ok: false; status: number; message: string }> {
     const summary = await this.getNamespace(namespace);
     if (!summary) return { ok: false, status: 404, message: `ContextMeM namespace not found: ${namespace}` };
-    if (summary.visibility === "public") return { ok: true, summary };
+    if (summary.visibility === "public") return { ok: true, summary, versionId: summary.versionId };
     if (!token) return { ok: false, status: 401, message: "Private ContextMeM namespace requires a read token." };
 
     const tokenHash = await hashReadToken(token);
     const row = await this.env.CONTEXTMEM_DB.prepare(
-      `SELECT token_hash, revoked_at
+      `SELECT token_hash, revoked_at, expires_at, snapshot_pin
        FROM contextmem_namespace_tokens
        WHERE namespace = ?
          AND token_hash = ?`
     )
       .bind(namespace, tokenHash)
-      .first<{ token_hash: string; revoked_at?: string | null }>();
+      .first<{ token_hash: string; revoked_at?: string | null; expires_at?: string | null; snapshot_pin?: string | null }>();
     if (!row || row.revoked_at) return { ok: false, status: 403, message: "ContextMeM namespace token is invalid or revoked." };
+    if (row.expires_at && Date.parse(row.expires_at) <= Date.now()) return { ok: false, status: 403, message: "ContextMeM namespace token has expired." };
+
+    const pin = row.snapshot_pin?.trim();
+    let versionId = summary.versionId;
+    if (pin && pin !== "latest") {
+      const exists = await this.env.CONTEXTMEM_DB.prepare(`SELECT id FROM contextmem_namespace_versions WHERE namespace = ? AND id = ?`).bind(namespace, pin).first<{ id: string }>();
+      if (!exists) return { ok: false, status: 409, message: `Pinned snapshot version not found: ${pin}` };
+      versionId = pin;
+    }
 
     await this.env.CONTEXTMEM_DB.prepare(`UPDATE contextmem_namespace_tokens SET last_used_at = ? WHERE token_hash = ?`).bind(new Date().toISOString(), tokenHash).run();
-    return { ok: true, summary };
+    return { ok: true, summary, versionId };
   }
 }
 
@@ -566,9 +609,11 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     const namespace = decodeURIComponent(url.pathname.slice("/api/namespaces/".length));
     const auth = await store.authorizeNamespace(namespace, readAccessToken(request));
     if (!auth.ok) return json({ error: auth.message }, auth.status);
+    const readStore = auth.versionId !== auth.summary.versionId ? store.pinnedTo(namespace, auth.versionId) : store;
     return json({
       namespace: auth.summary,
-      artifacts: await store.listArtifacts(namespace)
+      pinnedVersionId: auth.versionId !== auth.summary.versionId ? auth.versionId : undefined,
+      artifacts: await readStore.listArtifacts(namespace)
     });
   }
   if ((request.method === "POST" || request.method === "GET" || request.method === "DELETE") && isMcpPath(url.pathname)) {
@@ -576,15 +621,15 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     if (request.method === "GET" && !acceptsEventStream(request)) {
       return mcpBrowserLandingResponse(request, env, namespace);
     }
-    const mcpStore = maybeWithMemWalRecall(store, env, request);
     let server;
     if (namespace) {
       const auth = await store.authorizeNamespace(namespace, readAccessToken(request));
       if (!auth.ok) return mcpJsonError(auth.message, auth.status);
-      server = createHostedContextMemMcpServer({ namespace, store: mcpStore });
+      const pinnedStore = auth.versionId !== auth.summary.versionId ? store.pinnedTo(namespace, auth.versionId) : store;
+      server = createHostedContextMemMcpServer({ namespace, store: maybeWithMemWalRecall(pinnedStore, env, request) });
     } else {
       server = createHostedContextMemMcpServer({
-        store: mcpStore,
+        store: maybeWithMemWalRecall(store, env, request),
         authorizeNamespace: (requestedNamespace, accessToken) => store.authorizeNamespace(requestedNamespace, accessToken ?? readAccessToken(request))
       });
     }
@@ -778,7 +823,7 @@ async function listNamespaceTokens(request: Request, env: WorkerEnv, namespace: 
   const ownerId = new URL(request.url).searchParams.get("ownerId")?.trim() || undefined;
   await assertManagedNamespace(env, normalizeNamespace(namespace), ownerId);
   const result = await env.CONTEXTMEM_DB.prepare(
-    `SELECT token_id, token_hash, namespace, label, created_at, last_used_at, revoked_at
+    `SELECT token_id, token_hash, namespace, label, created_at, last_used_at, revoked_at, scope, expires_at, snapshot_pin
      FROM contextmem_namespace_tokens
      WHERE namespace = ?
      ORDER BY created_at DESC`
@@ -797,13 +842,18 @@ async function createNamespaceToken(request: Request, env: WorkerEnv, namespace:
   const tokenHash = await hashReadToken(readToken);
   const tokenId = createTokenId();
   const now = new Date().toISOString();
+  const expiresAt = input.expiresInDays ? new Date(Date.now() + input.expiresInDays * 86400000).toISOString() : null;
+  const snapshotPin = input.snapshotPin ?? null;
   await env.CONTEXTMEM_DB.prepare(
-    `INSERT INTO contextmem_namespace_tokens (token_hash, token_id, namespace, label, created_at)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO contextmem_namespace_tokens (token_hash, token_id, namespace, label, created_at, scope, expires_at, snapshot_pin)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(tokenHash, tokenId, namespace, input.label, now)
+    .bind(tokenHash, tokenId, namespace, input.label, now, input.scope, expiresAt, snapshotPin)
     .run();
-  return json({ token: { id: tokenId, label: input.label, createdAt: now, revoked: false }, readToken }, 201);
+  return json(
+    { token: { id: tokenId, label: input.label, createdAt: now, revoked: false, scope: input.scope, expiresAt: expiresAt ?? undefined, snapshotPin: snapshotPin ?? undefined }, readToken },
+    201
+  );
 }
 
 async function revokeNamespaceToken(request: Request, env: WorkerEnv, namespace: string, tokenId: string): Promise<Response> {
@@ -3026,6 +3076,7 @@ function cryptoRandomId(bytesLength: number): string {
 
 function publicToken(row: TokenRow) {
   const id = row.token_id || row.token_hash.slice(0, 16);
+  const expired = Boolean(row.expires_at && Date.parse(row.expires_at) <= Date.now());
   return {
     id,
     label: row.label ?? "read token",
@@ -3033,7 +3084,11 @@ function publicToken(row: TokenRow) {
     createdAt: row.created_at,
     lastUsedAt: row.last_used_at ?? undefined,
     revokedAt: row.revoked_at ?? undefined,
-    revoked: Boolean(row.revoked_at)
+    revoked: Boolean(row.revoked_at),
+    scope: row.scope ?? "read",
+    expiresAt: row.expires_at ?? undefined,
+    expired,
+    snapshotPin: row.snapshot_pin ?? undefined
   };
 }
 

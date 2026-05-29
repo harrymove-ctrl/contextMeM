@@ -1,4 +1,4 @@
-const WORKER_ORIGIN = "https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev";
+const WORKER_ORIGIN = "https://contextmem-hosted-namespace-mcp.petlofi.workers.dev";
 
 export const onRequest: PagesFunction = async (context) => {
   const incoming = new URL(context.request.url);

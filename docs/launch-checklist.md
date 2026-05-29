@@ -21,7 +21,7 @@ These are the human-gated steps from `plans/reports/brainstorm-260526-end-user-i
 
 Submission copy lives in `docs/marketplace-listings.md`. Each platform must be submitted manually under the maintainer's account.
 
-- [ ] **Smithery** — paste the long description + setup JSON from `marketplace-listings.md`. Use the hosted MCP URL `https://contextmem-hosted-namespace-mcp.vega-fi.workers.dev/mcp?namespace=<namespace>`.
+- [ ] **Smithery** — paste the long description + setup JSON from `marketplace-listings.md`. Use the hosted MCP URL `https://contextmem-hosted-namespace-mcp.petlofi.workers.dev/mcp?namespace=<namespace>`.
 - [ ] **Claude Desktop Directory** — submit category "Developer Tools" with the `mcp-remote` install shape.
 - [ ] **Cursor MCP Marketplace** — submit category "Docs and Knowledge" with namespace-specific MCP URL + read token instructions.
 
