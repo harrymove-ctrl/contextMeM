@@ -1,5 +1,6 @@
 import type { AiQueryResult, BrandProfile, ContextChunk, DesignSystem, MemoryWritePlan, PageArtifact, Styleguide, WalrusResourceRecord, WalrusSiteContext } from "@contextmem/core";
 import { planMemoryWrite } from "@contextmem/core/chunks";
+import { MemWal } from "@mysten-incubation/memwal";
 
 export type MemWalConfig = {
   url?: string;
@@ -51,96 +52,79 @@ type JsonRpcResponse<T = unknown> = {
   error?: { code: number; message: string; data?: unknown };
 };
 
-export class MemWalMcpClient {
-  private sessionId?: string;
-  private readonly url: string;
-  private readonly authorization?: string;
-  private readonly accountId?: string;
+// Backed by the official @mysten-incubation/memwal SDK. The class name and
+// public method shape are kept for callers (CLI + Worker), but under the hood
+// every call goes through MemWal.create() — which handles Ed25519-signed
+// requests against the relayer at MEMWAL_API_URL (default
+// https://relayer.memwal.ai/, override to https://relayer.staging.memwal.ai
+// for staging). The bridge no longer speaks raw MCP JSON-RPC.
+//
+// MemWalConfig fields:
+//   url           — accepted for back-compat; mapped to the SDK's serverUrl
+//   authorization — DEPRECATED, ignored (SDK signs locally)
+//   accountId     — MemWal account object ID
+// Auth is sourced from MEMWAL_PRIVATE_KEY (raw Ed25519 hex seed) by default;
+// callers can also pass it via MemWalConfig.privateKey.
 
-  constructor(config: MemWalConfig = {}) {
-    this.url = config.url ?? process.env.MEMWAL_MCP_URL ?? "http://localhost:3005/api/mcp";
-    if (!config.authorization && !process.env.MEMWAL_AUTHORIZATION && process.env.MEMWAL_BEARER) {
-      console.warn("[contextmem/memwal] MEMWAL_BEARER is deprecated. Set MEMWAL_AUTHORIZATION=\"Bearer <key>\" instead.");
+export class MemWalMcpClient {
+  private readonly accountId: string;
+  private readonly privateKey: string;
+  private readonly serverUrl: string;
+  private clientCache = new Map<string, MemWal>();
+
+  constructor(config: MemWalConfig & { privateKey?: string } = {}) {
+    const accountId = config.accountId ?? process.env.MEMWAL_ACCOUNT_ID;
+    const privateKey = config.privateKey ?? process.env.MEMWAL_PRIVATE_KEY ?? extractKeyFromAuthorization(config.authorization ?? process.env.MEMWAL_AUTHORIZATION);
+    const serverUrl = config.url ?? process.env.MEMWAL_API_URL ?? process.env.MEMWAL_MCP_URL ?? "https://relayer.memwal.ai/";
+    if (!accountId) throw new Error("MEMWAL_ACCOUNT_ID is not configured.");
+    if (!privateKey) throw new Error("MEMWAL_PRIVATE_KEY (Ed25519 hex seed) is not configured. The Bearer-token bridge is no longer supported; the relayer requires Ed25519 signed requests.");
+    this.accountId = accountId;
+    this.privateKey = privateKey;
+    this.serverUrl = stripMcpPath(serverUrl);
+  }
+
+  private client(namespace: string): MemWal {
+    let client = this.clientCache.get(namespace);
+    if (!client) {
+      client = MemWal.create({ key: this.privateKey, accountId: this.accountId, serverUrl: this.serverUrl, namespace });
+      this.clientCache.set(namespace, client);
     }
-    this.authorization = config.authorization ?? process.env.MEMWAL_AUTHORIZATION ?? (process.env.MEMWAL_BEARER ? `Bearer ${process.env.MEMWAL_BEARER}` : undefined);
-    this.accountId = config.accountId ?? process.env.MEMWAL_ACCOUNT_ID;
+    return client;
   }
 
   async initialize(): Promise<void> {
-    if (this.sessionId) return;
-    const response = await this.rpc("initialize", {
-      protocolVersion: "2025-03-26",
-      capabilities: {},
-      clientInfo: {
-        name: "contextmem",
-        version: "0.1.0"
-      }
-    });
-    void response;
-  }
-
-  async callTool<T = unknown>(name: string, args: Record<string, unknown>): Promise<T> {
-    await this.initialize();
-    const response = await this.rpc<T>("tools/call", {
-      name,
-      arguments: args
-    });
-    return response;
+    // Kept for back-compat with the old MCP bridge surface; the SDK has no
+    // initialize step — it builds a SessionKey lazily on first use.
   }
 
   async rememberSnapshot(snapshot: SiteSnapshot): Promise<unknown> {
-    return this.callTool("memwal_remember", {
-      namespace: snapshot.namespace,
-      content: JSON.stringify(snapshot),
-      metadata: {
-        target: snapshot.target,
-        createdAt: snapshot.createdAt,
-        pageCount: snapshot.pages?.length ?? 0,
-        resourceCount: snapshot.walrus?.resources.length ?? 0
-      }
-    });
+    const sdk = this.client(snapshot.namespace);
+    const text = renderSnapshotPayload(snapshot);
+    const accepted = await sdk.rememberAsync(text);
+    const completed = await sdk.waitForRememberJob(accepted.job_id).catch(() => accepted);
+    return { namespace: snapshot.namespace, ...accepted, completed };
   }
 
   /**
-   * Change-aware write: only persists chunks that were added or edited since the
-   * prior snapshot, plus one small snapshot-index memory. Avoids re-writing the
-   * whole corpus into MemWal on every re-scrape.
+   * Change-aware write: only persists chunks that were added or edited since
+   * the prior snapshot, plus a snapshot-index memory. Saves bandwidth on
+   * scheduled re-scrapes. Each chunk's identity (chunkId, routePath, heading,
+   * contentHash) is encoded into the text content itself since the SDK's
+   * remember(text) takes a single string — no separate metadata channel.
    */
   async rememberSnapshotDelta(input: RememberDeltaInput): Promise<RememberDeltaResult> {
     const plan = planMemoryWrite(input.chunks, input.priorChunks ?? []);
     const toWrite = [...plan.added, ...plan.changed];
+    const sdk = this.client(input.namespace);
     const results: unknown[] = [];
     for (const chunk of toWrite) {
-      results.push(
-        await this.callTool("memwal_remember", {
-          namespace: input.namespace,
-          content: chunk.text,
-          metadata: {
-            kind: "chunk",
-            chunkId: chunk.chunkId,
-            routePath: chunk.routePath,
-            heading: chunk.heading,
-            headingPath: chunk.headingPath,
-            contentHash: chunk.contentHash
-          }
-        })
-      );
+      const text = encodeChunkPayload(chunk);
+      const accepted = await sdk.rememberAsync(text);
+      results.push(accepted);
     }
-    results.push(
-      await this.callTool("memwal_remember", {
-        namespace: input.namespace,
-        content: renderSnapshotIndex(input),
-        metadata: {
-          kind: "snapshot-index",
-          target: input.target,
-          createdAt: input.createdAt,
-          artifactDigest: input.artifactDigest,
-          chunkGraphDigest: input.chunkGraphDigest,
-          chunkCount: input.chunks.length,
-          chunkIds: input.chunks.map((chunk) => chunk.chunkId)
-        }
-      })
-    );
+    const indexText = renderSnapshotIndex(input);
+    const acceptedIndex = await sdk.rememberAsync(indexText);
+    results.push(acceptedIndex);
     return {
       namespace: input.namespace,
       writeMode: "delta",
@@ -154,57 +138,68 @@ export class MemWalMcpClient {
   }
 
   async recallSiteContext(namespace: string, query: string): Promise<unknown> {
-    return this.callTool("memwal_recall", {
-      namespace,
-      query
-    });
+    return this.client(namespace).recall({ query });
   }
 
   async analyzeSiteMemory(namespace: string, query: string): Promise<unknown> {
-    return this.callTool("memwal_analyze", {
-      namespace,
-      query
-    });
+    // SDK ships an analyze path; some staging deployments still report it as
+    // unsupported, so fall back to recall when analyze 4xxs.
+    const sdk = this.client(namespace);
+    const anyClient = sdk as unknown as { analyze?: (args: { query: string }) => Promise<unknown> };
+    if (typeof anyClient.analyze === "function") {
+      try {
+        return await anyClient.analyze({ query });
+      } catch {
+        // fall through
+      }
+    }
+    return sdk.recall({ query });
   }
 
   async restoreSiteMemory(namespace: string): Promise<unknown> {
-    return this.callTool("memwal_restore", {
-      namespace
-    });
+    const sdk = this.client(namespace);
+    const anyClient = sdk as unknown as { restore?: () => Promise<unknown> };
+    if (typeof anyClient.restore === "function") return anyClient.restore();
+    throw new Error("MemWal SDK does not expose a restore method on this version.");
   }
+}
 
-  private async rpc<T>(method: string, params: unknown): Promise<T> {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const response = await fetch(this.url, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id,
-        method,
-        params
-      })
-    });
-    const sessionId = response.headers.get("mcp-session-id");
-    if (sessionId) this.sessionId = sessionId;
-    if (!response.ok) {
-      throw new Error(`MemWal MCP HTTP ${response.status}: ${await response.text()}`);
-    }
-    const payload = (await response.json()) as JsonRpcResponse<T>;
-    if (payload.error) throw new Error(`MemWal MCP ${payload.error.code}: ${payload.error.message}`);
-    return payload.result as T;
-  }
+function extractKeyFromAuthorization(value?: string): string | undefined {
+  if (!value) return undefined;
+  return value.replace(/^Bearer\s+/i, "").trim() || undefined;
+}
 
-  private headers(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "content-type": "application/json",
-      accept: "application/json, text/event-stream"
-    };
-    if (this.authorization) headers.authorization = this.authorization;
-    if (this.accountId) headers["x-memwal-account-id"] = this.accountId;
-    if (this.sessionId) headers["mcp-session-id"] = this.sessionId;
-    return headers;
-  }
+function stripMcpPath(url: string): string {
+  // The SDK's serverUrl is the relayer base, not the /api/mcp JSON-RPC route.
+  return url.replace(/\/?api\/mcp\/?$/, "").replace(/\/$/, "");
+}
+
+function renderSnapshotPayload(snapshot: SiteSnapshot): string {
+  return [
+    `# ContextMeM snapshot`,
+    `target: ${snapshot.target}`,
+    `createdAt: ${snapshot.createdAt}`,
+    `pages: ${snapshot.pages?.length ?? 0}`,
+    `walrusResources: ${snapshot.walrus?.resources.length ?? 0}`,
+    "",
+    "## summary",
+    snapshot.summary,
+    "",
+    "## payload",
+    JSON.stringify(snapshot)
+  ].join("\n");
+}
+
+function encodeChunkPayload(chunk: ContextChunk): string {
+  const header = JSON.stringify({
+    kind: "chunk",
+    chunkId: chunk.chunkId,
+    routePath: chunk.routePath,
+    heading: chunk.heading,
+    headingPath: chunk.headingPath,
+    contentHash: chunk.contentHash
+  });
+  return `[ctxm-chunk] ${header}\n\n${chunk.text}`;
 }
 
 function renderSnapshotIndex(input: RememberDeltaInput): string {

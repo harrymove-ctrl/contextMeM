@@ -11,6 +11,7 @@
     "build": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@contextmem/core": "workspace:*"
+    "@contextmem/core": "workspace:*",
+    "@mysten-incubation/memwal": "^0.0.6"
   }
 }

@@ -44,9 +44,17 @@ MEMWAL_ACCOUNT_ID=
 VITE_CONTEXTMEM_DEV_AUTH=false
 ```
 
-### MemWal MCP contract (important)
+### MemWal bridge transport
 
-`@contextmem/memwal` targets an **extended** MemWal MCP contract — `memwal_remember` is called with `{ content, metadata }` (not the documented `{ text }` shape) and `memwal_recall` / `memwal_analyze` are called with `{ query, namespace, limit? }`. The metadata payload carries `target`, `createdAt`, page/resource counts, and (in delta mode) chunk identity. Point `MEMWAL_MCP_URL` at a MemWal MCP server that accepts this extended schema; the vanilla `text`-only contract from the public MemWal docs is not supported by this client.
+`@contextmem/memwal` wraps the official **`@mysten-incubation/memwal`** SDK. The SDK signs every request with the delegate's Ed25519 key and talks to the relayer at `MEMWAL_API_URL` (default `https://relayer.memwal.ai`; set to `https://relayer.staging.memwal.ai` for staging). The bridge no longer speaks raw JSON-RPC or Bearer auth — the relayer rejects both.
+
+The delta path encodes per-chunk identity (`chunkId`, `routePath`, `heading`, `contentHash`) into the text content itself since the SDK's `remember(text)` takes a single string:
+
+```
+[ctxm-chunk] {"chunkId":"…","routePath":"/Pricing","heading":"Plans","contentHash":"…"}
+
+<chunk text>
+```
 
 ## Walrus-Native Flow
 
