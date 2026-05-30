@@ -49,6 +49,7 @@ export type HostedNamespaceStore = {
   readArtifact(namespace: string, artifactPath: string): Promise<HostedArtifactContent | undefined>;
   searchContext?(namespace: string, query: string, limit: number): Promise<HostedSearchResult[]>;
   recallMemory?(namespace: string, query: string): Promise<unknown>;
+  restoreMemory?(namespace: string): Promise<unknown>;
 };
 
 export type HostedNamespaceAuthorization =
@@ -179,6 +180,25 @@ export function createHostedContextMemMcpServer(options: HostedMcpServerOptions)
           namespace,
           result
         });
+      }
+    );
+  }
+
+  if (store.restoreMemory) {
+    registerToolAliases(
+      server,
+      ["restore_site_memory", "contextmem_restore_memory"],
+      {
+        title: "Restore namespace memory",
+        description: "Rebuild MemWal indexed memory for a namespace from Walrus blobs. Requires user MemWal credentials on the MCP request.",
+        inputSchema: {
+          ...namespaceInputSchema
+        }
+      },
+      async (args) => {
+        const { namespace } = await resolveNamespace(options, args);
+        const result = await store.restoreMemory!(namespace);
+        return textResult({ namespace, result });
       }
     );
   }

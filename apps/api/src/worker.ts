@@ -2544,7 +2544,13 @@ function maybeWithMemWalRecall(store: CloudflareNamespaceStore, env: WorkerEnv, 
         url,
         authorization,
         accountId
-      }).recallSiteContext(namespace, query)
+      }).recallSiteContext(namespace, query),
+    restoreMemory: (namespace) =>
+      new MemWalMcpClient({
+        url,
+        authorization,
+        accountId
+      }).restoreSiteMemory(namespace)
   };
 }
 
