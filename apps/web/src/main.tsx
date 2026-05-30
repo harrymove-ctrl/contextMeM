@@ -3387,6 +3387,51 @@ function SdkCredentialImportForm({
 }
 
 function SavedSdkCredentialStatus({ accountId }: { accountId?: string }) {
+  const [testState, setTestState] = useState<{ tone: "idle" | "ok" | "fail"; message: string }>({ tone: "idle", message: "" });
+  const [busy, setBusy] = useState(false);
+
+  async function testConnection() {
+    setBusy(true);
+    setTestState({ tone: "idle", message: "Initializing MCP session…" });
+    try {
+      const initResp = await fetch(`${API_BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          ...hostedDelegateHeaders()
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-03-26",
+            capabilities: {},
+            clientInfo: { name: "contextmem-test-connection", version: "0.1.0" }
+          }
+        })
+      });
+      if (!initResp.ok) throw new Error(`initialize ${initResp.status}: ${(await initResp.text()).slice(0, 160)}`);
+      const toolsResp = await fetch(`${API_BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          ...hostedDelegateHeaders()
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} })
+      });
+      const body = await toolsResp.text();
+      const toolCount = (body.match(/"name"\s*:\s*"/g) || []).length;
+      setTestState({ tone: "ok", message: `Connection healthy. ${toolCount} tools available on the gateway.` });
+    } catch (err) {
+      setTestState({ tone: "fail", message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="sdkSavedState">
       <ShieldCheck size={16} />
@@ -3394,6 +3439,14 @@ function SavedSdkCredentialStatus({ accountId }: { accountId?: string }) {
         <strong>SDK credentials saved</strong>
         <p>{isLocalApiBase(API_BASE) ? "ContextMeM will reuse the encrypted server-side delegate. Import again only if you rotate this key in MemWal." : "ContextMeM will reuse the delegate from this browser for hosted prod testing. Import again only if you rotate this key in MemWal."}</p>
         {accountId ? <code>{compactHash(accountId)}</code> : null}
+        <div className="sdkTestRow">
+          <button type="button" className="sdkTestButton" onClick={() => void testConnection()} disabled={busy}>
+            {busy ? "Testing…" : "Test connection"}
+          </button>
+          {testState.tone === "ok" ? <span className="sdkTestOk">{testState.message}</span> : null}
+          {testState.tone === "fail" ? <span className="sdkTestFail">{testState.message}</span> : null}
+          {testState.tone === "idle" && testState.message ? <span className="sdkTestIdle">{testState.message}</span> : null}
+        </div>
       </div>
       <a className="sdkSetupLink" href={memwalDashboardUrl} target="_blank" rel="noreferrer">
         <ExternalLink size={13} />

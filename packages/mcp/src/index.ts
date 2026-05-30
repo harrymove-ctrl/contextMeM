@@ -204,6 +204,14 @@ server.tool(
 );
 
 server.tool(
+  "restore_site_memory",
+  {
+    namespace: z.string()
+  },
+  async ({ namespace }) => text(await new MemWalMcpClient().restoreSiteMemory(namespace))
+);
+
+server.tool(
   "list_contextmem_runs",
   {
     limit: z.number().int().min(1).max(500).default(50)

@@ -230,3 +230,5 @@ export function summarizeSnapshot(snapshot: SiteSnapshot): string {
   ].filter(Boolean);
   return parts.join("\n");
 }
+
+export { MemWalSdkClient, selectMemWalTransport, type MemWalSdkConfig, type MemWalSdkPackage } from "./sdk.js";

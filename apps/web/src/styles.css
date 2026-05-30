@@ -3609,6 +3609,53 @@ textarea {
   margin: 12px auto 0;
 }
 
+.sdkTestRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.sdkTestButton {
+  padding: 5px 11px;
+  border-radius: 7px;
+  border: 1px solid #1e293b;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sdkTestButton:hover {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.sdkTestButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sdkTestOk {
+  color: #166534;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sdkTestFail {
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.sdkTestIdle {
+  color: #64748b;
+  font-size: 12px;
+}
+
 .hostedCredentialGate {
   display: grid;
   gap: 12px;

@@ -5,8 +5,10 @@ import { Command } from "commander";
 import {
   aiQueryWebsite,
   buildAgentReadableSite,
+  buildChunks,
   buildPublishReadiness,
   captureScreenshots,
+  chunkGraphDigest,
   crawlSitemap,
   crawlWebSite,
   createRunId,
@@ -14,15 +16,26 @@ import {
   extractBrandProfile,
   extractDesignSystem,
   extractStyleguide,
+  findPriorRunForNamespace,
   listArtifactFiles,
   listRuns,
   namespaceForTarget,
+  parseChunksNdjson,
+  renderChunksNdjson,
   scrapeWebPage,
+  verifySnapshot,
   type AiDatapoint,
+  type ContextChunk,
   type Network,
   type PageArtifact
 } from "@contextmem/core";
-import { MemWalMcpClient, summarizeSnapshot, type SiteSnapshot } from "@contextmem/memwal";
+import { MemWalMcpClient, MemWalSdkClient, selectMemWalTransport, summarizeSnapshot, type SiteSnapshot } from "@contextmem/memwal";
+
+type MemWalAnyClient = MemWalMcpClient | MemWalSdkClient;
+function memwalClient(transport?: string): MemWalAnyClient {
+  const choice = selectMemWalTransport(transport === "sdk" || transport === "mcp" ? transport : "auto");
+  return choice === "sdk" ? new MemWalSdkClient() : memwalClient(process.env.MEMWAL_TRANSPORT);
+}
 import { getWalrusSiteHistory, materializeWalrusSite, resolveWalrusTarget, startWalrusPreview } from "@contextmem/walrus";
 
 const program = new Command();
@@ -182,24 +195,65 @@ memwal
   .command("remember")
   .argument("<runDir>", "ContextMeM run directory")
   .option("--namespace <namespace>", "Override MemWal namespace")
+  .option("--full", "Force a full snapshot write instead of the delta path")
+  .option("--prior-run-dir <dir>", "Override the auto-detected prior run for delta comparison")
   .action(async (runDir, options) => {
-    const manifest = JSON.parse(await fs.readFile(path.resolve(runDir, "context", "manifest.json"), "utf8"));
+    const absRunDir = resolveRunDirInput(runDir);
+    const runId = path.basename(absRunDir);
+    const manifestPath = path.resolve(absRunDir, "context", "manifest.json");
+    const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
     const namespace = options.namespace ?? namespaceForTarget(manifest.target, manifest.walrus ? "walrus" : "web", manifest.walrus?.site?.network, manifest.walrus?.site?.siteObjectId);
-    const snapshot: SiteSnapshot = {
+    const createdAt = new Date().toISOString();
+
+    // Always build + persist current chunks so the next remember can delta against it.
+    const pages = (manifest.pages ?? []) as PageArtifact[];
+    const currentChunks = buildChunks(pages);
+    const chunksPath = path.resolve(absRunDir, "context", "chunks.ndjson");
+    await fs.mkdir(path.dirname(chunksPath), { recursive: true });
+    await fs.writeFile(chunksPath, renderChunksNdjson(currentChunks), "utf8");
+
+    if (options.full) {
+      const snapshot: SiteSnapshot = {
+        namespace,
+        target: manifest.target,
+        createdAt,
+        summary: `ContextMeM snapshot for ${manifest.target}`,
+        pages: manifest.pages,
+        brand: manifest.brand,
+        styleguide: manifest.styleguide,
+        designSystem: manifest.designSystem,
+        aiQuery: manifest.aiQuery,
+        walrus: manifest.walrus
+      };
+      snapshot.summary = summarizeSnapshot(snapshot);
+      const result = await memwalClient(process.env.MEMWAL_TRANSPORT).rememberSnapshot(snapshot);
+      print({ namespace, mode: "full", chunkCount: currentChunks.length, result });
+      return;
+    }
+
+    // Locate prior run: explicit flag wins, else auto-detect by namespace.
+    const priorRunDir = options.priorRunDir
+      ? resolveRunDirInput(options.priorRunDir)
+      : await findPriorRunForNamespace(runsDir, runId, namespace);
+    let priorChunks: ContextChunk[] = [];
+    if (priorRunDir) {
+      try {
+        const priorText = await fs.readFile(path.resolve(priorRunDir, "context", "chunks.ndjson"), "utf8");
+        priorChunks = parseChunksNdjson(priorText);
+      } catch {
+        // No persisted chunks for the prior run (older format) — treat as no prior; everything becomes "added".
+      }
+    }
+
+    const result = await memwalClient(process.env.MEMWAL_TRANSPORT).rememberSnapshotDelta({
       namespace,
       target: manifest.target,
-      createdAt: new Date().toISOString(),
-      summary: `ContextMeM snapshot for ${manifest.target}`,
-      pages: manifest.pages,
-      brand: manifest.brand,
-      styleguide: manifest.styleguide,
-      designSystem: manifest.designSystem,
-      aiQuery: manifest.aiQuery,
-      walrus: manifest.walrus
-    };
-    snapshot.summary = summarizeSnapshot(snapshot);
-    const result = await new MemWalMcpClient().rememberSnapshot(snapshot);
-    print({ namespace, result });
+      createdAt,
+      chunks: currentChunks,
+      priorChunks,
+      chunkGraphDigest: chunkGraphDigest(currentChunks)
+    });
+    print({ mode: "delta", priorRunDir: priorRunDir ?? null, ...result });
   });
 
 memwal
@@ -207,7 +261,7 @@ memwal
   .argument("<namespace>", "MemWal namespace")
   .argument("<query>", "Recall query")
   .action(async (namespace, query) => {
-    print(await new MemWalMcpClient().recallSiteContext(namespace, query));
+    print(await memwalClient(process.env.MEMWAL_TRANSPORT).recallSiteContext(namespace, query));
   });
 
 memwal
@@ -215,7 +269,15 @@ memwal
   .argument("<namespace>", "MemWal namespace")
   .argument("<query>", "Analysis query")
   .action(async (namespace, query) => {
-    print(await new MemWalMcpClient().analyzeSiteMemory(namespace, query));
+    print(await memwalClient(process.env.MEMWAL_TRANSPORT).analyzeSiteMemory(namespace, query));
+  });
+
+memwal
+  .command("restore")
+  .description("Rebuild MemWal indexed memory for a namespace from Walrus blobs")
+  .argument("<namespace>", "MemWal namespace")
+  .action(async (namespace) => {
+    print(await memwalClient(process.env.MEMWAL_TRANSPORT).restoreSiteMemory(namespace));
   });
 
 const runs = program.command("runs").description("Inspect local ContextMeM runs and artifacts");
@@ -243,6 +305,16 @@ runs
   .argument("[compareToRunId]", "Run ID to compare against")
   .action(async (runId, compareToRunId) => {
     print(await diffRunSnapshots(runsDir, runId, compareToRunId));
+  });
+
+runs
+  .command("verify")
+  .description("Recompute a run's snapshot digests and signature, and report any drift")
+  .argument("<runId>", "Run ID or run directory")
+  .action(async (runId) => {
+    const result = await verifySnapshot(resolveRunDirInput(runId));
+    print(result);
+    if (!result.ok) process.exitCode = 1;
   });
 
 program

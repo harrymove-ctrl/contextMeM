@@ -44,6 +44,10 @@ MEMWAL_ACCOUNT_ID=
 VITE_CONTEXTMEM_DEV_AUTH=false
 ```
 
+### MemWal MCP contract (important)
+
+`@contextmem/memwal` targets an **extended** MemWal MCP contract — `memwal_remember` is called with `{ content, metadata }` (not the documented `{ text }` shape) and `memwal_recall` / `memwal_analyze` are called with `{ query, namespace, limit? }`. The metadata payload carries `target`, `createdAt`, page/resource counts, and (in delta mode) chunk identity. Point `MEMWAL_MCP_URL` at a MemWal MCP server that accepts this extended schema; the vanilla `text`-only contract from the public MemWal docs is not supported by this client.
+
 ## Walrus-Native Flow
 
 For Walrus Sites, ContextMeM resolves a site object ID, reads dynamic resource fields from Sui, fetches bytes from a Walrus aggregator by blob ID or derived quilt patch ID, verifies hashes, materializes the site locally, then extracts markdown, sitemap, images, brand, styleguide, and AI-queryable artifacts.
