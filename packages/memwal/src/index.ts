@@ -156,10 +156,10 @@ export class MemWalMcpClient {
     return sdk.recall({ query });
   }
 
-  async restoreSiteMemory(namespace: string): Promise<unknown> {
+  async restoreSiteMemory(namespace: string, limit?: number): Promise<unknown> {
     const sdk = this.client(namespace);
-    const anyClient = sdk as unknown as { restore?: () => Promise<unknown> };
-    if (typeof anyClient.restore === "function") return anyClient.restore();
+    const anyClient = sdk as unknown as { restore?: (namespace: string, limit?: number) => Promise<unknown> };
+    if (typeof anyClient.restore === "function") return anyClient.restore(namespace, limit);
     throw new Error("MemWal SDK does not expose a restore method on this version.");
   }
 }
