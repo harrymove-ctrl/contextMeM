@@ -22,8 +22,10 @@ export type WorkerEnv = {
   CONTEXTMEM_DEMO_SAMPLE_TARGET?: string;
   CONTEXTMEM_WEBHOOK_SECRET?: string;
   MEMWAL_MCP_URL?: string;
+  MEMWAL_API_URL?: string;
   MEMWAL_AUTHORIZATION?: string;
   MEMWAL_BEARER?: string;
+  MEMWAL_PRIVATE_KEY?: string;
   MEMWAL_ACCOUNT_ID?: string;
   AI?: WorkersAiBinding;
   FIRECRAWL_API_KEY?: string;
@@ -2527,30 +2529,22 @@ function buildImportResponse(
 }
 
 function maybeWithMemWalRecall(store: CloudflareNamespaceStore, env: WorkerEnv, request: Request): HostedNamespaceStore {
-  const url = request.headers.get("x-memwal-mcp-url") ?? env.MEMWAL_MCP_URL;
-  const authorization =
-    request.headers.get("x-memwal-authorization") ??
-    env.MEMWAL_AUTHORIZATION ??
-    (request.headers.get("x-memwal-bearer") ? `Bearer ${request.headers.get("x-memwal-bearer")}` : undefined) ??
-    (env.MEMWAL_BEARER ? `Bearer ${env.MEMWAL_BEARER}` : undefined);
+  // The Ed25519-signed MemWal SDK needs serverUrl + privateKey + accountId.
+  // Header overrides let the web client supply per-session credentials; env
+  // secrets are the fallback so anonymous-but-server-configured deployments
+  // still expose recall/restore tools.
+  const headerKey = request.headers.get("x-memwal-private-key") ?? request.headers.get("x-memwal-bearer") ?? request.headers.get("x-memwal-authorization")?.replace(/^Bearer\s+/i, "");
+  const url = request.headers.get("x-memwal-api-url") ?? request.headers.get("x-memwal-mcp-url") ?? env.MEMWAL_API_URL ?? env.MEMWAL_MCP_URL;
+  const privateKey = headerKey ?? env.MEMWAL_PRIVATE_KEY ?? env.MEMWAL_BEARER;
   const accountId = request.headers.get("x-memwal-account-id") ?? env.MEMWAL_ACCOUNT_ID;
-  if (!url || !authorization || !accountId) return store;
+  if (!url || !privateKey || !accountId) return store;
+  const buildClient = () => new MemWalMcpClient({ url, privateKey, accountId });
   return {
     getNamespace: (namespace) => store.getNamespace(namespace),
     listArtifacts: (namespace) => store.listArtifacts(namespace),
     readArtifact: (namespace, artifactPath) => store.readArtifact(namespace, artifactPath),
-    recallMemory: (namespace, query) =>
-      new MemWalMcpClient({
-        url,
-        authorization,
-        accountId
-      }).recallSiteContext(namespace, query),
-    restoreMemory: (namespace) =>
-      new MemWalMcpClient({
-        url,
-        authorization,
-        accountId
-      }).restoreSiteMemory(namespace)
+    recallMemory: (namespace, query) => buildClient().recallSiteContext(namespace, query),
+    restoreMemory: (namespace) => buildClient().restoreSiteMemory(namespace)
   };
 }
 
