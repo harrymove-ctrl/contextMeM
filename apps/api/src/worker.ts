@@ -89,6 +89,9 @@ type NamespaceRow = {
   directory_enabled?: number | boolean | null;
   current_version_id: string;
   source_run_id?: string | null;
+  build_kind?: "single" | "multi" | null;
+  sources_json?: string | null;
+  source_count?: number | null;
   artifact_count: number;
   byte_length: number;
   created_at: string;
@@ -132,6 +135,9 @@ type ExtractionJobRow = {
   tags_json?: string | null;
   directory_enabled?: number | boolean | null;
   source_type?: string | null;
+  build_kind?: "single" | "multi" | null;
+  sources_json?: string | null;
+  source_count?: number | null;
   error?: string | null;
   result_json?: string | null;
   created_at: string;
@@ -193,6 +199,9 @@ type PublicExtractionJob = {
   ownerId: string;
   namespace: string;
   target: string;
+  buildKind: "single" | "multi";
+  sources: NamespaceBuildSource[];
+  sourceCount: number;
   status: ExtractionJobRow["status"];
   visibility: HostedNamespaceVisibility;
   displayName?: string;
@@ -207,6 +216,34 @@ type PublicExtractionJob = {
   completedAt?: string;
 };
 
+type NamespaceBuildMode = "auto" | "web" | "walrus";
+
+type NamespaceBuildSource = {
+  id: string;
+  target: string;
+  label?: string;
+  mode: NamespaceBuildMode;
+};
+
+type ExtractedSourceSummary = NamespaceBuildSource & {
+  kind: "web" | "walrus";
+  engine?: "firecrawl" | "fetch";
+  status: "completed" | "failed";
+  pageCount: number;
+  resourceCount: number;
+  artifactPrefix: string;
+  error?: string;
+  walrusProvenance?: Record<string, string>;
+};
+
+type ExtractedNamespaceSource = ExtractedSourceSummary & {
+  manifest?: Record<string, unknown>;
+  pages: Array<Record<string, unknown>>;
+  images: Array<Record<string, unknown>>;
+  resources: Array<Record<string, unknown>>;
+  files: NamespaceImportInput["files"];
+};
+
 const namespaceImportSchema = z.object({
   namespace: z.string().min(3).max(300),
   visibility: z.enum(["private", "public"]).default("private"),
@@ -218,6 +255,8 @@ const namespaceImportSchema = z.object({
   directoryEnabled: z.boolean().default(false),
   target: z.string().min(1),
   sourceRunId: z.string().optional(),
+  buildKind: z.enum(["single", "multi"]).default("single"),
+  sources: z.array(z.object({ id: z.string(), target: z.string(), label: z.string().optional(), mode: z.enum(["auto", "web", "walrus"]).default("auto") })).max(5).optional(),
   manifest: z.unknown(),
   files: z
     .array(
@@ -264,6 +303,25 @@ const extractionCreateSchema = z.object({
 });
 
 type ExtractionCreateInput = z.infer<typeof extractionCreateSchema>;
+
+const namespaceBuildSourceSchema = z.object({
+  target: z.string().url(),
+  label: z.string().min(1).max(120).optional(),
+  mode: z.enum(["auto", "web", "walrus"]).default("auto")
+});
+
+const namespaceBuildCreateSchema = z.object({
+  ownerId: z.string().min(1).max(200).default("anonymous"),
+  namespace: z.string().min(3).max(300).optional(),
+  visibility: z.enum(["private", "public"]).default("private"),
+  displayName: z.string().max(120).optional(),
+  description: z.string().max(600).optional(),
+  tags: z.array(z.string().min(1).max(40)).max(12).default([]),
+  directoryEnabled: z.boolean().default(false),
+  sources: z.array(namespaceBuildSourceSchema).min(1).max(5)
+});
+
+type NamespaceBuildCreateInput = z.infer<typeof namespaceBuildCreateSchema>;
 
 const demoExtractionCreateSchema = z.object({
   target: z.string().min(1).max(500).optional(),
@@ -331,7 +389,7 @@ export class CloudflareNamespaceStore implements HostedNamespaceStore {
 
   async getNamespace(namespace: string): Promise<HostedNamespaceSummary | undefined> {
     const row = await this.env.CONTEXTMEM_DB.prepare(
-      `SELECT namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, artifact_count, byte_length, created_at, updated_at
+      `SELECT namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, build_kind, sources_json, source_count, artifact_count, byte_length, created_at, updated_at
        FROM contextmem_namespaces
        WHERE namespace = ?`
     )
@@ -583,6 +641,11 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     if (!auth.ok) return json({ error: auth.message }, auth.status);
     return createExtraction(request, env, ctx);
   }
+  if (request.method === "POST" && url.pathname === "/api/namespace-builds") {
+    const auth = requireImportAuthorization(request, env);
+    if (!auth.ok) return json({ error: auth.message }, auth.status);
+    return createNamespaceBuild(request, env, ctx);
+  }
   if (request.method === "GET" && url.pathname.startsWith("/api/extractions/")) {
     const auth = requireImportAuthorization(request, env);
     if (!auth.ok) return json({ error: auth.message }, auth.status);
@@ -774,7 +837,7 @@ async function listManagedNamespaces(request: Request, env: WorkerEnv): Promise<
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 100) || 100, 250);
   const result = ownerId
     ? await env.CONTEXTMEM_DB.prepare(
-        `SELECT namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, artifact_count, byte_length, created_at, updated_at
+        `SELECT namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, build_kind, sources_json, source_count, artifact_count, byte_length, created_at, updated_at
          FROM contextmem_namespaces
          WHERE owner_id = ?
          ORDER BY updated_at DESC
@@ -783,7 +846,7 @@ async function listManagedNamespaces(request: Request, env: WorkerEnv): Promise<
         .bind(ownerId, limit)
         .all<NamespaceRow>()
     : await env.CONTEXTMEM_DB.prepare(
-        `SELECT namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, artifact_count, byte_length, created_at, updated_at
+        `SELECT namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, build_kind, sources_json, source_count, artifact_count, byte_length, created_at, updated_at
          FROM contextmem_namespaces
          ORDER BY updated_at DESC
          LIMIT ?`
@@ -879,7 +942,7 @@ async function listDirectoryNamespaces(request: Request, env: WorkerEnv): Promis
   const search = url.searchParams.get("search")?.trim().toLowerCase();
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 50) || 50, 100);
   const result = await env.CONTEXTMEM_DB.prepare(
-    `SELECT namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, artifact_count, byte_length, created_at, updated_at
+    `SELECT namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, build_kind, sources_json, source_count, artifact_count, byte_length, created_at, updated_at
      FROM contextmem_namespaces
      WHERE visibility = 'public'
        AND directory_enabled = 1
@@ -1064,7 +1127,7 @@ async function listHostedRuns(request: Request, env: WorkerEnv): Promise<Respons
   // request's IP so an authed user only sees their own demo extractions.
   const demoOwner = demoOwnerId(request);
   const result = await env.CONTEXTMEM_DB.prepare(
-    `SELECT id, owner_id, namespace, target, status, visibility, display_name, description, tags_json, directory_enabled, source_type, error, result_json, created_at, updated_at, completed_at
+    `SELECT id, owner_id, namespace, target, status, visibility, display_name, description, tags_json, directory_enabled, source_type, build_kind, sources_json, source_count, error, result_json, created_at, updated_at, completed_at
      FROM contextmem_extraction_jobs
      WHERE owner_id = ? OR owner_id = ?
      ORDER BY updated_at DESC
@@ -1168,6 +1231,8 @@ async function shareHostedRun(request: Request, env: WorkerEnv, runId: string): 
       directoryEnabled: false,
       target: job.target,
       sourceRunId: job.id,
+      buildKind: job.buildKind,
+      sources: job.sources,
       manifest: redactUnknown(await artifactManifestForJob(env, job).catch(() => ({ target: job.target }))),
       files
     },
@@ -1433,6 +1498,8 @@ async function createShareLink(request: Request, env: WorkerEnv): Promise<Respon
       directoryEnabled: false,
       target: input.target,
       sourceRunId: input.sourceRunId,
+      buildKind: "single",
+      sources: [{ id: "source-1", target: input.target, label: input.title ?? displayNameFromTarget(input.target), mode: input.target.includes(".wal.app") ? "walrus" : "web" }],
       manifest: redactUnknown(input.manifest),
       files
     },
@@ -1602,6 +1669,8 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
   const tokenHash = await hashReadToken(readToken);
   const tokenId = createTokenId();
   const tags = normalizeTags(input.tags);
+  const importSources = input.sources?.length ? input.sources : [{ id: "source-1", target: input.target, label: input.displayName ?? displayNameFromTarget(input.target), mode: input.target.endsWith(".wal.app/") || input.target.includes(".wal.app") ? "walrus" : "web" }];
+  const buildKind = input.buildKind ?? (importSources.length > 1 ? "multi" : "single");
   const files = await Promise.all(
     dedupeFiles(input.files).map(async (file) => {
       const artifactPath = normalizeHostedArtifactPath(file.path);
@@ -1637,8 +1706,8 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
 
   const statements = [
     env.CONTEXTMEM_DB.prepare(
-      `INSERT INTO contextmem_namespaces (namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, manifest_json, artifact_count, byte_length, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO contextmem_namespaces (namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, build_kind, sources_json, source_count, manifest_json, artifact_count, byte_length, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(namespace) DO UPDATE SET
          target = excluded.target,
          visibility = excluded.visibility,
@@ -1650,6 +1719,9 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
          directory_enabled = excluded.directory_enabled,
          current_version_id = excluded.current_version_id,
          source_run_id = excluded.source_run_id,
+         build_kind = excluded.build_kind,
+         sources_json = excluded.sources_json,
+         source_count = excluded.source_count,
          manifest_json = excluded.manifest_json,
          artifact_count = excluded.artifact_count,
          byte_length = excluded.byte_length,
@@ -1666,6 +1738,9 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
       input.directoryEnabled ? 1 : 0,
       versionId,
       input.sourceRunId ?? null,
+      buildKind,
+      JSON.stringify(importSources),
+      importSources.length,
       JSON.stringify(input.manifest),
       files.length,
       totalBytes,
@@ -1700,7 +1775,10 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
     description: input.description,
     tags,
     sourceType: input.sourceType,
-    directoryEnabled: input.directoryEnabled
+    directoryEnabled: input.directoryEnabled,
+    buildKind,
+    sources: importSources as NamespaceBuildSource[],
+    sourceCount: importSources.length
   });
 }
 
@@ -1712,14 +1790,52 @@ async function createExtraction(request: Request, env: WorkerEnv, ctx: WorkerExe
 
 async function createExtractionJob(input: ExtractionCreateInput, env: WorkerEnv, ctx: WorkerExecutionContext) {
   const target = new URL(input.target);
-  const namespace = normalizeNamespace(input.namespace ?? namespaceForExtractTarget(target));
+  return createNamespaceBuildJob(
+    {
+      ...input,
+      namespace: input.namespace ?? namespaceForExtractTarget(target),
+      sources: [{ target: target.toString(), label: input.displayName, mode: target.hostname.endsWith(".wal.app") ? "walrus" : "web" }]
+    },
+    env,
+    ctx
+  );
+}
+
+async function createNamespaceBuild(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<Response> {
+  const input = namespaceBuildCreateSchema.parse(await request.json());
+  const job = await createNamespaceBuildJob(input, env, ctx);
+  return json({ job }, 202);
+}
+
+async function createNamespaceBuildJob(input: NamespaceBuildCreateInput, env: WorkerEnv, ctx: WorkerExecutionContext) {
+  const sources = normalizeNamespaceBuildSources(input.sources);
+  const primary = sources[0];
+  if (!primary) throw statusError("At least one namespace source is required.", 400);
+  const target = new URL(primary.target);
+  const namespace = normalizeNamespace(input.namespace ?? namespaceForBuildSources(sources));
   const jobId = createJobId();
   const now = new Date().toISOString();
+  const buildKind = sources.length > 1 ? "multi" : "single";
   await env.CONTEXTMEM_DB.prepare(
-    `INSERT INTO contextmem_extraction_jobs (id, owner_id, namespace, target, status, visibility, display_name, description, tags_json, directory_enabled, source_type, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, 'extract', ?, ?)`
+    `INSERT INTO contextmem_extraction_jobs (id, owner_id, namespace, target, status, visibility, display_name, description, tags_json, directory_enabled, source_type, build_kind, sources_json, source_count, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, 'extract', ?, ?, ?, ?, ?)`
   )
-    .bind(jobId, input.ownerId, namespace, target.toString(), input.visibility, input.displayName ?? displayNameFromTarget(target.toString()), input.description ?? null, JSON.stringify(normalizeTags(input.tags)), input.directoryEnabled ? 1 : 0, now, now)
+    .bind(
+      jobId,
+      input.ownerId,
+      namespace,
+      target.toString(),
+      input.visibility,
+      input.displayName ?? displayNameFromTarget(target.toString()),
+      input.description ?? null,
+      JSON.stringify(normalizeTags(input.tags)),
+      input.directoryEnabled ? 1 : 0,
+      buildKind,
+      JSON.stringify(sources),
+      sources.length,
+      now,
+      now
+    )
     .run();
 
   const message = { jobId };
@@ -1747,7 +1863,7 @@ export async function processExtractionJob(jobId: string, env: WorkerEnv, reques
   const now = new Date().toISOString();
   await env.CONTEXTMEM_DB.prepare(`UPDATE contextmem_extraction_jobs SET status = 'running', updated_at = ? WHERE id = ?`).bind(now, jobId).run();
   try {
-    const extracted = await extractTargetContext(job, env);
+    const extracted = await extractNamespaceContext(job, env);
     const importResult = await storeNamespaceImport(
       {
         namespace: job.namespace,
@@ -1760,6 +1876,8 @@ export async function processExtractionJob(jobId: string, env: WorkerEnv, reques
         directoryEnabled: Boolean(job.directory_enabled),
         target: job.target,
         sourceRunId: job.id,
+        buildKind: job.build_kind ?? "single",
+        sources: sourcesForJob(job),
         manifest: extracted.manifest,
         files: extracted.files
       },
@@ -1810,6 +1928,269 @@ async function createShareForExtraction(job: ExtractionJobRow, imported: Awaited
     createdAt: now,
     updatedAt: now
   };
+}
+
+async function extractNamespaceContext(job: ExtractionJobRow, env: WorkerEnv): Promise<{ manifest: Record<string, unknown>; files: NamespaceImportInput["files"] }> {
+  const sources = sourcesForJob(job);
+  const extracted: ExtractedNamespaceSource[] = [];
+
+  for (const [index, source] of sources.entries()) {
+    const kind = sourceKind(source);
+    try {
+      const single = await extractTargetContext(
+        {
+          ...job,
+          id: `${job.id}-${source.id}`,
+          target: source.target,
+          display_name: source.label ?? displayNameFromTarget(source.target),
+          build_kind: "single",
+          source_count: 1,
+          sources_json: JSON.stringify([source])
+        },
+        env
+      );
+      extracted.push(sourceFromSingleExtraction(source, single, index, kind));
+    } catch (error) {
+      extracted.push({
+        ...source,
+        kind,
+        status: "failed",
+        pageCount: 0,
+        resourceCount: 0,
+        artifactPrefix: `/site/${source.id}`,
+        error: error instanceof Error ? error.message : String(error),
+        pages: [],
+        images: [],
+        resources: [],
+        files: []
+      });
+    }
+  }
+
+  const completed = extracted.filter((source) => source.status === "completed");
+  if (!completed.length) {
+    throw new Error(`All namespace sources failed: ${extracted.map((source) => `${source.label ?? source.target}: ${source.error ?? "unknown error"}`).join("; ")}`);
+  }
+
+  return buildCombinedNamespaceBundle(job, extracted);
+}
+
+function sourceFromSingleExtraction(
+  source: NamespaceBuildSource,
+  single: { manifest: Record<string, unknown>; files: NamespaceImportInput["files"] },
+  sourceIndex: number,
+  kind: "web" | "walrus"
+): ExtractedNamespaceSource {
+  const manifest = single.manifest;
+  const rawPages = Array.isArray(manifest.pages) ? (manifest.pages as Array<Record<string, unknown>>) : [];
+  const pages: Array<Record<string, unknown>> = rawPages.map((page, index) => {
+    const artifactPath = `/site/${source.id}/${index === 0 ? "index" : `page-${index}`}.md`;
+    return {
+      ...page,
+      sourceId: source.id,
+      sourceLabel: source.label ?? displayNameFromTarget(source.target),
+      sourceTarget: source.target,
+      artifactPath
+    };
+  });
+  const pageFiles: NamespaceImportInput["files"] = pages.map((page, index) => ({
+    path: String(page.artifactPath),
+    contentType: "text/markdown; charset=utf-8",
+    encoding: "utf8",
+    content: `# ${String(page.title ?? page.url ?? source.label ?? source.target)}\n\n${String(page.markdown ?? "")}`
+  }));
+  const extraFiles = single.files
+    .filter((file) => file.path.startsWith("/site/") && !/^\/site\/(?:index|page-\d+)\.md$/.test(file.path))
+    .map((file) => ({ ...file, path: `/site/${source.id}/${file.path.slice("/site/".length)}` }));
+  const images = (Array.isArray(manifest.images) ? (manifest.images as Array<Record<string, unknown>>) : []).map((image) => ({
+    ...image,
+    sourceId: source.id,
+    sourceLabel: source.label ?? displayNameFromTarget(source.target)
+  }));
+  const resources = (Array.isArray(manifest.resources) ? (manifest.resources as Array<Record<string, unknown>>) : []).map((resource) => ({
+    ...resource,
+    sourceId: source.id,
+    sourceLabel: source.label ?? displayNameFromTarget(source.target)
+  }));
+  const sourceText = String(manifest.source ?? "");
+  const walrusHeaders = manifest.walrusHeaders && typeof manifest.walrusHeaders === "object" ? (manifest.walrusHeaders as Record<string, string>) : undefined;
+  return {
+    ...source,
+    kind,
+    engine: sourceText.includes("firecrawl") ? "firecrawl" : "fetch",
+    status: "completed",
+    pageCount: pages.length,
+    resourceCount: resources.length,
+    artifactPrefix: `/site/${source.id}`,
+    walrusProvenance: walrusHeaders && Object.keys(walrusHeaders).length ? walrusHeaders : undefined,
+    manifest,
+    pages,
+    images,
+    resources,
+    files: [...pageFiles, ...extraFiles]
+  };
+}
+
+function buildCombinedNamespaceBundle(job: ExtractionJobRow, sources: ExtractedNamespaceSource[]): { manifest: Record<string, unknown>; files: NamespaceImportInput["files"] } {
+  const now = new Date().toISOString();
+  const completed = sources.filter((source) => source.status === "completed");
+  const primary = completed[0]!;
+  const pages = completed.flatMap((source) => source.pages);
+  const images = completed.flatMap((source) => source.images);
+  const resources = completed.flatMap((source) => source.resources);
+  const sourceSummaries: ExtractedSourceSummary[] = sources.map(({ manifest: _manifest, files: _files, pages: _pages, images: _images, resources: _resources, ...summary }) => summary);
+  const sourceIndex = pages.map((page) => ({
+    sourceId: String(page.sourceId ?? ""),
+    sourceLabel: String(page.sourceLabel ?? ""),
+    sourceTarget: String(page.sourceTarget ?? ""),
+    url: String(page.url ?? ""),
+    routePath: page.routePath,
+    title: page.title,
+    artifactPath: page.artifactPath
+  }));
+  const title = job.display_name ?? primary.label ?? displayNameFromTarget(job.target);
+  const description = job.description ?? String(primary.manifest?.description ?? "");
+  const manifest: Record<string, unknown> = {
+    runId: job.id,
+    namespace: job.namespace,
+    target: job.target,
+    generatedAt: now,
+    mode: sources.some((source) => source.kind === "walrus") ? "mixed" : "web",
+    status: "completed",
+    source: "multi-source-namespace-builder",
+    buildKind: job.build_kind ?? (sourceSummaries.length > 1 ? "multi" : "single"),
+    sourceCount: sourceSummaries.length,
+    sources: sourceSummaries,
+    sourceIndex,
+    title,
+    description,
+    metadata: primary.manifest?.metadata ?? {},
+    pages,
+    toc: completed.flatMap((source) =>
+      (Array.isArray(source.manifest?.toc) ? (source.manifest!.toc as Array<Record<string, unknown>>) : []).map((entry) => ({ ...entry, sourceId: source.id, sourceLabel: source.label ?? displayNameFromTarget(source.target) }))
+    ),
+    codeBlocks: completed.flatMap((source) =>
+      (Array.isArray(source.manifest?.codeBlocks) ? (source.manifest!.codeBlocks as Array<Record<string, unknown>>) : []).map((entry) => ({ ...entry, sourceId: source.id, sourceLabel: source.label ?? displayNameFromTarget(source.target) }))
+    ),
+    siteStructure: buildCombinedSiteStructure(job, sourceSummaries, pages, resources, now),
+    images,
+    brand: primary.manifest?.brand,
+    styleguide: primary.manifest?.styleguide,
+    designSystem: primary.manifest?.designSystem,
+    walrus: buildCombinedWalrusSummary(sources),
+    resources,
+    errors: sources.filter((source) => source.status === "failed").map((source) => ({ sourceId: source.id, target: source.target, error: source.error }))
+  };
+
+  const llms = renderNamespaceLlms(title, description, job, sourceSummaries, pages);
+  const llmsFull = renderNamespaceLlmsFull(title, description, job, sourceSummaries, pages);
+  const files: NamespaceImportInput["files"] = [
+    { path: "/llms.txt", contentType: "text/plain; charset=utf-8", encoding: "utf8", content: llms },
+    { path: "/llms-full.txt", contentType: "text/plain; charset=utf-8", encoding: "utf8", content: llmsFull },
+    { path: "/context/manifest.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest, null, 2) },
+    { path: "/context/sources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(sourceSummaries, null, 2) },
+    { path: "/context/source-index.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(sourceIndex, null, 2) },
+    { path: "/context/site-structure.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest.siteStructure, null, 2) },
+    { path: "/context/resources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(resources, null, 2) }
+  ];
+  if (manifest.brand) files.push({ path: "/context/brand.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest.brand, null, 2) });
+  if (manifest.designSystem) files.push({ path: "/context/design-system.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest.designSystem, null, 2) });
+  for (const source of completed) files.push(...source.files);
+  const firstPage = pages[0];
+  if (firstPage) {
+    files.push({
+      path: "/site/index.md",
+      contentType: "text/markdown; charset=utf-8",
+      encoding: "utf8",
+      content: `# ${String(firstPage.title ?? firstPage.url ?? title)}\n\n${String(firstPage.markdown ?? "")}`
+    });
+  }
+  return { manifest, files: dedupeFiles(files) };
+}
+
+function buildCombinedSiteStructure(job: ExtractionJobRow, sources: ExtractedSourceSummary[], pages: Array<Record<string, unknown>>, resources: Array<Record<string, unknown>>, generatedAt: string) {
+  return {
+    target: job.target,
+    generatedAt,
+    summary: {
+      pages: pages.length,
+      docs: sources.length,
+      assets: resources.length,
+      brandAssets: 0,
+      agentFiles: 4,
+      walrusResources: sources.filter((source) => source.kind === "walrus").reduce((sum, source) => sum + source.resourceCount, 0)
+    },
+    nodes: sources.map((source) => ({
+      id: source.id,
+      label: source.label ?? displayNameFromTarget(source.target),
+      kind: "group",
+      path: source.target,
+      children: pages
+        .filter((page) => page.sourceId === source.id)
+        .map((page, index) => ({
+          id: `${source.id}-page-${index}`,
+          label: String(page.title ?? page.routePath ?? page.url ?? `Page ${index + 1}`),
+          kind: "page",
+          path: String(page.routePath ?? (new URL(String(page.url ?? source.target)).pathname || "/")),
+          artifactPath: String(page.artifactPath ?? "")
+        }))
+    }))
+  };
+}
+
+function buildCombinedWalrusSummary(sources: ExtractedNamespaceSource[]) {
+  const walrusSources = sources.filter((source) => source.kind === "walrus" && source.status === "completed");
+  if (!walrusSources.length) return undefined;
+  return {
+    sources: walrusSources.map((source) => ({
+      id: source.id,
+      target: source.target,
+      label: source.label,
+      provenance: source.walrusProvenance,
+      resources: source.resourceCount
+    })),
+    resources: walrusSources.flatMap((source) => source.resources)
+  };
+}
+
+function renderNamespaceLlms(title: string, description: string, job: ExtractionJobRow, sources: ExtractedSourceSummary[], pages: Array<Record<string, unknown>>): string {
+  return [
+    `# ${title}`,
+    "",
+    description || `Context namespace extracted from ${sources.length} source${sources.length === 1 ? "" : "s"}.`,
+    "",
+    `Namespace: ${job.namespace}`,
+    `Sources: ${sources.length}`,
+    "",
+    "## Sources",
+    ...sources.map((source) => `- ${source.label ?? displayNameFromTarget(source.target)} — ${source.target} (${source.status}${source.engine ? `, ${source.engine}` : ""}${source.kind === "walrus" ? ", walrus provenance" : ""})`),
+    "",
+    "## Useful Pages",
+    ...pages.slice(0, 40).map((page) => `- [${String(page.sourceLabel ?? "")}] ${String(page.url ?? "")}${page.title ? ` — ${String(page.title)}` : ""}`)
+  ].join("\n");
+}
+
+function renderNamespaceLlmsFull(title: string, description: string, job: ExtractionJobRow, sources: ExtractedSourceSummary[], pages: Array<Record<string, unknown>>): string {
+  return [
+    `# ${title}`,
+    "",
+    description || `Context namespace extracted from ${sources.length} source${sources.length === 1 ? "" : "s"}.`,
+    "",
+    `Namespace: ${job.namespace}`,
+    `Generated: ${new Date().toISOString()}`,
+    "",
+    "---",
+    "",
+    ...pages.flatMap((page) => [
+      `## [${String(page.sourceLabel ?? "")}] ${String(page.title ?? page.url ?? "")}`,
+      String(page.url ?? ""),
+      "",
+      String(page.markdown ?? "").slice(0, 30000),
+      "",
+      "---",
+      ""
+    ])
+  ].join("\n");
 }
 
 async function extractTargetContext(job: ExtractionJobRow, env: WorkerEnv): Promise<{ manifest: Record<string, unknown>; files: NamespaceImportInput["files"] }> {
@@ -2451,6 +2832,9 @@ function buildImportResponse(
     tags?: string[];
     sourceType?: HostedNamespaceSummary["sourceType"];
     directoryEnabled?: boolean;
+    buildKind?: "single" | "multi";
+    sources?: NamespaceBuildSource[];
+    sourceCount?: number;
   }
 ) {
   const baseUrl = workerBaseUrl(request, env);
@@ -2472,6 +2856,9 @@ function buildImportResponse(
     tags: metadata?.tags ?? [],
     sourceType: metadata?.sourceType,
     directoryEnabled: metadata?.directoryEnabled ?? false,
+    buildKind: metadata?.buildKind,
+    sources: metadata?.sources ?? [],
+    sourceCount: metadata?.sourceCount ?? metadata?.sources?.length ?? 1,
     mcpUrl,
     gatewayMcpUrl,
     readToken,
@@ -2556,7 +2943,7 @@ async function assertManagedNamespace(env: WorkerEnv, namespace: string, ownerId
 
 async function getExtractionJobRow(env: WorkerEnv, jobId: string): Promise<ExtractionJobRow | undefined> {
   const row = await env.CONTEXTMEM_DB.prepare(
-    `SELECT id, owner_id, namespace, target, status, visibility, display_name, description, tags_json, directory_enabled, source_type, error, result_json, created_at, updated_at, completed_at
+    `SELECT id, owner_id, namespace, target, status, visibility, display_name, description, tags_json, directory_enabled, source_type, build_kind, sources_json, source_count, error, result_json, created_at, updated_at, completed_at
      FROM contextmem_extraction_jobs
      WHERE id = ?`
   )
@@ -2573,11 +2960,15 @@ async function getExtractionJob(env: WorkerEnv, jobId: string) {
 
 function publicExtractionJobFromRow(row: ExtractionJobRow, env: WorkerEnv): PublicExtractionJob {
   const result = row.result_json ? normalizeExtractionResultLinks(JSON.parse(row.result_json) as Record<string, unknown>, row.namespace, env) : undefined;
+  const sources = sourcesForJob(row);
   return {
     id: row.id,
     ownerId: row.owner_id,
     namespace: row.namespace,
     target: row.target,
+    buildKind: row.build_kind ?? (sources.length > 1 ? "multi" : "single"),
+    sources,
+    sourceCount: Number(row.source_count ?? sources.length),
     status: row.status,
     visibility: row.visibility,
     displayName: row.display_name ?? undefined,
@@ -2597,6 +2988,9 @@ function hostedRunManifest(job: PublicExtractionJob) {
   return {
     runId: job.id,
     target: job.target,
+    buildKind: job.buildKind,
+    sources: job.sources,
+    sourceCount: job.sourceCount,
     mode: hostedRunMode(job.target),
     status: job.status,
     createdAt: job.createdAt,
@@ -2616,6 +3010,8 @@ function hostedRunResponse(job: PublicExtractionJob, artifact?: Record<string, u
   return {
     manifest: hostedRunManifest(job),
     pages,
+    sourceCount: job.sourceCount,
+    sources: job.sources,
     walrus: hostedRunMode(job.target) === "walrus" ? { resources, pages: pages ?? 0 } : undefined
   };
 }
@@ -2634,6 +3030,8 @@ function hostedRunHistoryItem(job: PublicExtractionJob) {
     resources: Number((job.result as { artifactCount?: unknown } | undefined)?.artifactCount ?? 0),
     hasDesignSystem: false,
     hasScreenshots: false,
+    sourceCount: job.sourceCount,
+    sources: job.sources,
     errors: manifest.errors
   };
 }
@@ -2828,20 +3226,24 @@ async function runSchedule(schedule: ScheduleRow, env: WorkerEnv, ctx: WorkerExe
     .bind(runId, schedule.id, now)
     .run();
   try {
-    const job = await createExtractionJob(
+    const existingNamespace = await new CloudflareNamespaceStore(env).getNamespace(schedule.namespace).catch(() => undefined);
+    const sources = existingNamespace?.sources?.length
+      ? existingNamespace.sources.map((source) => ({ target: source.target, label: source.label, mode: source.mode ?? "auto" }))
+      : [{ target: schedule.target, label: displayNameFromTarget(schedule.target), mode: schedule.target.includes(".wal.app") ? "walrus" as const : "web" as const }];
+    const job = await createNamespaceBuildJob(
       {
         ownerId: schedule.owner_id,
-        target: schedule.target,
         namespace: schedule.namespace,
         visibility: "private",
         displayName: displayNameFromTarget(schedule.target),
         tags: ["schedule", "context"],
-        directoryEnabled: false
+        directoryEnabled: false,
+        sources
       },
       env,
       ctx
     );
-    const summary = diffSummaryForNamespace(env, schedule.namespace);
+    const summary = await diffSummaryForNamespace(env, schedule.namespace);
     await env.CONTEXTMEM_DB.prepare(
       `UPDATE contextmem_schedule_runs
        SET extraction_job_id = ?, status = 'completed', diff_json = ?, completed_at = ?
@@ -2936,13 +3338,77 @@ async function signWebhookPayload(body: string, secret: string): Promise<string>
   return `sha256=${[...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
-function diffSummaryForNamespace(_env: WorkerEnv, _namespace: string) {
+async function diffSummaryForNamespace(env: WorkerEnv, namespace: string) {
+  const result = await env.CONTEXTMEM_DB.prepare(
+    `SELECT id, manifest_json, created_at
+     FROM contextmem_namespace_versions
+     WHERE namespace = ?
+     ORDER BY created_at DESC
+     LIMIT 2`
+  )
+    .bind(namespace)
+    .all<{ id: string; manifest_json: string; created_at: string }>();
+  const versions = allResults(result);
+  const current = versions[0]?.manifest_json ? (safeJsonParse(versions[0].manifest_json) as Record<string, unknown> | undefined) : undefined;
+  const previous = versions[1]?.manifest_json ? (safeJsonParse(versions[1].manifest_json) as Record<string, unknown> | undefined) : undefined;
   return {
-    pages: { added: 0, removed: 0, changed: 1, unchanged: 0 },
-    resources: { added: 0, removed: 0, changed: 0, unchanged: 0 },
-    images: { added: 0, removed: 0, changed: 0, unchanged: 0 },
-    designTokens: { added: 0, removed: 0, changed: 0, unchanged: 0 }
+    pages: diffRecordArrays(previous?.pages, current?.pages, "url", "markdown"),
+    resources: diffRecordArrays(previous?.resources, current?.resources, "url", "kind"),
+    images: diffRecordArrays(previous?.images, current?.images, "absoluteUrl", "contentType"),
+    designTokens: diffDesignTokens(previous?.designSystem, current?.designSystem)
   };
+}
+
+function diffRecordArrays(beforeValue: unknown, afterValue: unknown, keyField: string, hashField: string) {
+  const before = mapRecordArray(beforeValue, keyField, hashField);
+  const after = mapRecordArray(afterValue, keyField, hashField);
+  return countDiffMaps(before, after);
+}
+
+function mapRecordArray(value: unknown, keyField: string, hashField: string): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!Array.isArray(value)) return map;
+  value.forEach((item, index) => {
+    if (!item || typeof item !== "object") return;
+    const record = item as Record<string, unknown>;
+    const key = String(record[keyField] ?? record.path ?? record.routePath ?? `${index}`);
+    map.set(key, JSON.stringify(record[hashField] ?? record));
+  });
+  return map;
+}
+
+function diffDesignTokens(beforeValue: unknown, afterValue: unknown) {
+  const beforeColors = tokenMap(beforeValue);
+  const afterColors = tokenMap(afterValue);
+  return countDiffMaps(beforeColors, afterColors);
+}
+
+function tokenMap(value: unknown): Map<string, string> {
+  const colors = value && typeof value === "object" ? ((value as Record<string, unknown>).tokens as Record<string, unknown> | undefined)?.colors : undefined;
+  const map = new Map<string, string>();
+  if (!Array.isArray(colors)) return map;
+  colors.forEach((item, index) => {
+    if (!item || typeof item !== "object") return;
+    const record = item as Record<string, unknown>;
+    map.set(String(record.name ?? index), String(record.value ?? JSON.stringify(record)));
+  });
+  return map;
+}
+
+function countDiffMaps(before: Map<string, string>, after: Map<string, string>) {
+  let added = 0;
+  let removed = 0;
+  let changed = 0;
+  let unchanged = 0;
+  for (const [key, value] of after) {
+    if (!before.has(key)) added++;
+    else if (before.get(key) === value) unchanged++;
+    else changed++;
+  }
+  for (const key of before.keys()) {
+    if (!after.has(key)) removed++;
+  }
+  return { added, removed, changed, unchanged };
 }
 
 async function getShareLinkRow(env: WorkerEnv, shareId: string): Promise<ShareLinkRow | undefined> {
@@ -3049,6 +3515,69 @@ function validatePublicDemoTarget(value: string): URL {
   }
   url.hash = "";
   return url;
+}
+
+function normalizeNamespaceBuildSources(input: Array<z.infer<typeof namespaceBuildSourceSchema>>): NamespaceBuildSource[] {
+  const seen = new Set<string>();
+  return input.map((source, index) => {
+    const target = validatePublicDemoTarget(source.target);
+    target.search = "";
+    const normalizedTarget = target.toString();
+    if (seen.has(normalizedTarget)) throw statusError(`Duplicate namespace source: ${normalizedTarget}`, 400);
+    seen.add(normalizedTarget);
+    const label = source.label?.trim() || displayNameFromTarget(normalizedTarget);
+    return {
+      id: uniqueSourceId(label, target, index),
+      target: normalizedTarget,
+      label,
+      mode: source.mode ?? "auto"
+    };
+  });
+}
+
+function sourcesForJob(job: Pick<ExtractionJobRow, "target" | "display_name" | "sources_json">): NamespaceBuildSource[] {
+  if (job.sources_json) {
+    try {
+      const parsed = JSON.parse(job.sources_json) as unknown;
+      if (Array.isArray(parsed) && parsed.length) {
+        return parsed.slice(0, 5).map((source, index) => {
+          const record = source && typeof source === "object" ? (source as Record<string, unknown>) : {};
+          const target = String(record.target ?? job.target);
+          const url = validatePublicDemoTarget(target);
+          const label = typeof record.label === "string" && record.label.trim() ? record.label.trim() : displayNameFromTarget(url.toString());
+          const modeValue = record.mode === "web" || record.mode === "walrus" || record.mode === "auto" ? record.mode : "auto";
+          return {
+            id: typeof record.id === "string" && record.id.trim() ? record.id.trim() : uniqueSourceId(label, url, index),
+            target: url.toString(),
+            label,
+            mode: modeValue
+          };
+        });
+      }
+    } catch {
+      // fall through to single-source compatibility
+    }
+  }
+  const target = validatePublicDemoTarget(job.target);
+  const label = job.display_name ?? displayNameFromTarget(target.toString());
+  return [{ id: uniqueSourceId(label, target, 0), target: target.toString(), label, mode: target.hostname.endsWith(".wal.app") ? "walrus" : "web" }];
+}
+
+function sourceKind(source: NamespaceBuildSource): "web" | "walrus" {
+  if (source.mode === "walrus") return "walrus";
+  if (source.mode === "web") return "web";
+  return new URL(source.target).hostname.endsWith(".wal.app") ? "walrus" : "web";
+}
+
+function namespaceForBuildSources(sources: NamespaceBuildSource[]): string {
+  const first = new URL(sources[0]!.target);
+  if (sources.length === 1) return namespaceForExtractTarget(first);
+  return `ctx:${slugNamespace(first.hostname)}:${createShortId()}`;
+}
+
+function uniqueSourceId(label: string, target: URL, index: number): string {
+  const base = slugNamespace(label || target.hostname) || slugNamespace(target.hostname) || "source";
+  return `${base.slice(0, 36)}-${index + 1}`;
 }
 
 function isReservedExampleHost(host: string): boolean {
@@ -3309,6 +3838,7 @@ function createJobId(): string {
 }
 
 function namespaceFromRow(row: NamespaceRow): HostedNamespaceSummary {
+  const sources = parseNamespaceSources(row.sources_json, row.target, row.display_name ?? undefined);
   return {
     namespace: row.namespace,
     target: row.target,
@@ -3321,11 +3851,39 @@ function namespaceFromRow(row: NamespaceRow): HostedNamespaceSummary {
     directoryEnabled: Boolean(row.directory_enabled),
     versionId: row.current_version_id,
     sourceRunId: row.source_run_id ?? undefined,
+    buildKind: row.build_kind ?? "single",
+    sources,
+    sourceCount: Number(row.source_count ?? sources.length),
     artifactCount: Number(row.artifact_count),
     byteLength: Number(row.byte_length),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
+}
+
+function parseNamespaceSources(value: string | null | undefined, fallbackTarget: string, fallbackLabel?: string): NamespaceBuildSource[] {
+  if (value) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (Array.isArray(parsed) && parsed.length) {
+        return parsed.slice(0, 5).map((source, index) => {
+          const record = source && typeof source === "object" ? (source as Record<string, unknown>) : {};
+          const target = String(record.target ?? fallbackTarget);
+          const label = typeof record.label === "string" ? record.label : fallbackLabel ?? displayNameFromTarget(target);
+          const mode = record.mode === "web" || record.mode === "walrus" || record.mode === "auto" ? record.mode : target.includes(".wal.app") ? "walrus" : "web";
+          return {
+            id: typeof record.id === "string" ? record.id : `source-${index + 1}`,
+            target,
+            label,
+            mode
+          };
+        });
+      }
+    } catch {
+      // use fallback
+    }
+  }
+  return [{ id: "source-1", target: fallbackTarget, label: fallbackLabel ?? displayNameFromTarget(fallbackTarget), mode: fallbackTarget.includes(".wal.app") ? "walrus" : "web" }];
 }
 
 function namespaceForExtractTarget(target: URL): string {

@@ -20,14 +20,18 @@ import {
   diffRunSnapshots,
   inferMode,
   inferTargetKind,
+  findPriorRunForNamespace,
   listArtifactFiles,
   listRuns,
   namespaceForTarget,
   normalizeInputTarget,
   readContextManifest,
+  readRunChunks,
   readRunManifest,
+  readRunSnapshot,
   resolveArtifactFile,
   scrapeWebPage,
+  verifySnapshot,
   type AiDatapoint,
   type BuildProfile,
   type DiscoveryStats,
@@ -712,6 +716,34 @@ app.post("/api/hosted/extractions", async (request) => {
   });
 });
 
+app.post("/api/hosted/namespace-builds", async (request) => {
+  const auth = await requireAuth(request.headers.authorization);
+  const input = z
+    .object({
+      namespace: z.string().min(3).max(300).optional(),
+      visibility: z.enum(["private", "public"]).default("private"),
+      displayName: z.string().max(120).optional(),
+      description: z.string().max(600).optional(),
+      tags: z.array(z.string().min(1).max(40)).max(12).default([]),
+      directoryEnabled: z.boolean().default(false),
+      sources: z
+        .array(
+          z.object({
+            target: z.string().url(),
+            label: z.string().min(1).max(120).optional(),
+            mode: z.enum(["auto", "web", "walrus"]).default("auto")
+          })
+        )
+        .min(1)
+        .max(5)
+    })
+    .parse(request.body ?? {});
+  return hostedWorkerJson("/api/namespace-builds", {
+    method: "POST",
+    body: JSON.stringify({ ...input, ownerId: auth.account.id })
+  });
+});
+
 app.get("/api/hosted/extractions/:jobId", async (request) => {
   const auth = await requireAuth(request.headers.authorization);
   const jobId = (request.params as { jobId: string }).jobId;
@@ -822,15 +854,40 @@ app.post("/api/runs/:id/ai-query", async (request) => {
   return result;
 });
 
+app.get("/api/runs/:id/verify", async (request) => {
+  const id = (request.params as { id: string }).id;
+  await requireRunAccess(request.headers.authorization, id);
+  return verifySnapshot(path.join(runsDir, id));
+});
+
 app.post("/api/runs/:id/memwal/remember", async (request) => {
   const id = (request.params as { id: string }).id;
   const auth = await requireRunAccess(request.headers.authorization, id);
   const memwal = memwalClientForAccount(auth.account);
+  const input = z.object({ writeMode: z.enum(["delta", "full"]).default("delta") }).parse(request.body ?? {});
   const artifact = await readContextManifest(runsDir, id);
   const namespace = namespaceForArtifact(artifact);
+  const chunks = await readRunChunks(runsDir, id);
+
+  if (input.writeMode === "delta" && chunks.length) {
+    const priorRunId = await findPriorRunForNamespace(runsDir, id, namespace);
+    const priorChunks = priorRunId ? await readRunChunks(runsDir, priorRunId) : [];
+    const snapshot = await readRunSnapshot(runsDir, id);
+    const result = await memwal.rememberSnapshotDelta({
+      namespace,
+      target: artifact.target,
+      createdAt: artifact.generatedAt,
+      chunks,
+      priorChunks,
+      artifactDigest: snapshot?.artifactDigest,
+      chunkGraphDigest: snapshot?.chunkGraphDigest
+    });
+    return { priorRunId, ...result };
+  }
+
   const snapshot = siteSnapshotForArtifact(artifact, namespace);
   const result = await memwal.rememberSnapshot(snapshot);
-  return { namespace, result };
+  return { namespace, writeMode: "full", result };
 });
 
 app.post("/api/runs/:id/memwal/recall", async (request) => {

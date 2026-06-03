@@ -3,6 +3,13 @@ import { z } from "zod";
 
 export type HostedNamespaceVisibility = "private" | "public";
 
+export type HostedNamespaceSource = {
+  id: string;
+  target: string;
+  label?: string;
+  mode?: "auto" | "web" | "walrus";
+};
+
 export type HostedNamespaceSummary = {
   namespace: string;
   target: string;
@@ -13,6 +20,9 @@ export type HostedNamespaceSummary = {
   tags?: string[];
   sourceType?: "web" | "walrus" | "upload" | "extract" | "import";
   directoryEnabled?: boolean;
+  buildKind?: "single" | "multi";
+  sources?: HostedNamespaceSource[];
+  sourceCount?: number;
   versionId: string;
   sourceRunId?: string;
   artifactCount: number;
@@ -38,6 +48,9 @@ export type HostedArtifactContent = HostedArtifactRecord & {
 export type HostedSearchResult = {
   path: string;
   title?: string;
+  sourceId?: string;
+  sourceLabel?: string;
+  sourceTarget?: string;
   contentType: string;
   snippet: string;
   score: number;
@@ -151,7 +164,8 @@ export function createHostedContextMemMcpServer(options: HostedMcpServerOptions)
       const { namespace } = await resolveNamespace(options, args);
       const query = stringArg(args.query);
       const limit = numericArg(args.limit, 8);
-      const results = store.searchContext ? await store.searchContext(namespace, query, limit) : await searchHostedArtifacts(store, namespace, query, limit);
+      const rawResults = store.searchContext ? await store.searchContext(namespace, query, limit) : await searchHostedArtifacts(store, namespace, query, limit);
+      const results = await enrichSearchResultsWithSources(store, namespace, rawResults);
       return textResult({
         namespace,
         query,
@@ -220,7 +234,8 @@ export function createHostedContextMemMcpServer(options: HostedMcpServerOptions)
       const { namespace, summary } = await resolveNamespace(options, args);
       const query = stringArg(args.query);
       const limit = numericArg(args.limit, 5);
-      const searchResults = store.searchContext ? await store.searchContext(namespace, query, limit) : await searchHostedArtifacts(store, namespace, query, limit);
+      const rawSearchResults = store.searchContext ? await store.searchContext(namespace, query, limit) : await searchHostedArtifacts(store, namespace, query, limit);
+      const searchResults = await enrichSearchResultsWithSources(store, namespace, rawSearchResults);
       const paths = Array.isArray(args.paths) && args.paths.length ? args.paths.filter((path): path is string => typeof path === "string") : searchResults.map((result) => result.path);
       const excerpts = await readArtifactExcerpts(store, namespace, paths, 2200);
       const memory = store.recallMemory
@@ -326,15 +341,20 @@ async function searchHostedArtifacts(store: HostedNamespaceStore, namespace: str
   const artifacts = (await store.listArtifacts(namespace)).filter(isHostedTextArtifact);
   const matches: HostedSearchResult[] = [];
 
+  const sources = await sourceLookupForNamespace(store, namespace);
   for (const artifact of artifacts) {
     const content = await store.readArtifact(namespace, artifact.path);
     if (!content || content.encoding !== "utf8") continue;
     const haystack = content.content.toLowerCase();
     const score = terms.reduce((sum, term) => sum + (haystack.includes(term) ? 1 : 0), 0);
     if (!score) continue;
+    const source = sourceMetadataForPath(sources, artifact.path);
     matches.push({
       path: artifact.path,
       title: titleForArtifact(artifact.path, content.content),
+      sourceId: source?.id,
+      sourceLabel: source?.label,
+      sourceTarget: source?.target,
       contentType: artifact.contentType,
       snippet: snippetForMatch(content.content, terms),
       score
@@ -344,20 +364,67 @@ async function searchHostedArtifacts(store: HostedNamespaceStore, namespace: str
   return matches.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path)).slice(0, limit);
 }
 
-async function readArtifactExcerpts(store: HostedNamespaceStore, namespace: string, paths: string[], maxChars: number): Promise<Array<{ path: string; contentType: string; excerpt: string }>> {
+async function enrichSearchResultsWithSources(store: HostedNamespaceStore, namespace: string, results: HostedSearchResult[]): Promise<HostedSearchResult[]> {
+  const sources = await sourceLookupForNamespace(store, namespace);
+  return results.map((result) => {
+    if (result.sourceId || result.sourceLabel || result.sourceTarget) return result;
+    const source = sourceMetadataForPath(sources, result.path);
+    return source ? { ...result, sourceId: source.id, sourceLabel: source.label, sourceTarget: source.target } : result;
+  });
+}
+
+async function readArtifactExcerpts(store: HostedNamespaceStore, namespace: string, paths: string[], maxChars: number): Promise<Array<{ path: string; sourceId?: string; sourceLabel?: string; sourceTarget?: string; contentType: string; excerpt: string }>> {
   const uniquePaths = [...new Set(paths)].slice(0, 8);
-  const excerpts: Array<{ path: string; contentType: string; excerpt: string }> = [];
+  const sources = await sourceLookupForNamespace(store, namespace);
+  const excerpts: Array<{ path: string; sourceId?: string; sourceLabel?: string; sourceTarget?: string; contentType: string; excerpt: string }> = [];
   for (const path of uniquePaths) {
     const artifactPath = normalizeHostedArtifactPath(path);
     const artifact = await store.readArtifact(namespace, artifactPath);
     if (!artifact || artifact.encoding !== "utf8") continue;
+    const source = sourceMetadataForPath(sources, artifact.path);
     excerpts.push({
       path: artifact.path,
+      sourceId: source?.id,
+      sourceLabel: source?.label,
+      sourceTarget: source?.target,
       contentType: artifact.contentType,
       excerpt: artifact.content.slice(0, maxChars)
     });
   }
   return excerpts;
+}
+
+async function sourceLookupForNamespace(store: HostedNamespaceStore, namespace: string): Promise<HostedNamespaceSource[]> {
+  const artifact = await store.readArtifact(namespace, "/context/sources.json").catch(() => undefined);
+  if (artifact?.encoding === "utf8") {
+    try {
+      const parsed = JSON.parse(artifact.content) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+          .map((item) => {
+            const rawMode = item.mode;
+            const mode: HostedNamespaceSource["mode"] = rawMode === "auto" || rawMode === "web" || rawMode === "walrus" ? rawMode : undefined;
+            return {
+              id: String(item.id ?? ""),
+              target: String(item.target ?? ""),
+              label: typeof item.label === "string" ? item.label : undefined,
+              mode
+            };
+          })
+          .filter((item) => item.id && item.target);
+      }
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function sourceMetadataForPath(sources: HostedNamespaceSource[], artifactPath: string): HostedNamespaceSource | undefined {
+  const match = /^\/site\/([^/]+)\//.exec(artifactPath);
+  if (!match?.[1]) return undefined;
+  return sources.find((source) => source.id === match[1]);
 }
 
 function registerCoreResource(server: McpServer, store: HostedNamespaceStore, namespace: string, name: string, artifactPath: string, mimeType: string, description: string): void {

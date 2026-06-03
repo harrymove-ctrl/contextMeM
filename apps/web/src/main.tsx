@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, Hash, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, Maximize2, MessageSquare, Palette, Play, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, X, Zap } from "lucide-react";
+import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, Hash, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, Maximize2, MessageSquare, Palette, Play, Plus, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, X, Zap } from "lucide-react";
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
 import "./styles.css";
@@ -62,6 +62,9 @@ type RunResponse = {
   manifest: {
     runId: string;
     target: string;
+    buildKind?: "single" | "multi";
+    sources?: HostedNamespaceSource[];
+    sourceCount?: number;
     mode: "web" | "walrus" | "auto";
     status: string;
     createdAt?: string;
@@ -272,6 +275,9 @@ type HostedNamespaceImportResponse = {
   namespace: string;
   target: string;
   sourceRunId?: string;
+  buildKind?: "single" | "multi";
+  sources?: HostedNamespaceSource[];
+  sourceCount?: number;
   versionId: string;
   visibility: "private" | "public";
   displayName?: string;
@@ -300,6 +306,21 @@ type HostedNamespaceSummary = Omit<HostedNamespaceImportResponse, "readToken" | 
   updatedAt: string;
 };
 
+type HostedNamespaceSource = {
+  id: string;
+  target: string;
+  label?: string;
+  mode?: "auto" | "web" | "walrus";
+  status?: "completed" | "failed";
+  kind?: "web" | "walrus";
+  engine?: "firecrawl" | "fetch";
+  pageCount?: number;
+  resourceCount?: number;
+  artifactPrefix?: string;
+  error?: string;
+  walrusProvenance?: Record<string, string>;
+};
+
 type MarkdownViewMode = "preview" | "raw";
 type MarkdownPage = ArtifactManifest["pages"][number];
 type MarkdownAnchorProps = React.ComponentPropsWithoutRef<"a"> & { node?: unknown };
@@ -319,6 +340,9 @@ type HostedExtractionJob = {
   ownerId: string;
   namespace: string;
   target: string;
+  buildKind?: "single" | "multi";
+  sources?: HostedNamespaceSource[];
+  sourceCount?: number;
   status: "queued" | "running" | "completed" | "failed";
   visibility: "private" | "public";
   displayName?: string;
@@ -1256,7 +1280,7 @@ function ContextMemExperience() {
       />
       <Route path="/app/compare" element={renderShell("Compare", "Pick two runs and review brand, design tokens, and key facts side-by-side.", <CompareAppPage history={history} authToken={sessionToken} />)} />
       <Route path="/app/publish" element={renderShell("Publish", "Check readiness and copy the commands needed to publish the context package.", <PublishPanel run={run} authToken={sessionToken} />)} />
-      <Route path="/app/namespaces" element={renderShell("Namespaces", "Manage hosted ContextMCP namespaces, tokens, public directory entries, and Cloudflare extraction jobs.", <NamespacesAppPage authToken={sessionToken} />)} />
+      <Route path="/app/namespaces" element={renderShell("Namespaces", "Build hosted AI namespaces from multiple sites, manage tokens, schedules, and public directory entries.", <NamespacesAppPage authToken={sessionToken} />)} />
       <Route
         path="/app/settings"
         element={renderShell(
@@ -2460,26 +2484,44 @@ function BuildConsolePage({
   return (
     <section className="workspace appWorkspace">
       <aside className="control buildControl">
-        <label className="field">
-          <span>Target</span>
-          <div className="targetBox">
-            <Search size={17} />
-            <input value={target} onChange={(event) => setTarget(event.target.value)} placeholder="Paste a .wal.app URL, Walrus object ID, or web URL" />
+        <div className="heroInput">
+          <div className="heroInputMain">
+            <Search size={18} className="heroInputIcon" />
+            <input
+              value={target}
+              onChange={(event) => setTarget(event.target.value)}
+              placeholder="Paste a .wal.app URL, Walrus object ID, or web URL…"
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && target && !busy) onStartRun();
+              }}
+            />
           </div>
-        </label>
-
-        <div className="field">
-          <span>Mode</span>
-          <div className="segmented">
-            {(["auto", "web", "walrus"] as const).map((item) => (
-              <button key={item} className={mode === item ? "selected" : ""} onClick={() => setMode(item)}>
-                {item === "web" ? <Globe2 size={15} /> : item === "walrus" ? <Boxes size={15} /> : <Sparkles size={15} />}
-                {item}
+          <div className="heroInputRow">
+            <div className="segmented heroModes" aria-label="Build mode">
+              {(["auto", "web", "walrus"] as const).map((item) => (
+                <button key={item} className={mode === item ? "selected" : ""} onClick={() => setMode(item)} type="button">
+                  {item === "web" ? <Globe2 size={14} /> : item === "walrus" ? <Boxes size={14} /> : <Sparkles size={14} />}
+                  {item}
+                </button>
+              ))}
+            </div>
+            <div className="heroSend">
+              {busy || primaryActionLabel !== "Build context" ? <span className="heroSendLabel">{primaryActionLabel}</span> : null}
+              <button
+                className="heroSendBtn"
+                disabled={!target || busy}
+                onClick={onStartRun}
+                type="button"
+                title={primaryActionLabel}
+                aria-label={primaryActionLabel}
+              >
+                {busy ? <LoaderCircle size={18} className="spin" /> : <ArrowDownRight size={18} />}
               </button>
-            ))}
+            </div>
           </div>
         </div>
 
+        <div className="buildSettings">
         <div className="field">
           <span>Network</span>
           <div className="segmented networkOnly" aria-label="Walrus network">
@@ -2548,11 +2590,7 @@ function BuildConsolePage({
             ))}
           </div>
         </div>
-
-        <button className="run" disabled={!target || busy} onClick={onStartRun}>
-          <Play size={17} />
-          {primaryActionLabel}
-        </button>
+        </div>
 
         <button className="secondary" disabled={!run || busy || !hasMemWalDelegate} onClick={onRemember}>
           <Brain size={17} />
@@ -4801,8 +4839,13 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
   const [newTokenLabel, setNewTokenLabel] = useState("agent import");
   const [freshToken, setFreshToken] = useState<string | null>(null);
   const [metadataDraft, setMetadataDraft] = useState({ displayName: "", description: "", tags: "", visibility: "private" as "private" | "public", directoryEnabled: false });
-  const [extractTarget, setExtractTarget] = useState("https://fmsprint.wal.app/");
-  const [extractNamespace, setExtractNamespace] = useState("");
+  const [builderSources, setBuilderSources] = useState<Array<{ target: string; label: string; mode: "auto" | "web" | "walrus" }>>([{ target: "https://fmsprint.wal.app/", label: "FMSprint", mode: "auto" }]);
+  const [builderNamespace, setBuilderNamespace] = useState("");
+  const [builderDisplayName, setBuilderDisplayName] = useState("AI namespace");
+  const [builderDescription, setBuilderDescription] = useState("");
+  const [builderTags, setBuilderTags] = useState("hosted,context");
+  const [builderVisibility, setBuilderVisibility] = useState<"private" | "public">("private");
+  const [builderDirectoryEnabled, setBuilderDirectoryEnabled] = useState(false);
   const [extractJob, setExtractJob] = useState<HostedExtractionJob | null>(null);
   const [schedules, setSchedules] = useState<HostedSchedule[]>([]);
   const [alerts, setAlerts] = useState<ContextAlert[]>([]);
@@ -4935,20 +4978,39 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
     }
   }
 
-  async function startExtraction() {
+  function updateBuilderSource(index: number, patch: Partial<{ target: string; label: string; mode: "auto" | "web" | "walrus" }>) {
+    setBuilderSources((current) => current.map((source, itemIndex) => (itemIndex === index ? { ...source, ...patch } : source)));
+  }
+
+  function addBuilderSource() {
+    setBuilderSources((current) => (current.length >= 5 ? current : [...current, { target: "", label: "", mode: "auto" }]));
+  }
+
+  function removeBuilderSource(index: number) {
+    setBuilderSources((current) => (current.length <= 1 ? current : current.filter((_, itemIndex) => itemIndex !== index)));
+  }
+
+  async function startNamespaceBuild() {
     setBusy("extract");
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/api/hosted/extractions`, {
+      const sources = builderSources
+        .map((source) => ({ target: source.target.trim(), label: source.label.trim() || undefined, mode: source.mode }))
+        .filter((source) => source.target);
+      const response = await fetch(`${API_BASE}/api/hosted/namespace-builds`, {
         method: "POST",
         headers: authHeaders(authToken, { "content-type": "application/json" }),
         body: JSON.stringify({
-          target: extractTarget,
-          namespace: extractNamespace || undefined,
-          visibility: "private",
-          displayName: defaultDisplayName(extractTarget),
-          tags: ["extract", "context"],
-          directoryEnabled: false
+          namespace: builderNamespace || undefined,
+          visibility: builderVisibility,
+          displayName: builderDisplayName || defaultDisplayName(sources[0]?.target ?? "AI namespace"),
+          description: builderDescription || undefined,
+          tags: builderTags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+          directoryEnabled: builderVisibility === "public" && builderDirectoryEnabled,
+          sources
         })
       });
       if (!response.ok) throw new Error(await readResponseError(response));
@@ -5022,7 +5084,7 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
               <span>{item.visibility} · {item.artifactCount} artifacts · {item.directoryEnabled ? "directory" : "unlisted"}</span>
             </button>
           ))}
-          {!namespaces.length ? <div className="subEmpty">Publish a run or start a Cloudflare extraction to create your first namespace.</div> : null}
+          {!namespaces.length ? <div className="subEmpty">Publish a run or build a hosted namespace to create your first agent context.</div> : null}
         </div>
       </section>
 
@@ -5037,10 +5099,12 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
           </div>
           <div className="namespaceMeta">
             <div><span>visibility</span><strong>{selected.visibility}</strong></div>
+            <div><span>sources</span><strong>{selected.sourceCount ?? selected.sources?.length ?? 1}</strong></div>
             <div><span>updated</span><strong>{formatDateTime(selected.updatedAt)}</strong></div>
             <div><span>size</span><strong>{formatBytes(selected.byteLength)}</strong></div>
           </div>
           <code>{selected.mcpUrl}</code>
+          <NamespaceSourceList sources={selected.sources ?? []} />
           <div className="tokenBox">
             <div className="sectionHead">
               <h2>Read Tokens</h2>
@@ -5078,24 +5142,105 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
 
       <section className="namespacePanel">
         <div className="sectionHead">
-          <h2>Cloudflare Extraction</h2>
-          <span>fetch-based</span>
+          <h2>Hosted Namespace Builder</h2>
+          <span>{builderSources.length}/5 sources</span>
         </div>
+        <div className="namespaceBuilderSources">
+          {builderSources.map((source, index) => (
+            <article key={index} className="namespaceSourceRow">
+              <label className="wide">
+                <span>Source URL</span>
+                <input value={source.target} onChange={(event) => updateBuilderSource(index, { target: event.target.value })} placeholder="https://docs.example.com/" />
+              </label>
+              <label>
+                <span>Label</span>
+                <input value={source.label} onChange={(event) => updateBuilderSource(index, { label: event.target.value })} placeholder="Docs" />
+              </label>
+              <label>
+                <span>Mode</span>
+                <select value={source.mode} onChange={(event) => updateBuilderSource(index, { mode: event.target.value as "auto" | "web" | "walrus" })}>
+                  <option value="auto">Auto</option>
+                  <option value="web">Web</option>
+                  <option value="walrus">Walrus</option>
+                </select>
+              </label>
+              <button type="button" onClick={() => removeBuilderSource(index)} disabled={builderSources.length <= 1}>
+                <X size={14} />
+              </button>
+            </article>
+          ))}
+        </div>
+        <button className="secondary" type="button" onClick={addBuilderSource} disabled={builderSources.length >= 5}>
+          <Plus size={15} />
+          Add source
+        </button>
         <div className="namespaceForm">
           <label className="wide">
-            <span>Target URL</span>
-            <input value={extractTarget} onChange={(event) => setExtractTarget(event.target.value)} />
+            <span>Namespace</span>
+            <input value={builderNamespace} onChange={(event) => setBuilderNamespace(event.target.value)} placeholder="optional custom namespace" />
           </label>
           <label>
-            <span>Namespace</span>
-            <input value={extractNamespace} onChange={(event) => setExtractNamespace(event.target.value)} placeholder="optional custom namespace" />
+            <span>Display name</span>
+            <input value={builderDisplayName} onChange={(event) => setBuilderDisplayName(event.target.value)} />
+          </label>
+          <label className="wide">
+            <span>Description</span>
+            <input value={builderDescription} onChange={(event) => setBuilderDescription(event.target.value)} placeholder="optional" />
+          </label>
+          <label>
+            <span>Tags</span>
+            <input value={builderTags} onChange={(event) => setBuilderTags(event.target.value)} />
           </label>
         </div>
-        <button className="secondary" onClick={startExtraction} disabled={busy === "extract"}>
+        <div className="namespaceControls">
+          <div className="segmented compact">
+            <button className={builderVisibility === "private" ? "selected" : ""} onClick={() => setBuilderVisibility("private")}>
+              Private
+            </button>
+            <button className={builderVisibility === "public" ? "selected" : ""} onClick={() => setBuilderVisibility("public")}>
+              Public
+            </button>
+          </div>
+          <label className="inlineCheck">
+            <input type="checkbox" checked={builderDirectoryEnabled} disabled={builderVisibility !== "public"} onChange={(event) => setBuilderDirectoryEnabled(event.target.checked)} />
+            Directory
+          </label>
+        </div>
+        <button className="secondary" onClick={startNamespaceBuild} disabled={busy === "extract"}>
           <Server size={15} />
-          {busy === "extract" ? "Starting" : "Start Worker extraction"}
+          {busy === "extract" ? "Building" : "Build namespace"}
         </button>
-        {extractJob ? <JsonPanel data={extractJob} /> : null}
+        {extractJob ? (
+          <div className="namespaceBuildResult">
+            <div className="namespaceMeta">
+              <div><span>namespace</span><strong>{extractJob.namespace}</strong></div>
+              <div><span>status</span><strong>{extractJob.status}</strong></div>
+              <div><span>sources</span><strong>{extractJob.sourceCount ?? extractJob.sources?.length ?? 1}</strong></div>
+            </div>
+            <NamespaceSourceList sources={(extractJob.result?.sources as HostedNamespaceSource[] | undefined) ?? extractJob.sources ?? []} />
+            {extractJob.result?.mcpUrl ? (
+              <label className="freshToken">
+                <span>MCP URL</span>
+                <code>{String(extractJob.result.mcpUrl)}</code>
+                <button onClick={() => copyText(String(extractJob.result?.mcpUrl ?? ""))}>
+                  <Clipboard size={14} />
+                  Copy
+                </button>
+              </label>
+            ) : null}
+            {extractJob.result?.readToken ? (
+              <label className="freshToken">
+                <span>Read token</span>
+                <code>{String(extractJob.result.readToken)}</code>
+                <button onClick={() => copyText(String(extractJob.result?.readToken ?? ""))}>
+                  <Clipboard size={14} />
+                  Copy
+                </button>
+              </label>
+            ) : null}
+            {extractJob.result?.snippets ? <div className="snippetGrid">{Object.entries(extractJob.result.snippets).map(([label, snippet]) => <article key={label}><strong>{formatSnippetLabel(label)}</strong><pre>{JSON.stringify(snippet, null, 2)}</pre></article>)}</div> : null}
+          </div>
+        ) : null}
       </section>
 
       <section className="namespacePanel">
@@ -5179,6 +5324,30 @@ function NamespacesAppPage({ authToken }: { authToken: string }) {
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+function NamespaceSourceList({ sources }: { sources: HostedNamespaceSource[] }) {
+  if (!sources.length) return null;
+  return (
+    <div className="namespaceSourceList">
+      {sources.map((source, index) => (
+        <article key={source.id || `${source.target}-${index}`}>
+          <div>
+            <strong>{source.label || defaultDisplayName(source.target)}</strong>
+            <span>{source.target}</span>
+            {source.error ? <small>{source.error}</small> : null}
+          </div>
+          <div className="sourceBadges">
+            <span>{source.kind ?? source.mode ?? "auto"}</span>
+            {source.engine ? <span>{source.engine}</span> : null}
+            {source.walrusProvenance || source.kind === "walrus" || source.mode === "walrus" ? <span>walrus provenance</span> : null}
+            {typeof source.pageCount === "number" ? <span>{source.pageCount} pages</span> : null}
+            {source.status ? <span>{source.status}</span> : null}
+          </div>
+        </article>
+      ))}
     </div>
   );
 }

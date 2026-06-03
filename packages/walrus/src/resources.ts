@@ -27,6 +27,7 @@ import {
   type StyleSource
 } from "@contextmem/core";
 import { DynamicFieldStruct, ResourcePathStruct, ResourceStruct } from "./bcs.js";
+import { captureWalrusSiteProof } from "./proof.js";
 import { blobAggregatorEndpoint, deriveQuiltPatchId, quiltAggregatorEndpoint } from "./quilt.js";
 
 export type WalrusProgressCallback = (progress: Omit<RunProgress, "updatedAt">) => void | Promise<void>;
@@ -311,6 +312,7 @@ export async function materializeWalrusSite(site: WalrusSiteContext, outputDir: 
   }
 
   await options.onProgress?.({ phase: "building_artifacts", label: "Writing agent-readable context artifacts" });
+  const proof = await captureWalrusSiteProof(site);
   await measure(timings, "buildArtifacts", () => buildAgentReadableSite({
     runId: path.basename(outputDir),
     target: site.siteObjectId,
@@ -338,7 +340,7 @@ export async function materializeWalrusSite(site: WalrusSiteContext, outputDir: 
     designSystem,
     screenshots,
     componentPreviews,
-    walrus: { site, resources: fetched }
+    walrus: { site, resources: fetched, proof }
   }));
 
   return {

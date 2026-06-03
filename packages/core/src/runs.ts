@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type {
   ArtifactFileRecord,
+  ContextChunk,
   DiffCounter,
   DesignSystem,
   ImageAsset,
@@ -11,9 +12,11 @@ import type {
   RunManifest,
   SiteSnapshotDiff,
   SiteSnapshotDiffEntry,
+  SnapshotManifest,
   WalrusPackageManifest,
   WalrusResourceRecord
 } from "./types.js";
+import { parseChunksNdjson } from "./chunks.js";
 import { detectContentType, safeJoin } from "./utils.js";
 
 export async function readRunManifest(runsDir: string, runId: string): Promise<RunManifest> {
@@ -24,6 +27,26 @@ export async function readRunManifest(runsDir: string, runId: string): Promise<R
 export async function readContextManifest(runsDir: string, runId: string): Promise<WalrusPackageManifest> {
   const runDir = resolveRunDir(runsDir, runId);
   return readJson(path.join(runDir, "context", "manifest.json")) as Promise<WalrusPackageManifest>;
+}
+
+export async function readRunChunks(runsDir: string, runId: string): Promise<ContextChunk[]> {
+  const runDir = resolveRunDir(runsDir, runId);
+  const text = await fs.readFile(path.join(runDir, "context", "chunks.ndjson"), "utf8").catch(() => "");
+  return text ? parseChunksNdjson(text) : [];
+}
+
+export async function readRunSnapshot(runsDir: string, runId: string): Promise<SnapshotManifest | undefined> {
+  const runDir = resolveRunDir(runsDir, runId);
+  return (await readJson(path.join(runDir, "context", "snapshot.json")).catch(() => undefined)) as SnapshotManifest | undefined;
+}
+
+export async function findPriorRunForNamespace(runsDir: string, runId: string, namespace: string): Promise<string | undefined> {
+  const history = await listRuns(runsDir, 500);
+  const current = history.find((item) => item.runId === runId);
+  const currentUpdatedAt = Date.parse(current?.updatedAt ?? new Date().toISOString());
+  return history.find(
+    (item) => item.runId !== runId && item.namespace === namespace && item.status === "completed" && Date.parse(item.updatedAt) < currentUpdatedAt
+  )?.runId;
 }
 
 export async function listRuns(runsDir: string, limit = 100): Promise<RunHistoryItem[]> {

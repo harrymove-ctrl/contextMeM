@@ -22,10 +22,14 @@ import type {
   SitemapResult,
   Styleguide,
   WalrusPackageManifest,
+  WalrusProofBundle,
   WalrusResourceRecord,
-  WalrusSiteContext
+  WalrusSiteContext,
+  WalrusSiteProof
 } from "./types.js";
 import { buildSiteStructure } from "./site-structure.js";
+import { buildChunks, chunkGraphDigest, renderChunksNdjson } from "./chunks.js";
+import { buildSnapshotManifest } from "./snapshot.js";
 import { detectContentType, pathToRoute, safeJoin, unique } from "./utils.js";
 
 export type AgentPackageInput = {
@@ -46,7 +50,10 @@ export type AgentPackageInput = {
   walrus?: {
     site: WalrusSiteContext;
     resources: WalrusResourceRecord[];
+    proof?: WalrusSiteProof;
   };
+  namespace?: string;
+  signingKey?: string;
 };
 
 export async function buildAgentReadableSite(input: AgentPackageInput): Promise<WalrusPackageManifest> {
@@ -121,7 +128,11 @@ export async function buildAgentReadableSite(input: AgentPackageInput): Promise<
       generatedAt: manifest.generatedAt,
       files: input.walrus.resources.length
     });
+    await writeJson(path.join(contextDir, "proofs.json"), buildWalrusProofBundle(input.walrus.site, input.walrus.resources, input.walrus.proof));
   }
+
+  const chunks = buildChunks(pages);
+  await fs.writeFile(path.join(contextDir, "chunks.ndjson"), renderChunksNdjson(chunks));
 
   await fs.writeFile(path.join(root, "index.html"), renderIndexHtml(manifest));
   await fs.writeFile(path.join(root, "llms.txt"), renderLlmsTxt(manifest));
@@ -134,7 +145,45 @@ export async function buildAgentReadableSite(input: AgentPackageInput): Promise<
     };
   }
   await writeJson(path.join(root, "ws-resources.json"), wsResources);
+
+  const snapshot = await buildSnapshotManifest({
+    runId: input.runId,
+    target: input.target,
+    sourceType: input.walrus ? "walrus" : "web",
+    namespace: input.namespace,
+    outputDir: root,
+    chunkGraphDigest: chunks.length ? chunkGraphDigest(chunks) : undefined,
+    signingKey: input.signingKey
+  });
+  await writeJson(path.join(contextDir, "snapshot.json"), snapshot);
   return manifest;
+}
+
+function buildWalrusProofBundle(site: WalrusSiteContext, resources: WalrusResourceRecord[], proof?: WalrusSiteProof): WalrusProofBundle {
+  const blobs = resources.map((resource) => ({
+    path: resource.path,
+    blobId: resource.blobId,
+    blobHash: resource.blobHash,
+    quiltPatchId: resource.quiltPatchId,
+    dynamicFieldObjectId: resource.dynamicFieldObjectId,
+    version: resource.version,
+    byteLength: resource.byteLength,
+    verified: resource.verified
+  }));
+  return {
+    schemaVersion: 1,
+    network: site.network,
+    siteObjectId: site.siteObjectId,
+    sitePackage: site.sitePackage,
+    rpcUrl: site.rpcUrl,
+    aggregatorUrl: site.aggregatorUrl,
+    portalUrl: site.portalUrl,
+    suinsName: site.suinsName,
+    site: proof ?? { capturedAt: new Date().toISOString() },
+    resourceCount: blobs.length,
+    verifiedCount: blobs.filter((blob) => blob.verified).length,
+    resources: blobs
+  };
 }
 
 export async function writeJson(filePath: string, value: unknown): Promise<void> {
@@ -175,7 +224,10 @@ export function buildWsResources(root: string): Record<string, unknown> {
     "/context/blobs.json",
     "/context/headers.json",
     "/context/routes.json",
-    "/context/package.json"
+    "/context/package.json",
+    "/context/proofs.json",
+    "/context/chunks.ndjson",
+    "/context/snapshot.json"
   ];
   for (const route of known) {
     const type = detectContentType(route);
@@ -184,6 +236,7 @@ export function buildWsResources(root: string): Record<string, unknown> {
       : { "Content-Disposition": "inline", "content-type": type };
   }
   headers["/llms.txt"] = { "Content-Disposition": "inline", "content-type": "text/plain; charset=utf-8" };
+  headers["/context/chunks.ndjson"] = { "Content-Disposition": "inline", "content-type": "application/x-ndjson; charset=utf-8" };
   routes["/context"] = "/context/manifest.json";
   routes["/sitemap.json"] = "/context/sitemap.json";
   routes["/site-structure.json"] = "/context/site-structure.json";
@@ -297,6 +350,8 @@ function renderLlmsTxt(manifest: WalrusPackageManifest): string {
     `Generated: ${manifest.generatedAt}`,
     "",
     "## Core Artifacts",
+    "- /context/snapshot.json",
+    "- /context/chunks.ndjson",
     "- /context/manifest.json",
     "- /context/sitemap.json",
     "- /context/site-structure.json",
@@ -309,6 +364,7 @@ function renderLlmsTxt(manifest: WalrusPackageManifest): string {
     "- /context/web-brand-kit.json",
     "- /context/video-brand-kit.json",
     "- /context/resources.json",
+    ...(manifest.walrus ? ["- /context/proofs.json"] : []),
     "",
     "## Pages",
     ...manifest.pages.map((page, index) => `- ${page.title ?? page.routePath ?? page.url}: /context/pages/${String(index + 1).padStart(3, "0")}-${slug(page.routePath ?? page.url)}.md`)

@@ -39,6 +39,81 @@ describe("ContextMeM hosted namespace Worker", () => {
     expect(body.artifacts.map((artifact) => artifact.path)).toContain("/llms.txt");
   });
 
+  it("rejects an expired namespace token", async () => {
+    const env = createTestEnv();
+    const imported = await importFixtureNamespace(env, "private");
+    const { handleWorkerRequest, hashReadToken } = await worker();
+
+    const expiredToken = "ctxm_expired_token_abcdef0123456789";
+    await env.CONTEXTMEM_DB.prepare(
+      `INSERT INTO contextmem_namespace_tokens (token_hash, token_id, namespace, label, created_at, scope, expires_at, snapshot_pin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+      .bind(await hashReadToken(expiredToken), "tok_expired", imported.namespace, "expired", new Date(Date.now() - 86400000).toISOString(), "read", new Date(Date.now() - 1000).toISOString(), null)
+      .run();
+
+    const response = await handleWorkerRequest(
+      new Request(`https://contextmem.test/api/namespaces/${encodeURIComponent(imported.namespace)}`, { headers: { authorization: `Bearer ${expiredToken}` } }),
+      env
+    );
+    expect(response.status).toBe(403);
+    expect(JSON.stringify(await response.json())).toContain("expired");
+  });
+
+  it("serves the pinned snapshot version when a token has snapshot_pin", async () => {
+    const env = createTestEnv();
+    const { handleWorkerRequest } = await worker();
+    const namespace = "web:pinned-example.com";
+    const importVersion = async (llms: string) => {
+      const res = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/namespaces/import", {
+          method: "POST",
+          headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+          body: JSON.stringify({
+            namespace,
+            visibility: "private",
+            target: "https://demo-product.wal.app/",
+            sourceRunId: "run_fixture",
+            manifest: { target: "https://demo-product.wal.app/", pages: [] },
+            files: [
+              { path: "/llms.txt", contentType: "text/plain; charset=utf-8", encoding: "utf8", content: llms },
+              { path: "/context/manifest.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify({ target: "x" }) }
+            ]
+          })
+        }),
+        env
+      );
+      expect(res.status).toBe(201);
+      return (await res.json()) as { readToken: string };
+    };
+
+    await importVersion("V1 ONLY CONTENT");
+    const v1Versions = [...(env.CONTEXTMEM_DB as MemoryD1Database).versions.values()].filter((version) => version.namespace === namespace);
+    const v1Id = String(v1Versions[v1Versions.length - 1]!.id);
+    const v2 = await importVersion("V2 DIFFERENT CONTENT LONGER");
+
+    const tokenRes = await handleWorkerRequest(
+      new Request(`https://contextmem.test/api/namespaces/${encodeURIComponent(namespace)}/tokens`, {
+        method: "POST",
+        headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+        body: JSON.stringify({ label: "pinned", snapshotPin: v1Id })
+      }),
+      env
+    );
+    expect(tokenRes.status).toBe(201);
+    const pinnedToken = ((await tokenRes.json()) as { readToken: string }).readToken;
+
+    const pinned = await handleWorkerRequest(new Request(`https://contextmem.test/api/namespaces/${encodeURIComponent(namespace)}`, { headers: { authorization: `Bearer ${pinnedToken}` } }), env);
+    expect(pinned.status).toBe(200);
+    const pinnedBody = (await pinned.json()) as { pinnedVersionId?: string; artifacts: Array<{ path: string; size: number }> };
+    expect(pinnedBody.pinnedVersionId).toBe(v1Id);
+    expect(pinnedBody.artifacts.find((artifact) => artifact.path === "/llms.txt")?.size).toBe(Buffer.byteLength("V1 ONLY CONTENT"));
+
+    const current = await handleWorkerRequest(new Request(`https://contextmem.test/api/namespaces/${encodeURIComponent(namespace)}`, { headers: { authorization: `Bearer ${v2.readToken}` } }), env);
+    const currentBody = (await current.json()) as { pinnedVersionId?: string; artifacts: Array<{ path: string; size: number }> };
+    expect(currentBody.pinnedVersionId).toBeUndefined();
+    expect(currentBody.artifacts.find((artifact) => artifact.path === "/llms.txt")?.size).toBe(Buffer.byteLength("V2 DIFFERENT CONTENT LONGER"));
+  });
+
   it("allows public namespace reads without a token", async () => {
     const env = createTestEnv();
     const imported = await importFixtureNamespace(env, "public");
@@ -247,6 +322,116 @@ describe("ContextMeM hosted namespace Worker", () => {
       expect(body.job.result?.namespace).toBe("web:demo-product.wal.app");
     } finally {
       restoreFetch();
+    }
+  });
+
+  it("builds one hosted namespace from multiple website and Walrus sources", async () => {
+    const env = createTestEnv();
+    const restoreFetch = mockFetch({
+      "https://docs-one.dev/": "<html><head><title>Docs One</title><meta name=\"description\" content=\"First docs\"></head><body><a href=\"/pricing\">Pricing</a>Docs one home</body></html>",
+      "https://docs-one.dev/pricing": "<html><head><title>Pricing</title></head><body>Pricing is usage based</body></html>",
+      "https://docs-two.dev/": "<html><head><title>Docs Two</title></head><body><a href=\"/api\">API</a>Second docs home</body></html>",
+      "https://docs-two.dev/api": "<html><head><title>API</title></head><body>API reference content</body></html>",
+      "https://demo-product.wal.app/": "<html><head><title>Walrus App</title></head><body>Walrus hosted context</body></html>"
+    });
+    try {
+      const { handleWorkerRequest, CloudflareNamespaceStore } = await worker();
+      const response = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/namespace-builds", {
+          method: "POST",
+          headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+          body: JSON.stringify({
+            ownerId: "acct_multi",
+            namespace: "ctx:multi-source",
+            displayName: "Multi Source Context",
+            sources: [
+              { target: "https://docs-one.dev/", label: "Docs One", mode: "web" },
+              { target: "https://docs-two.dev/", label: "Docs Two", mode: "web" },
+              { target: "https://demo-product.wal.app/", label: "Walrus App", mode: "walrus" }
+            ]
+          })
+        }),
+        env
+      );
+      expect(response.status).toBe(202);
+      const body = (await response.json()) as { job: { status: string; sourceCount: number; result?: { namespace: string; sourceCount: number; readToken: string } } };
+      expect(body.job.status).toBe("completed");
+      expect(body.job.sourceCount).toBe(3);
+      expect(body.job.result?.sourceCount).toBe(3);
+
+      const store = new CloudflareNamespaceStore(env);
+      const artifacts = await store.listArtifacts("ctx:multi-source");
+      expect(artifacts.map((artifact) => artifact.path)).toEqual(expect.arrayContaining(["/context/sources.json", "/context/source-index.json", "/llms-full.txt", "/site/docs-one-1/index.md"]));
+
+      const manifest = await store.readArtifact("ctx:multi-source", "/context/manifest.json");
+      expect(manifest?.content).toContain("\"buildKind\": \"multi\"");
+      expect(manifest?.content).toContain("\"kind\": \"walrus\"");
+
+      const search = await mcpPost(env, `https://contextmem.test/mcp?namespace=${encodeURIComponent("ctx:multi-source")}`, body.job.result!.readToken, {
+        jsonrpc: "2.0",
+        id: "search-multi",
+        method: "tools/call",
+        params: { name: "search_context", arguments: { query: "pricing", limit: 5 } }
+      });
+      expect(search.status).toBe(200);
+      const searchText = JSON.stringify(await search.json());
+      expect(searchText).toContain("Docs One");
+      expect(searchText).toContain("sourceTarget");
+    } finally {
+      restoreFetch();
+    }
+  });
+
+  it("uses Firecrawl when configured and falls back to raw fetch when it fails", async () => {
+    const env = { ...createTestEnv(), FIRECRAWL_API_KEY: "fc-test" };
+    const restoreFetch = mockFetch({
+      "https://api.firecrawl.dev/v2/scrape": JSON.stringify({
+        success: true,
+        data: {
+          markdown: "# Firecrawl Page\n\nRendered firecrawl content",
+          rawHtml: "<html><head><title>Firecrawl Page</title></head><body>Rendered firecrawl content</body></html>",
+          links: []
+        }
+      }),
+      "https://api.firecrawl.dev/v2/map": JSON.stringify({ success: true, links: [] })
+    });
+    try {
+      const { handleWorkerRequest, CloudflareNamespaceStore } = await worker();
+      const response = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/namespace-builds", {
+          method: "POST",
+          headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+          body: JSON.stringify({ ownerId: "acct_fc", namespace: "ctx:firecrawl", sources: [{ target: "https://firecrawl-source.dev/", label: "Firecrawl Source" }] })
+        }),
+        env
+      );
+      expect(response.status).toBe(202);
+      const sources = await new CloudflareNamespaceStore(env).readArtifact("ctx:firecrawl", "/context/sources.json");
+      expect(sources?.content).toContain("\"engine\": \"firecrawl\"");
+    } finally {
+      restoreFetch();
+    }
+
+    const fallbackEnv = { ...createTestEnv(), FIRECRAWL_API_KEY: "fc-test" };
+    const restoreFallbackFetch = mockFetch({
+      "https://api.firecrawl.dev/v2/scrape": { body: "firecrawl down", status: 500 },
+      "https://fallback-source.dev/": "<html><head><title>Fallback Source</title></head><body>Raw fetch fallback content</body></html>"
+    });
+    try {
+      const { handleWorkerRequest, CloudflareNamespaceStore } = await worker();
+      const response = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/namespace-builds", {
+          method: "POST",
+          headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+          body: JSON.stringify({ ownerId: "acct_fc", namespace: "ctx:firecrawl-fallback", sources: [{ target: "https://fallback-source.dev/", label: "Fallback Source" }] })
+        }),
+        fallbackEnv
+      );
+      expect(response.status).toBe(202);
+      const sources = await new CloudflareNamespaceStore(fallbackEnv).readArtifact("ctx:firecrawl-fallback", "/context/sources.json");
+      expect(sources?.content).toContain("\"engine\": \"fetch\"");
+    } finally {
+      restoreFallbackFetch();
     }
   });
 
@@ -644,11 +829,18 @@ class MemoryD1Statement {
       const token = this.db.tokens.get(tokenHash);
       return token?.namespace === namespace ? (token as T) : null;
     }
-    if (query.includes("from contextmem_namespace_artifacts") && query.includes("and a.path = ?")) {
+    if (query.includes("from contextmem_namespace_versions") && query.includes("where namespace = ? and id = ?")) {
       const namespace = String(this.values[0]);
-      const artifactPath = String(this.values[1]);
-      const current = this.db.namespaces.get(namespace)?.current_version_id;
-      return (this.db.artifacts.find((artifact) => artifact.namespace === namespace && artifact.version_id === current && artifact.path === artifactPath) as T | undefined) ?? null;
+      const id = String(this.values[1]);
+      const version = this.db.versions.get(id);
+      return version && version.namespace === namespace ? ({ id } as T) : null;
+    }
+    if (query.includes("from contextmem_namespace_artifacts") && query.includes("a.path = ?")) {
+      const namespace = String(this.values[0]);
+      const pinned = query.includes("a.version_id = ?");
+      const version = pinned ? String(this.values[1]) : this.db.namespaces.get(namespace)?.current_version_id;
+      const artifactPath = pinned ? String(this.values[2]) : String(this.values[1]);
+      return (this.db.artifacts.find((artifact) => artifact.namespace === namespace && artifact.version_id === version && artifact.path === artifactPath) as T | undefined) ?? null;
     }
     return null;
   }
@@ -672,8 +864,16 @@ class MemoryD1Statement {
     }
     if (query.includes("from contextmem_namespace_artifacts")) {
       const namespace = String(this.values[0]);
-      const current = this.db.namespaces.get(namespace)?.current_version_id;
-      const results = this.db.artifacts.filter((artifact) => artifact.namespace === namespace && artifact.version_id === current).sort((a, b) => String(a.path).localeCompare(String(b.path))) as T[];
+      const version = query.includes("a.version_id = ?") ? String(this.values[1]) : this.db.namespaces.get(namespace)?.current_version_id;
+      const results = this.db.artifacts.filter((artifact) => artifact.namespace === namespace && artifact.version_id === version).sort((a, b) => String(a.path).localeCompare(String(b.path))) as T[];
+      return { results };
+    }
+    if (query.includes("from contextmem_namespace_versions")) {
+      const namespace = String(this.values[0]);
+      const results = [...this.db.versions.values()]
+        .filter((version) => version.namespace === namespace)
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+        .slice(0, 2) as T[];
       return { results };
     }
     if (query.includes("from contextmem_extraction_jobs")) {
@@ -710,12 +910,22 @@ class MemoryD1Statement {
       if (!this.db.namespaces.has(String(namespace))) throw new Error("FOREIGN KEY constraint failed: namespace");
       this.db.versions.set(String(id), { id, namespace, source_run_id, manifest_json, artifact_count, byte_length, created_at });
     } else if (query.startsWith("insert into contextmem_namespaces")) {
-      const [namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, manifest_json, artifact_count, byte_length, created_at, updated_at] = this.values;
+      const [namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, build_kind, sources_json, source_count, manifest_json, artifact_count, byte_length, created_at, updated_at] = this.values;
       const existing = this.db.namespaces.get(String(namespace));
-      this.db.namespaces.set(String(namespace), { namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, manifest_json, artifact_count, byte_length, created_at: existing?.created_at ?? created_at, updated_at });
+      this.db.namespaces.set(String(namespace), { namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, build_kind, sources_json, source_count, manifest_json, artifact_count, byte_length, created_at: existing?.created_at ?? created_at, updated_at });
     } else if (query.startsWith("insert into contextmem_namespace_tokens")) {
-      const [token_hash, token_id, namespace, label, created_at] = this.values;
-      this.db.tokens.set(String(token_hash), { token_hash, token_id, namespace, label, created_at, revoked_at: null });
+      const [token_hash, token_id, namespace, label, created_at, scope, expires_at, snapshot_pin] = this.values;
+      this.db.tokens.set(String(token_hash), {
+        token_hash,
+        token_id,
+        namespace,
+        label,
+        created_at,
+        revoked_at: null,
+        scope: scope ?? "read",
+        expires_at: expires_at ?? null,
+        snapshot_pin: snapshot_pin ?? null
+      });
     } else if (query.startsWith("delete from contextmem_namespace_artifacts")) {
       const [namespace, version_id] = this.values;
       this.db.artifacts = this.db.artifacts.filter((artifact) => artifact.namespace !== namespace || artifact.version_id !== version_id);
@@ -739,8 +949,8 @@ class MemoryD1Statement {
       const item = this.db.namespaces.get(String(namespace));
       if (item) Object.assign(item, { visibility, display_name, description, tags_json, directory_enabled, updated_at });
     } else if (query.startsWith("insert into contextmem_extraction_jobs")) {
-      const [id, owner_id, namespace, target, visibility, display_name, description, tags_json, directory_enabled, created_at, updated_at] = this.values;
-      this.db.extractionJobs.set(String(id), { id, owner_id, namespace, target, status: "queued", visibility, display_name, description, tags_json, directory_enabled, source_type: "extract", created_at, updated_at });
+      const [id, owner_id, namespace, target, visibility, display_name, description, tags_json, directory_enabled, build_kind, sources_json, source_count, created_at, updated_at] = this.values;
+      this.db.extractionJobs.set(String(id), { id, owner_id, namespace, target, status: "queued", visibility, display_name, description, tags_json, directory_enabled, source_type: "extract", build_kind, sources_json, source_count, created_at, updated_at });
     } else if (query.startsWith("update contextmem_extraction_jobs")) {
       const id = String(this.values[this.values.length - 1]);
       const job = this.db.extractionJobs.get(id);
@@ -810,17 +1020,22 @@ function normalizeSql(query: string): string {
   return query.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function mockFetch(routes: Record<string, string>) {
+function mockFetch(routes: Record<string, string | { body: string; status?: number; headers?: Record<string, string> }>) {
   const original = globalThis.fetch;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: string | URL | Request) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      const body = routes[url];
-      if (body === undefined) return new Response("Not found", { status: 404 });
+      const route = routes[url];
+      if (route === undefined) return new Response("Not found", { status: 404 });
+      const body = typeof route === "string" ? route : route.body;
+      const status = typeof route === "string" ? 200 : route.status ?? 200;
+      const headers = typeof route === "string" ? undefined : route.headers;
       return new Response(body, {
+        status,
         headers: {
-          "content-type": url.endsWith(".xml") ? "application/xml; charset=utf-8" : url.endsWith(".txt") ? "text/plain; charset=utf-8" : "text/html; charset=utf-8"
+          "content-type": url.endsWith(".xml") ? "application/xml; charset=utf-8" : url.endsWith(".txt") ? "text/plain; charset=utf-8" : "text/html; charset=utf-8",
+          ...(headers ?? {})
         }
       });
     })

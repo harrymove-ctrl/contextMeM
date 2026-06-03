@@ -587,6 +587,40 @@ export type WalrusSiteContext = {
   suinsName?: string;
 };
 
+export type WalrusBlobProof = {
+  path: string;
+  blobId: string;
+  blobHash: string;
+  quiltPatchId?: string;
+  dynamicFieldObjectId?: string;
+  version?: string;
+  byteLength?: number;
+  verified?: boolean;
+};
+
+export type WalrusSiteProof = {
+  version?: string;
+  digest?: string;
+  previousTransaction?: string;
+  checkpoint?: string;
+  capturedAt: string;
+};
+
+export type WalrusProofBundle = {
+  schemaVersion: 1;
+  network: Network;
+  siteObjectId: string;
+  sitePackage: string;
+  rpcUrl: string;
+  aggregatorUrl: string;
+  portalUrl?: string;
+  suinsName?: string;
+  site: WalrusSiteProof;
+  resourceCount: number;
+  verifiedCount: number;
+  resources: WalrusBlobProof[];
+};
+
 export type WalrusSiteHistoryEntry = {
   digest: string;
   timestampMs?: string;
@@ -640,4 +674,45 @@ export type WalrusPackageManifest = {
     site: WalrusSiteContext;
     resources: WalrusResourceRecord[];
   };
+};
+
+export type ContextChunk = {
+  chunkId: string;
+  routePath: string;
+  url?: string;
+  heading?: string;
+  headingPath: string[];
+  text: string;
+  contentHash: string;
+  byteLength: number;
+  order: number;
+};
+
+export type SnapshotArtifactRef = {
+  path: string;
+  sha256: string;
+  bytes: number;
+};
+
+export type SnapshotSignature = {
+  scheme: "ed25519";
+  publicKey: string;
+  signature: string;
+  signedAt: string;
+};
+
+export type SnapshotManifest = {
+  schemaVersion: 1;
+  runId: string;
+  target: string;
+  sourceType: "web" | "walrus";
+  namespace?: string;
+  createdAt: string;
+  artifactDigest: string;
+  chunkGraphDigest?: string;
+  proofDigest?: string;
+  artifactCount: number;
+  totalBytes: number;
+  artifacts: SnapshotArtifactRef[];
+  signature: SnapshotSignature | null;
 };
