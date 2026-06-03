@@ -5277,7 +5277,8 @@ textarea {
 .appWorkspace {
   max-width: none;
   margin: 0;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 24px;
 }
 
 .appWorkspace .control {
@@ -5286,6 +5287,77 @@ textarea {
 
 .buildControl {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.advancedSettings {
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e7ece4;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(17, 20, 22, 0.04);
+  overflow: hidden;
+}
+
+.advancedSettings > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  user-select: none;
+}
+
+.advancedSettings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.advancedSettings > summary::after {
+  content: "›";
+  color: #94a3b8;
+  font-size: 22px;
+  line-height: 1;
+  transform: rotate(90deg);
+  transition: transform 180ms ease;
+}
+
+.advancedSettings[open] > summary::after {
+  transform: rotate(-90deg);
+}
+
+.advancedSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.advancedSummaryLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: 0.02em;
+}
+
+.advancedSummaryHint {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.advancedSettings .buildSettings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 16px 18px;
+  border-top: 1px dashed #e7ece4;
+  margin-top: 0;
 }
 
 .appResults,
@@ -6927,18 +6999,18 @@ textarea:focus {
 .heroInput {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px 18px;
+  gap: 16px;
+  padding: 18px 20px;
   background: #ffffff;
-  border: 1px solid var(--cm-border);
-  border-radius: 20px;
-  box-shadow: var(--cm-soft-shadow);
+  border: 1px solid #e7ece4;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(17, 20, 22, 0.06), 0 1px 2px rgba(17, 20, 22, 0.04);
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .heroInput:focus-within {
-  border-color: rgba(29, 99, 237, 0.42);
-  box-shadow: 0 0 0 4px rgba(29, 99, 237, 0.1), var(--cm-soft-shadow);
+  border-color: rgba(29, 99, 237, 0.4);
+  box-shadow: 0 0 0 4px rgba(29, 99, 237, 0.1), 0 4px 16px rgba(17, 20, 22, 0.06);
 }
 
 .heroInputMain {

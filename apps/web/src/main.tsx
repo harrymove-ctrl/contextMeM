@@ -2521,81 +2521,91 @@ function BuildConsolePage({
           </div>
         </div>
 
-        <div className="buildSettings">
-        <div className="field">
-          <span>Network</span>
-          <div className="segmented networkOnly" aria-label="Walrus network">
-            <button className="selected" type="button" aria-pressed="true">
-              <Globe2 size={15} />
-              mainnet
-            </button>
-          </div>
-        </div>
-
-        <div className="field">
-          <span>Build profile</span>
-          <div className="profileGrid">
-            {buildProfiles.map((profile) => (
-              <button key={profile.id} className={buildProfile === profile.id ? "selected" : ""} type="button" onClick={() => applyBuildProfile(profile.id)}>
-                <strong>{profile.label}</strong>
-                <small>{profile.detail}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {isHostedApiBase ? (
-          <details className="field customNamespaceField">
-            <summary>Namespace · custom (optional)</summary>
-            <div className="namespaceFields">
-              <label>
-                <span>Namespace slug</span>
-                <input
-                  type="text"
-                  value={customNamespace}
-                  onChange={(event) => setCustomNamespace(event.target.value.replace(/[^a-zA-Z0-9_:.-]/g, ""))}
-                  placeholder="seal-docs (becomes demo:seal-docs)"
-                  spellCheck={false}
-                />
-              </label>
-              <label>
-                <span>Display name</span>
-                <input
-                  type="text"
-                  value={customDisplayName}
-                  onChange={(event) => setCustomDisplayName(event.target.value)}
-                  placeholder="Seal Docs (shown on share page)"
-                />
-              </label>
-              <small>Leave blank to auto-generate <code>demo:&lt;hostname&gt;:&lt;random&gt;</code>.</small>
+        <details className="advancedSettings">
+          <summary>
+            <span className="advancedSummary">
+              <span className="advancedSummaryLabel">More options</span>
+              <span className="advancedSummaryHint">{buildProfiles.find((p) => p.id === buildProfile)?.label ?? "Balanced"} · {outputs.length} outputs</span>
+            </span>
+          </summary>
+          <div className="buildSettings">
+            <div className="field">
+              <span>Network</span>
+              <div className="segmented networkOnly" aria-label="Walrus network">
+                <button className="selected" type="button" aria-pressed="true">
+                  <Globe2 size={15} />
+                  mainnet
+                </button>
+              </div>
             </div>
-          </details>
-        ) : null}
 
-        <div className="field">
-          <span>Outputs</span>
-          <div className="checks">
-            {outputOptions.map((option) => (
-              <label key={option.id} className={option.id === "screenshots" ? "slowOutput" : ""}>
-                <input
-                  type="checkbox"
-                  checked={outputs.includes(option.id)}
-                  onChange={() => setOutputs((current) => (current.includes(option.id) ? current.filter((item) => item !== option.id) : [...current, option.id]))}
-                />
-                <span>
-                  {option.label}
-                  {option.detail ? <small>{option.detail}</small> : null}
-                </span>
-              </label>
-            ))}
+            <div className="field">
+              <span>Build profile</span>
+              <div className="profileGrid">
+                {buildProfiles.map((profile) => (
+                  <button key={profile.id} className={buildProfile === profile.id ? "selected" : ""} type="button" onClick={() => applyBuildProfile(profile.id)}>
+                    <strong>{profile.label}</strong>
+                    <small>{profile.detail}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {isHostedApiBase ? (
+              <details className="field customNamespaceField">
+                <summary>Namespace · custom (optional)</summary>
+                <div className="namespaceFields">
+                  <label>
+                    <span>Namespace slug</span>
+                    <input
+                      type="text"
+                      value={customNamespace}
+                      onChange={(event) => setCustomNamespace(event.target.value.replace(/[^a-zA-Z0-9_:.-]/g, ""))}
+                      placeholder="seal-docs (becomes demo:seal-docs)"
+                      spellCheck={false}
+                    />
+                  </label>
+                  <label>
+                    <span>Display name</span>
+                    <input
+                      type="text"
+                      value={customDisplayName}
+                      onChange={(event) => setCustomDisplayName(event.target.value)}
+                      placeholder="Seal Docs (shown on share page)"
+                    />
+                  </label>
+                  <small>Leave blank to auto-generate <code>demo:&lt;hostname&gt;:&lt;random&gt;</code>.</small>
+                </div>
+              </details>
+            ) : null}
+
+            <div className="field">
+              <span>Outputs</span>
+              <div className="checks">
+                {outputOptions.map((option) => (
+                  <label key={option.id} className={option.id === "screenshots" ? "slowOutput" : ""}>
+                    <input
+                      type="checkbox"
+                      checked={outputs.includes(option.id)}
+                      onChange={() => setOutputs((current) => (current.includes(option.id) ? current.filter((item) => item !== option.id) : [...current, option.id]))}
+                    />
+                    <span>
+                      {option.label}
+                      {option.detail ? <small>{option.detail}</small> : null}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-        </div>
+        </details>
 
-        <button className="secondary" disabled={!run || busy || !hasMemWalDelegate} onClick={onRemember}>
-          <Brain size={17} />
-          Remember in MemWal
-        </button>
+        {hasMemWalDelegate && run ? (
+          <button className="secondary" disabled={!run || busy || !hasMemWalDelegate} onClick={onRemember}>
+            <Brain size={17} />
+            Remember in MemWal
+          </button>
+        ) : null}
 
         {hostedBuildResult ? <HostedBuildBanner result={hostedBuildResult} /> : null}
 
