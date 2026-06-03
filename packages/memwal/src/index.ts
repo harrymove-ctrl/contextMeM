@@ -100,9 +100,8 @@ export class MemWalMcpClient {
   async rememberSnapshot(snapshot: SiteSnapshot): Promise<unknown> {
     const sdk = this.client(snapshot.namespace);
     const text = renderSnapshotPayload(snapshot);
-    const accepted = await sdk.rememberAsync(text);
-    const completed = await sdk.waitForRememberJob(accepted.job_id).catch(() => accepted);
-    return { namespace: snapshot.namespace, ...accepted, completed };
+    const result = await rememberWithRetry(sdk, text);
+    return { namespace: snapshot.namespace, ...result };
   }
 
   /**
@@ -117,14 +116,23 @@ export class MemWalMcpClient {
     const toWrite = [...plan.added, ...plan.changed];
     const sdk = this.client(input.namespace);
     const results: unknown[] = [];
+    const failures: Array<{ chunkId: string; reason: string }> = [];
     for (const chunk of toWrite) {
       const text = encodeChunkPayload(chunk);
-      const accepted = await sdk.rememberAsync(text);
-      results.push(accepted);
+      try {
+        const result = await rememberWithRetry(sdk, text);
+        results.push(result);
+      } catch (error) {
+        failures.push({ chunkId: chunk.chunkId, reason: error instanceof Error ? error.message : String(error) });
+      }
     }
-    const indexText = renderSnapshotIndex(input);
-    const acceptedIndex = await sdk.rememberAsync(indexText);
-    results.push(acceptedIndex);
+    try {
+      const indexText = renderSnapshotIndex(input);
+      results.push(await rememberWithRetry(sdk, indexText));
+    } catch (error) {
+      failures.push({ chunkId: "snapshot-index", reason: error instanceof Error ? error.message : String(error) });
+    }
+    if (failures.length > 0) results.push({ failures });
     return {
       namespace: input.namespace,
       writeMode: "delta",
@@ -200,6 +208,38 @@ function encodeChunkPayload(chunk: ContextChunk): string {
     contentHash: chunk.contentHash
   });
   return `[ctxm-chunk] ${header}\n\n${chunk.text}`;
+}
+
+// The relayer's embedding service occasionally returns "Failed to parse
+// embedding response: error decoding response body" on transient upstream
+// hiccups (we saw it ~1/3 in a 6-item stress test, then 0/6 on re-run with the
+// same payloads). One in-process retry recovers without surfacing the flake to
+// callers; persistent failures still throw so the caller can surface them.
+type SdkLike = { rememberAsync(text: string): Promise<{ job_id: string; status: string }>; waitForRememberJob(jobId: string, opts?: { pollIntervalMs?: number; timeoutMs?: number }): Promise<unknown> };
+const TRANSIENT_PATTERNS = [
+  /failed to parse embedding response/i,
+  /error decoding response body/i,
+  /503/,
+  /504/,
+  /timeout/i
+];
+function isTransientEmbedFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return TRANSIENT_PATTERNS.some((pattern) => pattern.test(message));
+}
+async function rememberWithRetry(sdk: SdkLike, text: string): Promise<unknown> {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const accepted = await sdk.rememberAsync(text);
+    try {
+      const completed = await sdk.waitForRememberJob(accepted.job_id, { pollIntervalMs: 1500, timeoutMs: 90000 });
+      return { ...accepted, completed };
+    } catch (error) {
+      if (attempt === 2 || !isTransientEmbedFailure(error)) throw error;
+      // Tiny backoff so the relayer's upstream embedding service has a moment to recover.
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+  }
+  throw new Error("unreachable");
 }
 
 function renderSnapshotIndex(input: RememberDeltaInput): string {
