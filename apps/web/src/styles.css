@@ -458,7 +458,11 @@ button:disabled {
 }
 
 .panel {
-  padding: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e7ece4;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(17, 20, 22, 0.04);
   overflow: auto;
 }
 
@@ -1146,6 +1150,7 @@ textarea {
 }
 
 .namespaceForm input,
+.namespaceForm select,
 .tokenCreate input {
   min-height: 38px;
   border: 1px solid #cbd3df;
@@ -1154,6 +1159,89 @@ textarea {
   width: 100%;
   background: #ffffff;
   color: #152033;
+}
+
+.namespaceBuilderSources {
+  display: grid;
+  gap: 10px;
+}
+
+.namespaceSourceRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(150px, .8fr) 120px 38px;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.namespaceSourceRow label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.namespaceSourceRow label span {
+  font-size: 12px;
+  color: #617083;
+}
+
+.namespaceSourceRow input,
+.namespaceSourceRow select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #cbd3df;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: #152033;
+}
+
+.namespaceSourceList,
+.namespaceBuildResult {
+  display: grid;
+  gap: 10px;
+}
+
+.namespaceSourceList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.namespaceSourceList article > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.namespaceSourceList span,
+.namespaceSourceList small {
+  color: #617083;
+  overflow-wrap: anywhere;
+}
+
+.sourceBadges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.sourceBadges span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  border: 1px solid #d8dee9;
+  color: #152033;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .inlineCheck {
@@ -4795,12 +4883,10 @@ textarea {
 .appShell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   gap: 0;
   color: var(--cm-ink);
-  background:
-    radial-gradient(circle at 18% 14%, rgba(168, 217, 70, 0.18), transparent 28%),
-    linear-gradient(180deg, #f8fbf5 0%, #ffffff 52%, #f3f6f0 100%);
+  background: #f8faf7;
 }
 
 .appSidebar {
@@ -4809,11 +4895,10 @@ textarea {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 18px;
-  border-right: 1px solid rgba(17, 20, 22, 0.1);
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(18px);
+  gap: 24px;
+  padding: 22px 18px;
+  border-right: 1px solid #e7ece4;
+  background: #ffffff;
 }
 
 .appBrand {
@@ -4831,10 +4916,10 @@ textarea {
   justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #111416;
   color: var(--cm-accent);
-  box-shadow: 7px 7px 0 rgba(168, 217, 70, 0.6);
+  box-shadow: 0 4px 12px rgba(17, 20, 22, 0.12);
 }
 
 .appBrand strong,
@@ -4860,38 +4945,36 @@ textarea {
 }
 
 .appSideLink {
-  min-height: 42px;
+  min-height: 38px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 0 11px;
-  border: 1px solid transparent;
+  padding: 0 12px;
   border-radius: 8px;
   color: #2c3849;
-  font-weight: 760;
+  font-weight: 600;
+  font-size: 14px;
   text-decoration: none;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
 .appSideLink:hover {
-  border-color: rgba(17, 20, 22, 0.1);
-  background: rgba(17, 20, 22, 0.04);
+  background: #eef3e8;
 }
 
 .appSideLink.selected {
-  border-color: #111416;
   background: #111416;
   color: #ffffff;
-  box-shadow: 6px 6px 0 rgba(168, 217, 70, 0.62);
 }
 
 .appSidebarFoot {
   margin-top: auto;
   display: grid;
   gap: 4px;
-  padding: 12px;
-  border: 1px solid rgba(168, 217, 70, 0.38);
-  border-radius: 8px;
-  background: rgba(168, 217, 70, 0.13);
+  padding: 12px 14px;
+  border: 1px solid #d8dee9;
+  border-radius: 10px;
+  background: #eef3e8;
 }
 
 .appSidebarFoot span {
@@ -4907,7 +4990,10 @@ textarea {
 
 .appMain {
   min-width: 0;
-  padding: 18px;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .appTopbar {
@@ -4918,13 +5004,12 @@ textarea {
   grid-template-columns: 1fr;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 14px;
-  padding: 14px;
-  border: 1px solid rgba(17, 20, 22, 0.1);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: var(--cm-soft-shadow);
-  backdrop-filter: blur(18px);
+  margin-bottom: 4px;
+  padding: 18px 20px;
+  border: 1px solid #e7ece4;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(17, 20, 22, 0.04);
 }
 
 .appTitleBlock {
@@ -4939,11 +5024,11 @@ textarea {
 }
 
 .appTitleBlock h1 {
-  margin: 3px 0 0;
+  margin: 4px 0 0;
   color: var(--cm-ink);
-  font-size: 24px;
+  font-size: 26px;
   line-height: 1.15;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 
 .appTitleBlock p {
@@ -6838,6 +6923,154 @@ textarea:focus {
   background: #ffffff;
 }
 
+/* ── Kraft-style hero input ─────────────────────────── */
+.heroInput {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  background: #ffffff;
+  border: 1px solid var(--cm-border);
+  border-radius: 20px;
+  box-shadow: var(--cm-soft-shadow);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.heroInput:focus-within {
+  border-color: rgba(29, 99, 237, 0.42);
+  box-shadow: 0 0 0 4px rgba(29, 99, 237, 0.1), var(--cm-soft-shadow);
+}
+
+.heroInputMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.heroInputIcon {
+  color: var(--cm-muted);
+  flex: none;
+}
+
+.heroInputMain input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 16px;
+  color: var(--cm-ink);
+  padding: 4px 0;
+}
+
+.heroInputMain input::placeholder {
+  color: #9aa3af;
+}
+
+.heroInputRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* compact, pill-style mode switch living inside the hero input */
+.heroModes {
+  display: inline-flex;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(17, 20, 22, 0.05);
+  padding: 3px;
+  gap: 2px;
+  overflow: visible;
+}
+
+.heroModes button {
+  border: 0;
+  background: transparent;
+  color: var(--cm-muted);
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  text-transform: capitalize;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.heroModes button + button {
+  border-left: 0;
+}
+
+.heroModes button:hover {
+  transform: none;
+  color: var(--cm-ink);
+}
+
+.heroModes button.selected {
+  background: #ffffff;
+  color: var(--cm-ink);
+  box-shadow: 0 1px 2px rgba(17, 20, 22, 0.12);
+}
+
+.heroSend {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.heroSendLabel {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--cm-muted);
+  white-space: nowrap;
+}
+
+.heroSendBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: #111416;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 rgba(168, 217, 70, 0.72);
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.heroSendBtn:not(:disabled):hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 rgba(168, 217, 70, 0.85);
+}
+
+.heroSendBtn:disabled {
+  background: rgba(17, 20, 22, 0.28);
+  box-shadow: none;
+}
+
+.heroSendBtn .spin {
+  animation: result-spin 900ms linear infinite;
+}
+
+/* secondary settings sit quietly below the hero */
+.buildSettings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.buildSettings .field > span {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a93a0;
+}
+
 .segmented,
 .checks label,
 .tabs button,
@@ -6918,13 +7151,13 @@ textarea:focus {
 .run {
   background: #111416;
   color: #ffffff;
-  box-shadow: 7px 7px 0 rgba(168, 217, 70, 0.72);
+  box-shadow: 0 6px 18px rgba(17, 20, 22, 0.18);
 }
 
 .secondary {
-  background: rgba(168, 217, 70, 0.18);
+  background: #eef3e8;
   color: #264f1f;
-  border-color: rgba(168, 217, 70, 0.52);
+  border-color: #d8dee9;
 }
 
 .run:not(:disabled):hover,
@@ -6934,7 +7167,7 @@ textarea:focus {
 .commandBox button:hover,
 .historyOverview button:hover,
 .historyHead button:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .stats {
@@ -6942,7 +7175,8 @@ textarea:focus {
 }
 
 .stat {
-  background: linear-gradient(180deg, #ffffff, #f8fbf5);
+  background: #ffffff;
+  border-color: #e7ece4;
   transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
@@ -7889,6 +8123,13 @@ textarea:focus {
   .markdownPageNav {
     position: static;
     max-height: 260px;
+  }
+  .namespaceSourceRow,
+  .namespaceSourceList article {
+    grid-template-columns: 1fr;
+  }
+  .sourceBadges {
+    justify-content: flex-start;
   }
 }
 
