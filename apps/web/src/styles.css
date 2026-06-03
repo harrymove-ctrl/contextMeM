@@ -5373,6 +5373,335 @@ textarea {
   margin-top: 0;
 }
 
+/* ── Compact status pill + popover (replaces mainnet/MemWal/run/account chip row) */
+.statusPill {
+  position: relative;
+}
+
+.statusPill > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 7px 10px;
+  border: 1px solid #e7ece4;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(17, 20, 22, 0.04);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+  user-select: none;
+}
+
+.statusPill > summary::-webkit-details-marker {
+  display: none;
+}
+
+.statusPill > summary:hover {
+  border-color: #cbd5e1;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #94a3b8;
+  flex: none;
+}
+
+.statusDot-ready { background: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18); }
+.statusDot-warn  { background: #d97706; box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18); }
+.statusDot-info  { background: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18); }
+
+.statusPillLabel {
+  white-space: nowrap;
+}
+
+.statusPillCaret {
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 180ms ease;
+}
+
+.statusPill[open] > summary .statusPillCaret {
+  transform: rotate(180deg);
+}
+
+.statusPanel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 240px;
+  padding: 14px;
+  border: 1px solid #e7ece4;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgba(17, 20, 22, 0.12), 0 4px 12px rgba(17, 20, 22, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 30;
+}
+
+.statusRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.statusRow strong {
+  color: #0f172a;
+  font-weight: 700;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+  font-size: 12px;
+}
+
+.statusValue-ready { color: #14532d; }
+.statusValue-needsMemWal { color: #92400e; }
+.statusValue-preview { color: #1d4ed8; }
+
+.statusSession {
+  padding-top: 10px;
+  border-top: 1px dashed #e7ece4;
+}
+
+.statusSession > * {
+  width: 100%;
+}
+
+/* ── Recent runs row (pre-build, replaces stats grid noise) */
+.recentRunsRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid #e7ece4;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(17, 20, 22, 0.04);
+}
+
+.recentRunsLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.recentRunsList {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.recentRunChip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #e7ece4;
+  border-radius: 10px;
+  background: #f8faf7;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  font-family: inherit;
+}
+
+.recentRunChip:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.recentRunChip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.recentRunChipHost {
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+  font-size: 12px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentRunChipMeta {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ── Quick start card (right pane pre-build) */
+.quickStartCard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 36px;
+  background: #ffffff;
+  border: 1px solid #e7ece4;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(17, 20, 22, 0.04);
+}
+
+.quickStartHead {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quickStartBadge {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef3e8;
+  color: #264f1f;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.quickStartHead h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  max-width: 560px;
+}
+
+.quickStartHead p {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 640px;
+}
+
+.quickStartSteps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.quickStartSteps li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  background: #f8faf7;
+  border: 1px solid #e7ece4;
+  border-radius: 12px;
+}
+
+.quickStartSteps li strong {
+  font-size: 13px;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+}
+
+.quickStartSteps li span {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.quickStartSamples {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quickStartSamples > span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+}
+
+.quickStartSampleList {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quickStartSample {
+  flex: 1 1 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #f8faf7;
+  border: 1px solid #e7ece4;
+  border-radius: 10px;
+  color: #0f172a;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.quickStartSample:hover:not(:disabled) {
+  border-color: #1e293b;
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.quickStartSample.selected {
+  border-color: #1e293b;
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.quickStartSample.selected small {
+  color: #cbd5e1;
+}
+
+.quickStartSampleLabel {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.quickStartSample small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.quickStartBuild {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .appPanelStack,
 .settingsGrid {
   min-height: calc(100vh - 146px);

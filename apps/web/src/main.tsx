@@ -1187,6 +1187,7 @@ function ContextMemExperience() {
       primaryActionLabel={primaryActionLabel}
       onStartRun={startRun}
       onRemember={remember}
+      onOpenRun={openRunAndViewArtifacts}
       hasMemWalDelegate={hasMemWalDelegate}
       hostedBuildResult={hostedBuildResult}
       customNamespace={customNamespace}
@@ -1970,15 +1971,7 @@ function AppShell({
             <h1>{pageTitle}</h1>
             <p>{pageDescription}</p>
           </div>
-          <div className="appTopbarActions">
-            <span className="mainnetPill">
-              <span />
-              mainnet
-            </span>
-            <span className={`rbNav10Status ${statusTone}`}>{statusLabel}</span>
-            <span className="runChip">{run ? compactHash(run.manifest.runId) : "no active run"}</span>
-            {sessionSlot ? sessionSlot : null}
-          </div>
+          <StatusPill statusLabel={statusLabel} statusTone={statusTone} run={run} hasMemWalDelegate={hasMemWalDelegate} sessionSlot={sessionSlot} />
         </header>
         {authHint ? <div className="appHint">{authHint}</div> : null}
         <div className="appContent">{children}</div>
@@ -2388,6 +2381,7 @@ function BuildConsolePage({
   primaryActionLabel,
   onStartRun,
   onRemember,
+  onOpenRun,
   hasMemWalDelegate,
   hostedBuildResult,
   customNamespace,
@@ -2419,6 +2413,7 @@ function BuildConsolePage({
   primaryActionLabel: string;
   onStartRun: () => void;
   onRemember: () => void;
+  onOpenRun: (runId: string) => Promise<void>;
   hasMemWalDelegate: boolean;
   hostedBuildResult: { shareId: string; namespace: string; shareUrl: string; mcpUrl: string } | null;
   customNamespace: string;
@@ -2452,21 +2447,28 @@ function BuildConsolePage({
   const shareId = hostedBuildResult?.shareId ?? null;
   const shareUrl = hostedBuildResult?.shareUrl ?? null;
 
+  const hasRunOrArtifact = Boolean(run || artifact);
+  const showRecentRuns = !hasRunOrArtifact && !busy && history.length > 0;
+
   const resultsBody = (
     <>
       <ResultsMetaBar runId={runId} shareId={shareId} shareUrl={shareUrl} expanded={resultsExpanded} onToggleExpand={() => setResultsExpanded((value) => !value)} />
-      <div className="stats">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div className="stat" key={stat.label}>
-              <Icon size={18} />
-              <span>{stat.label}</span>
-              <strong>{String(stat.value)}</strong>
-            </div>
-          );
-        })}
-      </div>
+      {hasRunOrArtifact ? (
+        <div className="stats">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div className="stat" key={stat.label}>
+                <Icon size={18} />
+                <span>{stat.label}</span>
+                <strong>{String(stat.value)}</strong>
+              </div>
+            );
+          })}
+        </div>
+      ) : showRecentRuns ? (
+        <RecentRunsRow history={history} onOpenRun={onOpenRun} busy={busy} />
+      ) : null}
 
       <div className="tabs">
         {buildTabs.map(([label, Icon]) => (
@@ -2477,7 +2479,7 @@ function BuildConsolePage({
         ))}
       </div>
 
-      <ResultPane tab={visibleTab} artifact={artifact} run={run} busy={busy} error={error?.startsWith("MemWal") ? null : error} setArtifact={setArtifact} history={history} refreshHistory={refreshHistory} authToken={authToken} accountLabel={accountLabel} />
+      <ResultPane tab={visibleTab} artifact={artifact} run={run} busy={busy} error={error?.startsWith("MemWal") ? null : error} setArtifact={setArtifact} history={history} refreshHistory={refreshHistory} authToken={authToken} accountLabel={accountLabel} target={target} setTarget={setTarget} onStartRun={onStartRun} canStart={Boolean(target.trim()) && !busy} />
     </>
   );
 
@@ -2921,7 +2923,11 @@ function ResultPane({
   history,
   refreshHistory,
   authToken,
-  accountLabel
+  accountLabel,
+  target,
+  setTarget,
+  onStartRun,
+  canStart
 }: {
   tab: string;
   artifact: ArtifactManifest | null;
@@ -2933,6 +2939,10 @@ function ResultPane({
   refreshHistory: () => Promise<void>;
   authToken: string;
   accountLabel: string;
+  target?: string;
+  setTarget?: React.Dispatch<React.SetStateAction<string>>;
+  onStartRun?: () => void;
+  canStart?: boolean;
 }) {
   const runErrors = run?.manifest.errors.filter(Boolean) ?? [];
   const runFailure = run?.manifest.status === "failed" ? runErrors[0] ?? "Context build failed." : null;
@@ -2977,6 +2987,9 @@ function ResultPane({
       );
     }
 
+    if (setTarget && onStartRun) {
+      return <QuickStartCard target={target ?? ""} setTarget={setTarget} onStartRun={onStartRun} canStart={Boolean(canStart)} busy={busy} />;
+    }
     return (
       <div className="empty">
         <Sparkles size={24} />
@@ -3205,6 +3218,39 @@ function pageEditKey(page: MarkdownPage): string {
   return page.artifactPath ?? page.url;
 }
 
+function StatusPill({ statusLabel, statusTone, run, hasMemWalDelegate, sessionSlot }: { statusLabel: string; statusTone: StatusTone; run: RunResponse | null; hasMemWalDelegate: boolean; sessionSlot: React.ReactNode }) {
+  // Collapse the old mainnet / status / run-chip / session row into one pill
+  // with a popover. Mirrors the aisssa header pattern: a coloured dot + concise
+  // label up top, full breakdown one click away.
+  const dotTone = hasMemWalDelegate ? "ready" : statusTone === "needsMemWal" ? "warn" : "info";
+  const compactLabel = hasMemWalDelegate ? (run ? "Building" : "Ready") : "Locked preview";
+
+  return (
+    <details className="statusPill">
+      <summary aria-label={`${compactLabel}: ${statusLabel}`}>
+        <span className={`statusDot statusDot-${dotTone}`} aria-hidden="true" />
+        <span className="statusPillLabel">{compactLabel}</span>
+        <span className="statusPillCaret" aria-hidden="true">⌄</span>
+      </summary>
+      <div className="statusPanel" role="dialog">
+        <div className="statusRow">
+          <span>Network</span>
+          <strong>Walrus mainnet</strong>
+        </div>
+        <div className="statusRow">
+          <span>MemWal</span>
+          <strong className={`statusValue statusValue-${statusTone}`}>{statusLabel}</strong>
+        </div>
+        <div className="statusRow">
+          <span>Run</span>
+          <strong>{run ? compactHash(run.manifest.runId) : "no active run"}</strong>
+        </div>
+        {sessionSlot ? <div className="statusSession">{sessionSlot}</div> : null}
+      </div>
+    </details>
+  );
+}
+
 function ResultsMetaBar({ runId, shareId, shareUrl, expanded, onToggleExpand }: { runId: string | null; shareId: string | null; shareUrl: string | null; expanded: boolean; onToggleExpand: () => void }) {
   const [copiedJob, setCopiedJob] = useState(false);
   async function copyJobId() {
@@ -3244,6 +3290,102 @@ function ResultsMetaBar({ runId, shareId, shareUrl, expanded, onToggleExpand }: 
       <button type="button" className="resultsMetaExpandButton" onClick={onToggleExpand} aria-label={expanded ? "Close expanded view" : "Expand output to fullscreen"}>
         {expanded ? <X size={15} /> : <Maximize2 size={15} />}
         {expanded ? "Close" : "Expand"}
+      </button>
+    </div>
+  );
+}
+
+function RecentRunsRow({ history, onOpenRun, busy }: { history: RunHistoryItem[]; onOpenRun: (runId: string) => Promise<void>; busy: boolean }) {
+  const recent = history.slice(0, 5);
+  return (
+    <div className="recentRunsRow" aria-label="Recent runs">
+      <div className="recentRunsLabel">
+        <History size={14} />
+        <span>Recent runs</span>
+      </div>
+      <div className="recentRunsList">
+        {recent.map((item) => {
+          const host = (() => {
+            try {
+              return new URL(item.target).hostname;
+            } catch {
+              return item.target;
+            }
+          })();
+          const when = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+          const Icon = item.mode === "walrus" ? Boxes : Globe2;
+          return (
+            <button
+              key={item.runId}
+              type="button"
+              className="recentRunChip"
+              onClick={() => void onOpenRun(item.runId)}
+              disabled={busy}
+              title={`${item.target} · ${item.pages ?? 0} pages`}
+            >
+              <Icon size={13} />
+              <span className="recentRunChipHost">{host}</span>
+              <span className="recentRunChipMeta">{item.pages ?? 0}p · {when}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const QUICK_START_SAMPLES = [
+  { label: "seal-docs", url: "https://seal-docs.wal.app/", detail: "Walrus Site · Seal docs" },
+  { label: "walrus.site", url: "https://walrus.site/", detail: "Walrus Foundation site" },
+  { label: "rememe", url: "https://rememe.wal.app/", detail: ".wal.app product example" }
+];
+
+function QuickStartCard({ target, setTarget, onStartRun, canStart, busy }: { target: string; setTarget: React.Dispatch<React.SetStateAction<string>>; onStartRun: () => void; canStart: boolean; busy: boolean }) {
+  return (
+    <div className="quickStartCard">
+      <div className="quickStartHead">
+        <span className="quickStartBadge">Quick start</span>
+        <h2>Build verified context from a website or Walrus Site.</h2>
+        <p>Paste a URL, click Build, and ContextMeM packages markdown, brand, design system, and a hosted MCP namespace your agents can query.</p>
+      </div>
+
+      <ol className="quickStartSteps">
+        <li>
+          <strong>1. Paste a URL</strong>
+          <span>A `.wal.app` Walrus Site, a Sui object ID, or any public web URL.</span>
+        </li>
+        <li>
+          <strong>2. Click Build</strong>
+          <span>Hosted Firecrawl extraction with JS rendering, sitemap discovery, and per-page chunk hashing.</span>
+        </li>
+        <li>
+          <strong>3. Use the share link or MCP URL</strong>
+          <span>Open it in Claude Desktop / Cursor / Codex, or share the read-only `/share/:id` page with your team.</span>
+        </li>
+      </ol>
+
+      <div className="quickStartSamples">
+        <span>Try one of these:</span>
+        <div className="quickStartSampleList">
+          {QUICK_START_SAMPLES.map((sample) => (
+            <button
+              key={sample.url}
+              type="button"
+              className={`quickStartSample ${target === sample.url ? "selected" : ""}`}
+              onClick={() => setTarget(sample.url)}
+              disabled={busy}
+              title={sample.detail}
+            >
+              <span className="quickStartSampleLabel">{sample.label}</span>
+              <small>{sample.detail}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <button type="button" className="run quickStartBuild" disabled={!canStart} onClick={onStartRun}>
+        <Play size={16} />
+        {busy ? "Building" : canStart ? "Build context" : "Paste or pick a URL above"}
       </button>
     </div>
   );
