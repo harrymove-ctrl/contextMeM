@@ -385,7 +385,8 @@ button:disabled {
   place-items: center;
   text-align: center;
   color: #617083;
-  padding: 32px;
+  padding: 56px 32px;
+  min-height: 200px;
 }
 
 .resultState {
@@ -5279,10 +5280,22 @@ textarea {
   margin: 0;
   grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
   gap: 24px;
+  align-items: start;
 }
 
 .appWorkspace .control {
   top: 92px;
+  /* Override the legacy white-card chrome — the cards inside (heroInput,
+     advancedSettings) carry their own background now, so the column should
+     be transparent and only as tall as its contents. */
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+  align-self: start;
 }
 
 .buildControl {
@@ -5360,10 +5373,19 @@ textarea {
   margin-top: 0;
 }
 
-.appResults,
 .appPanelStack,
 .settingsGrid {
   min-height: calc(100vh - 146px);
+}
+
+/* appResults sizes to its content — pre-build (stats + tabs + empty state) is
+   compact, post-build (markdown viewer / diff / structure) grows naturally.
+   No forced 100vh-146px stretch that left an awkward green void below the
+   sparkle empty state. */
+.appResults {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .appPanelStack {
