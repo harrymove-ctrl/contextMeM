@@ -101,7 +101,7 @@ export class MemWalMcpClient {
     const sdk = this.client(snapshot.namespace);
     const text = renderSnapshotPayload(snapshot);
     const result = await rememberWithRetry(sdk, text);
-    return { namespace: snapshot.namespace, ...result };
+    return { namespace: snapshot.namespace, jobId: result.job_id, status: result.status, completed: result.completed };
   }
 
   /**
@@ -227,12 +227,13 @@ function isTransientEmbedFailure(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return TRANSIENT_PATTERNS.some((pattern) => pattern.test(message));
 }
-async function rememberWithRetry(sdk: SdkLike, text: string): Promise<unknown> {
+type RememberWithRetryResult = { job_id: string; status: string; completed: unknown };
+async function rememberWithRetry(sdk: SdkLike, text: string): Promise<RememberWithRetryResult> {
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const accepted = await sdk.rememberAsync(text);
     try {
       const completed = await sdk.waitForRememberJob(accepted.job_id, { pollIntervalMs: 1500, timeoutMs: 90000 });
-      return { ...accepted, completed };
+      return { job_id: accepted.job_id, status: accepted.status, completed };
     } catch (error) {
       if (attempt === 2 || !isTransientEmbedFailure(error)) throw error;
       // Tiny backoff so the relayer's upstream embedding service has a moment to recover.
