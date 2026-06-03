@@ -7500,6 +7500,26 @@ textarea:focus {
   justify-content: center;
   align-content: center;
   min-height: calc(100vh - 230px);
+  position: relative;
+}
+
+/* aisssa-style indigo gradient wash behind the centered hero
+   (palette from aisssa gradient-fade.svg: #7388DF → #333DA7) */
+.appWorkspaceFirstRun::before {
+  content: "";
+  position: absolute;
+  inset: -160px -32px -80px;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(90% 62% at 50% 40%, rgba(115, 136, 223, 0.34) 0%, rgba(51, 61, 167, 0.14) 38%, rgba(115, 136, 223, 0.04) 60%, transparent 74%),
+    radial-gradient(140% 80% at 50% -8%, rgba(51, 61, 167, 0.16) 0%, transparent 55%);
+  filter: saturate(1.05);
+}
+
+.appWorkspaceFirstRun > * {
+  position: relative;
+  z-index: 1;
 }
 
 .appWorkspaceFirstRun .control {
