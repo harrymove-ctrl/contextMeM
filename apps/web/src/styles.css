@@ -8450,6 +8450,17 @@ textarea:focus {
   background: transparent;
 }
 
+.resultsMetaChipActive {
+  cursor: default;
+  color: #0f766e;
+  background: rgba(168, 217, 70, 0.16);
+  border-color: rgba(168, 217, 70, 0.5);
+}
+
+.resultsMetaChipActive .spin {
+  animation: result-spin 900ms linear infinite;
+}
+
 .resultsMetaShareLink {
   display: inline-flex;
   align-items: center;

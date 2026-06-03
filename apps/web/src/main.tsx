@@ -2453,7 +2453,7 @@ function BuildConsolePage({
 
   const resultsBody = (
     <>
-      <ResultsMetaBar runId={runId} shareId={shareId} shareUrl={shareUrl} expanded={resultsExpanded} onToggleExpand={() => setResultsExpanded((value) => !value)} />
+      <ResultsMetaBar runId={runId} busy={busy} shareId={shareId} shareUrl={shareUrl} expanded={resultsExpanded} onToggleExpand={() => setResultsExpanded((value) => !value)} />
       {hasRunOrArtifact ? (
         <div className="stats">
           {stats.map((stat) => {
@@ -3272,7 +3272,7 @@ function StatusPill({ statusLabel, statusTone, run, hasMemWalDelegate, sessionSl
   );
 }
 
-function ResultsMetaBar({ runId, shareId, shareUrl, expanded, onToggleExpand }: { runId: string | null; shareId: string | null; shareUrl: string | null; expanded: boolean; onToggleExpand: () => void }) {
+function ResultsMetaBar({ runId, busy, shareId, shareUrl, expanded, onToggleExpand }: { runId: string | null; busy?: boolean; shareId: string | null; shareUrl: string | null; expanded: boolean; onToggleExpand: () => void }) {
   const [copiedJob, setCopiedJob] = useState(false);
   async function copyJobId() {
     if (!runId) return;
@@ -3294,6 +3294,11 @@ function ResultsMetaBar({ runId, shareId, shareUrl, expanded, onToggleExpand }: 
             <code>{compactHash(runId)}</code>
             {copiedJob ? <small>copied</small> : null}
           </button>
+        ) : busy ? (
+          <span className="resultsMetaChip resultsMetaChipActive">
+            <LoaderCircle size={13} className="spin" />
+            <span>starting build…</span>
+          </span>
         ) : (
           <span className="resultsMetaChip resultsMetaChipMuted">
             <Hash size={13} />
