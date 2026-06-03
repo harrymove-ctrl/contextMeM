@@ -2449,6 +2449,7 @@ function BuildConsolePage({
 
   const hasRunOrArtifact = Boolean(run || artifact);
   const showRecentRuns = !hasRunOrArtifact && !busy && history.length > 0;
+  const firstRun = !hasRunOrArtifact && !busy && !resultsExpanded;
 
   const resultsBody = (
     <>
@@ -2484,7 +2485,7 @@ function BuildConsolePage({
   );
 
   return (
-    <section className="workspace appWorkspace">
+    <section className={`workspace appWorkspace ${firstRun ? "appWorkspaceFirstRun" : ""}`}>
       <aside className="control buildControl">
         <div className="heroInput">
           <div className="heroInputMain">
@@ -2614,9 +2615,29 @@ function BuildConsolePage({
         {error ? <div className={artifact || error.startsWith("MemWal") ? "notice" : "error"}>{artifact && !error.startsWith("MemWal") ? `Partial context kept: ${error}` : error}</div> : null}
       </aside>
 
-      <section className="results appResults" aria-hidden={resultsExpanded}>
-        {resultsExpanded ? <div className="resultsExpandPlaceholder">Output expanded — close the overlay to return.</div> : resultsBody}
-      </section>
+      {firstRun ? (
+        <div className="firstRunSamples">
+          <span className="firstRunSamplesLabel">Try one of these</span>
+          <div className="firstRunSampleChips">
+            {QUICK_START_SAMPLES.map((sample) => (
+              <button
+                key={sample.url}
+                type="button"
+                className={`firstRunChip ${target === sample.url ? "selected" : ""}`}
+                onClick={() => setTarget(sample.url)}
+                disabled={busy}
+                title={sample.detail}
+              >
+                {sample.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <section className="results appResults" aria-hidden={resultsExpanded}>
+          {resultsExpanded ? <div className="resultsExpandPlaceholder">Output expanded — close the overlay to return.</div> : resultsBody}
+        </section>
+      )}
       {resultsExpanded ? (
         <div className="resultsExpandModal" role="dialog" aria-modal="true" aria-label="Build output (expanded)" onClick={() => setResultsExpanded(false)}>
           <div className="resultsExpandModalInner" onClick={(event) => event.stopPropagation()}>

@@ -7494,6 +7494,88 @@ textarea:focus {
   color: #8a93a0;
 }
 
+/* ── Centered first-run hero (aisssa-style) ─────────── */
+.appWorkspaceFirstRun {
+  grid-template-columns: minmax(0, 600px);
+  justify-content: center;
+  align-content: center;
+  min-height: calc(100vh - 230px);
+}
+
+.appWorkspaceFirstRun .control {
+  position: static;
+  top: auto;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 0;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  gap: 14px;
+}
+
+/* the hero input grows a touch when it's the centered focal point */
+.appWorkspaceFirstRun .heroInput {
+  padding: 18px 20px;
+  border-radius: 22px;
+}
+
+.appWorkspaceFirstRun .heroInputMain input {
+  font-size: 17px;
+}
+
+.firstRunSamples {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 600px;
+  margin: 18px auto 0;
+}
+
+.firstRunSamplesLabel {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a93a0;
+}
+
+.firstRunSampleChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.firstRunChip {
+  border: 1px solid var(--cm-border);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--cm-ink);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.firstRunChip:not(:disabled):hover {
+  transform: translateY(-1px);
+  border-color: var(--cm-border-strong);
+  background: #ffffff;
+}
+
+.firstRunChip.selected {
+  background: #111416;
+  color: #ffffff;
+  border-color: #111416;
+}
+
 .segmented,
 .checks label,
 .tabs button,
