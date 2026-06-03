@@ -7596,6 +7596,125 @@ textarea:focus {
   border-color: #111416;
 }
 
+/* ── Artifacts empty state (centered hero) ──────────── */
+.artifactsEmptyStack {
+  align-content: center;
+  justify-items: center;
+}
+
+.artifactsEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.artifactsEmptyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 16px;
+  background: rgba(168, 217, 70, 0.16);
+  border: 1px solid rgba(168, 217, 70, 0.42);
+  color: #264f1f;
+}
+
+.artifactsEmpty h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.artifactsEmpty p {
+  margin: 0;
+  max-width: 460px;
+  color: var(--cm-muted);
+  line-height: 1.5;
+}
+
+.artifactsEmptyCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  background: #111416;
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 4px 4px 0 rgba(168, 217, 70, 0.72);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.artifactsEmptyCta:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 rgba(168, 217, 70, 0.85);
+}
+
+.artifactsRecent {
+  width: 100%;
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.artifactsRecentLabel {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a93a0;
+  text-align: center;
+}
+
+.artifactsRecentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.artifactsRecentCard {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--cm-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.artifactsRecentCard:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--cm-border-strong);
+  background: #ffffff;
+}
+
+.artifactsRecentCard strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.artifactsRecentCard small {
+  color: var(--cm-muted);
+  font-size: 12px;
+}
+
+.artifactsRecentCard time {
+  color: #8a93a0;
+  font-size: 11px;
+}
+
 .segmented,
 .checks label,
 .tabs button,

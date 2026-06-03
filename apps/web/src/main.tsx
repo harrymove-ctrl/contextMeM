@@ -1260,7 +1260,7 @@ function ContextMemExperience() {
         element={renderShell(
           "Artifacts",
           "Browse generated markdown, manifests, screenshots, and file previews for the selected run.",
-          <ArtifactsAppPage stats={stats} run={run} artifact={artifact} authToken={sessionToken} setArtifact={setArtifact} history={history} accountLabel={me.account?.memwalAccountId ?? me.account?.ownerAddress ?? ""} />
+          <ArtifactsAppPage stats={stats} run={run} artifact={artifact} authToken={sessionToken} setArtifact={setArtifact} history={history} accountLabel={me.account?.memwalAccountId ?? me.account?.ownerAddress ?? ""} onOpenRun={openRunAndViewArtifacts} busy={busy} />
         )}
       />
       <Route
@@ -2656,7 +2656,9 @@ function ArtifactsAppPage({
   authToken,
   setArtifact,
   history,
-  accountLabel
+  accountLabel,
+  onOpenRun,
+  busy
 }: {
   stats: MetricItem[];
   run: RunResponse | null;
@@ -2665,7 +2667,42 @@ function ArtifactsAppPage({
   setArtifact: React.Dispatch<React.SetStateAction<ArtifactManifest | null>>;
   history: RunHistoryItem[];
   accountLabel: string;
+  onOpenRun: (runId: string) => Promise<void>;
+  busy: boolean;
 }) {
+  if (!artifact) {
+    const recent = history.slice(0, 6);
+    return (
+      <section className="appPanelStack artifactsEmptyStack">
+        <div className="artifactsEmpty">
+          <div className="artifactsEmptyIcon">
+            <FolderOpen size={26} />
+          </div>
+          <h2>No artifact package open</h2>
+          <p>Build a context package, or reopen a previous run to browse its markdown, images, manifests, and file previews.</p>
+          <Link to="/app" className="artifactsEmptyCta">
+            <Play size={16} />
+            Open Build
+          </Link>
+          {recent.length ? (
+            <div className="artifactsRecent">
+              <span className="artifactsRecentLabel">Or reopen a recent run</span>
+              <div className="artifactsRecentGrid">
+                {recent.map((item) => (
+                  <button key={item.runId} type="button" className="artifactsRecentCard" disabled={busy} onClick={() => void onOpenRun(item.runId)}>
+                    <strong>{compactTarget(item.target)}</strong>
+                    <small>{item.pages} pages · {item.resources} resources</small>
+                    <time>{formatDateTime(item.updatedAt)}</time>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="appPanelStack">
       <div className="stats">
@@ -2680,8 +2717,8 @@ function ArtifactsAppPage({
           );
         })}
       </div>
-      {artifact && run ? <AiQueryPanel artifact={artifact} run={run} setArtifact={setArtifact} authToken={authToken} history={history} accountLabel={accountLabel} /> : null}
-      {artifact ? <ArtifactViewerPanel run={run} authToken={authToken} /> : <div className="panel subEmpty">No artifact package selected yet. Build or reopen a run to inspect generated files.</div>}
+      {run ? <AiQueryPanel artifact={artifact} run={run} setArtifact={setArtifact} authToken={authToken} history={history} accountLabel={accountLabel} /> : null}
+      <ArtifactViewerPanel run={run} authToken={authToken} />
     </section>
   );
 }
