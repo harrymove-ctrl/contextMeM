@@ -1,4 +1,5 @@
 import type { ContextChunk, MemoryGraph, MemoryLink, MemoryNode } from "./memory-graph-types.js";
+import { sizeScale } from "../components/namespace-memory/memory-theme.js";
 
 // `prefix` is a strictly-shorter ancestor of `full` in the heading hierarchy.
 function isProperPrefix(prefix: string[], full: string[]): boolean {
@@ -20,7 +21,7 @@ function toNode(c: ContextChunk): MemoryNode {
     textPreview: c.text.slice(0, 200),
     byteLength: c.byteLength,
     order: c.order,
-    val: Math.max(1, Math.sqrt(c.byteLength)), // node area ∝ bytes
+    val: sizeScale(c.byteLength),
   };
 }
 
