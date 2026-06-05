@@ -13,7 +13,8 @@
 import type {
   RememberDeltaInput,
   RememberDeltaResult,
-  SiteSnapshot
+  SiteSnapshot,
+  StorageIndexInput
 } from "./index.js";
 
 export type MemWalSdkConfig = {
@@ -117,6 +118,34 @@ export class MemWalSdkClient {
       removed: 0,
       results
     };
+  }
+
+  async rememberStorageIndex(input: StorageIndexInput): Promise<unknown> {
+    const client = await this.ensureClient();
+    const { receipt } = input;
+    return client.remember({
+      namespace: input.namespace,
+      content: [
+        `ContextMeM proof pack ${receipt.certified ? "certified" : receipt.status}.`,
+        `target=${input.target}`,
+        input.runId ? `runId=${input.runId}` : undefined,
+        receipt.artifactDigest ? `artifactDigest=${receipt.artifactDigest}` : undefined,
+        receipt.blobId ? `walrusBlobId=${receipt.blobId}` : undefined,
+        `tatumJobId=${receipt.jobId}`,
+        input.whatChanged ? `whatChanged=${input.whatChanged}` : undefined
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      metadata: {
+        kind: "storage-index",
+        target: input.target,
+        runId: input.runId,
+        blobId: receipt.blobId,
+        jobId: receipt.jobId,
+        artifactDigest: receipt.artifactDigest,
+        certified: receipt.certified
+      }
+    });
   }
 
   async recallSiteContext(namespace: string, query: string): Promise<unknown> {

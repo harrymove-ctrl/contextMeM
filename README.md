@@ -27,7 +27,7 @@ Open the web app at `http://localhost:5173` and the API at `http://localhost:879
 
 - Web app: extraction workspace for Web, Walrus Site, or Auto mode with AI Query, run history, artifact previews, MemWal recall/diff, screenshots, and publish readiness.
 - API: local JSON endpoints for runs, extraction, artifact files, package generation, AI query, local diffs, and MemWal.
-- CLI: `contextmem web`, `contextmem walrus`, `contextmem runs`, `contextmem memwal`, and `contextmem ask`.
+- CLI: `contextmem web`, `contextmem walrus`, `contextmem runs`, `contextmem storage`, `contextmem memwal`, and `contextmem ask`.
 - MCP: `bun run mcp:start` exposes the same core tools to agents.
 - Hosted Worker/Pages: public demo extraction, feedback capture, opt-in share pages, hosted namespace MCP, scheduled re-scrape alerts, and webhook delivery metadata.
 
@@ -59,6 +59,49 @@ The delta path encodes per-chunk identity (`chunkId`, `routePath`, `heading`, `c
 ## Walrus-Native Flow
 
 For Walrus Sites, ContextMeM resolves a site object ID, reads dynamic resource fields from Sui, fetches bytes from a Walrus aggregator by blob ID or derived quilt patch ID, verifies hashes, materializes the site locally, then extracts markdown, sitemap, images, brand, styleguide, and AI-queryable artifacts.
+
+## Walrus Storage + Walrus Memory + Tatum
+
+ContextMeM uses three distinct layers so the Walrus integration is real, not decorative:
+
+- **Walrus Storage** holds the *real artifacts*. `contextmem storage push <runDir>` tars a run's `context/` bundle (`manifest.json`, `llms.txt`, markdown chunks, `proofs.json`, screenshots) and uploads it to Walrus via Tatum's `POST /v4/data/storage/upload`. The async job returns a `jobId` + pre-computed `blobId`; we poll until the blob is `CERTIFIED` on the network, then persist the receipt to `runs/<runId>/context/storage.json`.
+- **Walrus Memory** (MemWal) holds the *recall-able semantic index only* — never the file bytes. With `--remember`, the certified receipt is written as a small memory note: `target`, `namespace`, `artifactDigest`, `walrusBlobId`, `tatumJobId`, certification status, and `whatChanged`. An agent later `recall`s the pointer and re-fetches the real artifact from Walrus Storage by `blobId`.
+- **Tatum** is the gateway for both the storage REST calls above and on-chain reads. Point the `@tatumio/blockchain-mcp` server at the same `TATUM_API_KEY` to give agents RPC/blockchain-data tools alongside ContextMeM's tools.
+
+```sh
+# build a run, then store + index its proof bundle
+bun run contextmem walrus extract https://fmsprint.wal.app/ --mainnet
+bun run contextmem runs artifacts <runId> --readiness
+bun run contextmem storage push <runId> --remember --what-changed "Initial certified proof pack"
+bun run contextmem storage status <jobId>   # re-poll an upload
+```
+
+MCP tools exposed for agents: `upload_proof_to_walrus` (pack → upload → certify → optional remember) and `check_walrus_storage_job`. Suggested combined MCP config:
+
+```json
+{
+  "mcpServers": {
+    "tatumio": {
+      "command": "npx",
+      "args": ["-y", "@tatumio/blockchain-mcp"],
+      "env": { "TATUM_API_KEY": "${TATUM_API_KEY}" }
+    },
+    "contextmem": {
+      "command": "bun",
+      "args": ["/path/to/contextMeM/packages/mcp/src/index.ts"],
+      "env": {
+        "CONTEXTMEM_RUNS_DIR": "/path/to/contextMeM/runs",
+        "TATUM_API_KEY": "${TATUM_API_KEY}",
+        "MEMWAL_ACCOUNT_ID": "${MEMWAL_ACCOUNT_ID}",
+        "MEMWAL_PRIVATE_KEY": "${MEMWAL_PRIVATE_KEY}",
+        "MEMWAL_API_URL": "https://relayer.memwal.ai"
+      }
+    }
+  }
+}
+```
+
+`TATUM_API_KEY` must be a **mainnet** key (`/v4/data/storage/upload` is mainnet-only, 50 MiB max). `contextmem doctor` reports whether it is set.
 
 ## Product Workflow
 

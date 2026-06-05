@@ -1,4 +1,4 @@
-import type { AiQueryResult, BrandProfile, ContextChunk, DesignSystem, MemoryWritePlan, PageArtifact, Styleguide, WalrusResourceRecord, WalrusSiteContext } from "@contextmem/core";
+import type { AiQueryResult, BrandProfile, ContextChunk, DesignSystem, MemoryWritePlan, PageArtifact, Styleguide, WalrusResourceRecord, WalrusSiteContext, WalrusStorageReceipt } from "@contextmem/core";
 import { planMemoryWrite } from "@contextmem/core/chunks";
 import { MemWal } from "@mysten-incubation/memwal";
 
@@ -32,6 +32,15 @@ export type RememberDeltaInput = {
   priorChunks?: ContextChunk[];
   artifactDigest?: string;
   chunkGraphDigest?: string;
+};
+
+export type StorageIndexInput = {
+  namespace: string;
+  target: string;
+  runId?: string;
+  receipt: WalrusStorageReceipt;
+  summary?: string;
+  whatChanged?: string;
 };
 
 export type RememberDeltaResult = {
@@ -145,6 +154,20 @@ export class MemWalMcpClient {
     };
   }
 
+  /**
+   * Index a certified Walrus-storage proof bundle into Walrus Memory. We do NOT
+   * push the file bytes here — those live in Walrus Storage (keyed by blobId).
+   * This remembers only the recall-able semantic index: target, namespace,
+   * digest, blobId/jobId, certification status, and what changed — so an agent
+   * can later `recall` the pointer and re-fetch the real artifact from Walrus.
+   */
+  async rememberStorageIndex(input: StorageIndexInput): Promise<unknown> {
+    const sdk = this.client(input.namespace);
+    const text = renderStorageIndex(input);
+    const result = await rememberWithRetry(sdk, text);
+    return { namespace: input.namespace, jobId: result.job_id, status: result.status, completed: result.completed };
+  }
+
   async recallSiteContext(namespace: string, query: string): Promise<unknown> {
     return this.client(namespace).recall({ query });
   }
@@ -250,6 +273,27 @@ function renderSnapshotIndex(input: RememberDeltaInput): string {
     `Chunks: ${input.chunks.length}`,
     input.artifactDigest ? `artifactDigest: ${input.artifactDigest}` : undefined,
     input.chunkGraphDigest ? `chunkGraphDigest: ${input.chunkGraphDigest}` : undefined
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function renderStorageIndex(input: StorageIndexInput): string {
+  const { receipt } = input;
+  return [
+    `[ctxm-storage] ContextMeM proof pack ${receipt.certified ? "certified" : receipt.status}.`,
+    `target=${input.target}`,
+    input.runId ? `runId=${input.runId}` : undefined,
+    `namespace=${input.namespace}`,
+    receipt.artifactDigest ? `artifactDigest=${receipt.artifactDigest}` : undefined,
+    receipt.blobId ? `walrusBlobId=${receipt.blobId}` : undefined,
+    `tatumJobId=${receipt.jobId}`,
+    `status=${receipt.status}`,
+    `bytes=${receipt.byteLength}`,
+    receipt.downloadUrls?.length ? `downloadUrl=${receipt.downloadUrls[0]}` : undefined,
+    input.whatChanged ? `whatChanged=${input.whatChanged}` : undefined,
+    "",
+    `summary=${input.summary ?? "ContextMeM proof bundle (manifest, llms.txt, markdown, proofs) stored on Walrus and indexed for recall."}`
   ]
     .filter(Boolean)
     .join("\n");

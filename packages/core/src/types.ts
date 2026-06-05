@@ -621,6 +621,28 @@ export type WalrusProofBundle = {
   resources: WalrusBlobProof[];
 };
 
+/**
+ * Receipt for a proof bundle uploaded to Walrus persistent storage via Tatum's
+ * `/v4/data/storage/upload` endpoint. The job is async: the POST returns a
+ * jobId + pre-computed blobId immediately, then the upload moves through
+ * PENDING → UPLOADING → CERTIFIED. `certified` is true once the blob is durably
+ * stored on the Walrus network and the download URLs resolve.
+ */
+export type WalrusStorageReceipt = {
+  provider: "tatum";
+  endpoint: string;
+  jobId: string;
+  blobId?: string;
+  status: string;
+  certified: boolean;
+  fileName: string;
+  byteLength: number;
+  artifactDigest?: string;
+  downloadUrls?: string[];
+  uploadedAt: string;
+  certifiedAt?: string;
+};
+
 export type WalrusSiteHistoryEntry = {
   digest: string;
   timestampMs?: string;
