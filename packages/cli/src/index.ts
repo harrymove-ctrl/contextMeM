@@ -36,7 +36,15 @@ function memwalClient(transport?: string): MemWalAnyClient {
   const choice = selectMemWalTransport(transport === "sdk" || transport === "mcp" ? transport : "auto");
   return choice === "sdk" ? new MemWalSdkClient() : memwalClient(process.env.MEMWAL_TRANSPORT);
 }
-import { getWalrusSiteHistory, materializeWalrusSite, resolveWalrusTarget, startWalrusPreview } from "@contextmem/walrus";
+import {
+  getWalrusSiteHistory,
+  getWalrusStorageJob,
+  materializeWalrusSite,
+  packProofBundle,
+  resolveWalrusTarget,
+  startWalrusPreview,
+  uploadProofBundle
+} from "@contextmem/walrus";
 
 const program = new Command();
 const runsDir = path.resolve(process.env.CONTEXTMEM_RUNS_DIR ?? "runs");
@@ -317,6 +325,65 @@ runs
     if (!result.ok) process.exitCode = 1;
   });
 
+const storage = program
+  .command("storage")
+  .description("Walrus persistent storage for proof bundles (via Tatum REST)");
+storage
+  .command("push")
+  .description("Tar a run's context/ into a proof bundle, upload it to Walrus storage, and wait for certification")
+  .argument("<runDir>", "ContextMeM run directory (or run ID)")
+  .option("--no-wait", "Return as soon as the upload is accepted, without polling for certification")
+  .option("--remember", "After certification, index the receipt into Walrus Memory (MemWal)")
+  .option("--namespace <namespace>", "Override the MemWal namespace for --remember")
+  .option("--what-changed <text>", "Note recorded with the memory index for --remember")
+  .option("--keep-bundle", "Keep the local .tgz proof bundle instead of writing only the receipt")
+  .option("--timeout <ms>", "Certification poll timeout", numberOption, 180000)
+  .action(async (runDir, options) => {
+    const absRunDir = resolveRunDirInput(runDir);
+    const runId = path.basename(absRunDir);
+    const manifestPath = path.resolve(absRunDir, "context", "manifest.json");
+    const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+
+    const bundle = await packProofBundle(absRunDir);
+    const receipt = await uploadProofBundle({
+      fileName: bundle.fileName,
+      data: bundle.data,
+      contentType: "application/gzip",
+      artifactDigest: bundle.artifactDigest,
+      wait: options.wait !== false,
+      timeoutMs: options.timeout,
+      onPoll: (state) => console.error(`[storage] ${state.jobId} → ${state.status}`)
+    });
+
+    const receiptPath = path.resolve(absRunDir, "context", "storage.json");
+    await fs.writeFile(receiptPath, JSON.stringify(receipt, null, 2), "utf8");
+
+    let memory: unknown;
+    if (options.remember) {
+      const namespace =
+        options.namespace ??
+        namespaceForTarget(manifest.target, manifest.walrus ? "walrus" : "web", manifest.walrus?.site?.network, manifest.walrus?.site?.siteObjectId);
+      memory = await memwalClient(process.env.MEMWAL_TRANSPORT).rememberStorageIndex({
+        namespace,
+        target: manifest.target,
+        runId,
+        receipt,
+        whatChanged: options.whatChanged
+      });
+    }
+
+    if (!options.keepBundle) await fs.rm(bundle.filePath, { force: true }).catch(() => {});
+
+    print({ runId, receiptPath, bundle: options.keepBundle ? bundle.filePath : undefined, receipt, memory });
+  });
+storage
+  .command("status")
+  .description("Poll a Tatum Walrus storage upload job by jobId")
+  .argument("<jobId>", "Tatum storage jobId")
+  .action(async (jobId) => {
+    print(await getWalrusStorageJob(jobId));
+  });
+
 program
   .command("package-web")
   .argument("<target>", "URL or domain")
@@ -373,6 +440,12 @@ program
       checks.push({ name: "env:OPENAI_API_KEY", status: "ok", detail: "set" });
     } else {
       checks.push({ name: "env:OPENAI_API_KEY", status: "warn", detail: "missing — AI Query disabled" });
+    }
+
+    if (process.env.TATUM_API_KEY) {
+      checks.push({ name: "env:TATUM_API_KEY", status: "ok", detail: "set" });
+    } else {
+      checks.push({ name: "env:TATUM_API_KEY", status: "warn", detail: "missing — Walrus storage upload (storage push) disabled" });
     }
 
     const targets: Array<{ name: string; url: string }> = [
