@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, Hash, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, Maximize2, MessageSquare, Palette, Play, Plus, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, X, Zap } from "lucide-react";
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
+import { API_BASE } from "./lib/api-base.js";
 import "./styles.css";
 
 type DesignSystem = {
@@ -509,7 +510,6 @@ type MemWalNotice = {
   command?: string;
 };
 
-const API_BASE = import.meta.env.VITE_CONTEXTMEM_API_BASE ?? "http://localhost:8791";
 const showDevMemWalAuth = import.meta.env.DEV && !import.meta.env.PROD && (import.meta.env.VITE_CONTEXTMEM_DEV_AUTH === "true" || new URLSearchParams(window.location.search).get("devAuth") === "1");
 const buildProfileDefaults: Record<BuildProfile, string[]> = {
   fast: ["markdown", "sitemap"],
