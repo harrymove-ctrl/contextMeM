@@ -7,6 +7,9 @@ import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCi
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
 import { API_BASE } from "./lib/api-base.js";
+import { useNamespaceChunks } from "./hooks/use-namespace-chunks.js";
+import { deriveMemoryGraph } from "./lib/derive-memory-graph.js";
+import { NamespaceMemoryConstellation } from "./components/namespace-memory/NamespaceMemoryConstellation.js";
 import "./styles.css";
 
 type DesignSystem = {
@@ -1254,6 +1257,7 @@ function ContextMemExperience() {
       />
       <Route path="/share/:shareId" element={<SharePage />} />
       <Route path="/showcase" element={<ShowcasePage />} />
+      <Route path="/showcase/:namespace" element={<NamespaceMemoryPage />} />
       <Route path="/app" element={renderShell("Build console", "Resolve a Walrus Site, verify resources, then generate a context package.", buildPage)} />
       <Route
         path="/app/artifacts"
@@ -1842,6 +1846,7 @@ function ShowcasePage() {
               ) : null}
               <footer>
                 <a href={item.mcpUrl} target="_blank" rel="noreferrer">Open MCP URL</a>
+                <Link to={`/showcase/${item.namespace}`}>Visualize memory</Link>
                 <button onClick={() => void navigator.clipboard.writeText(item.mcpUrl)}>Copy</button>
               </footer>
             </article>
@@ -1850,6 +1855,19 @@ function ShowcasePage() {
       )}
     </main>
   );
+}
+
+function NamespaceMemoryPage() {
+  const { namespace = "" } = useParams();
+  const state = useNamespaceChunks(namespace);
+  const graph = useMemo(
+    () => (state.status === "ready" ? deriveMemoryGraph(state.chunks) : null),
+    [state],
+  );
+  if (state.status === "loading") return <div className="nmc-root"><div className="nmc-overlay-msg">Loading memory…</div></div>;
+  if (state.status === "error") return <div className="nmc-root"><div className="nmc-overlay-msg">{state.message}</div></div>;
+  if (state.status === "empty" || !graph) return <div className="nmc-root"><div className="nmc-overlay-msg">This namespace has no chunks yet — re-publish to enable the memory map.</div></div>;
+  return <NamespaceMemoryConstellation graph={graph} />;
 }
 
 function FeedbackWidget({ ownerId }: { ownerId?: string }) {
