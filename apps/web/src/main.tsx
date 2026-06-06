@@ -1052,11 +1052,15 @@ function ContextMemExperience() {
   }
 
   async function importDelegate() {
-    const accountId = delegateAccountId.trim();
-    // Normalize: strip a Bearer prefix, an 0x prefix, and whitespace, then require
-    // a real 64-char hex Ed25519 seed — otherwise a masked/wrong value gets stored
-    // and only fails much later with a raw "hexToBytes" error at recall time.
-    const key = delegateKey.trim().replace(/^bearer\s+/i, "").replace(/^0x/i, "").trim();
+    // The account ID is a Sui object ID and keeps its 0x prefix — only strip
+    // copy/paste noise (invisible chars, stray whitespace), never the 0x.
+    const accountId = cleanPastedCredential(delegateAccountId);
+    // Aggressively normalize the delegate key: copy/paste from a dashboard often
+    // injects invisible characters (zero-width spaces, NBSP, newlines mid-string)
+    // or a 0x/Bearer prefix. Strip ALL of that, then require a real 64-char hex
+    // Ed25519 seed — otherwise a masked/wrong value gets stored and only fails
+    // much later with a raw "hexToBytes" error at recall time.
+    const key = cleanPastedCredential(delegateKey).replace(/^0x/i, "");
     if (!accountId) {
       const message = "Paste your Walrus Memory account ID.";
       setError(message);
@@ -1064,7 +1068,12 @@ function ContextMemExperience() {
       return;
     }
     if (!/^[0-9a-fA-F]{64}$/.test(key)) {
-      const message = "Delegate private key must be a 64-character hex Ed25519 seed (no 0x, no spaces). The value pasted isn't valid hex — re-copy it from your Walrus Memory dashboard.";
+      const detail = key.length === 0
+        ? "the field is empty"
+        : key.length !== 64
+          ? `after cleaning it's ${key.length} characters, not 64`
+          : `it has a non-hex character (cleaned value starts "${key.slice(0, 6)}…")`;
+      const message = `Delegate private key must be a 64-character hex Ed25519 seed — ${detail}. Re-copy the delegate SEED (not the account ID) from your Walrus Memory dashboard. 0x, spaces, and line breaks are removed automatically.`;
       setError(message);
       setMemwalNotice({ tone: "warning", message });
       return;
@@ -8080,6 +8089,20 @@ function artifactFileUrl(runId: string | undefined, artifactPath: string, access
 function authHeaders(token: string, base: Record<string, string> = {}): Record<string, string> {
   const merged = { ...base, ...(!isLocalApiBase(API_BASE) ? hostedDelegateHeaders() : {}) };
   return token ? { ...merged, authorization: `Bearer ${token}` } : merged;
+}
+
+// Strip copy/paste noise from a pasted credential so a valid value isn't rejected
+// over invisible characters. Dashboards frequently inject zero-width spaces, a
+// non-breaking space, or a line break mid-string when you copy. Removes ALL
+// whitespace (including internal), common invisible code points, and a Bearer
+// prefix. Does NOT strip 0x — callers decide that (key: yes, Sui account id: no).
+function cleanPastedCredential(value: string): string {
+  return (value ?? "")
+    .normalize("NFKC")
+    .replace(/[​-‍⁠﻿ ]/g, "") // zero-width chars + NBSP
+    .replace(/\s+/g, "") // all whitespace, including internal line breaks
+    .replace(/^bearer/i, "")
+    .trim();
 }
 
 function isLocalApiBase(value: string): boolean {
