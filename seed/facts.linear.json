@@ -1,0 +1,1068 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T00:00:00.000Z",
+  "target": "https://linear.app",
+  "identity": {
+    "name": "Linear",
+    "oneLiner": "The product development system for teams and agents",
+    "category": "product development & issue tracking",
+    "audience": [
+      "product teams",
+      "software teams",
+      "AI agents"
+    ],
+    "primaryEntityId": "org_linear",
+    "sources": [
+      {
+        "chunkId": "c_a1b2c3d4",
+        "routePath": "/",
+        "url": "https://linear.app/",
+        "quote": "The product development system for teams and agents"
+      },
+      {
+        "chunkId": "c_a1b2c3e5",
+        "routePath": "/",
+        "url": "https://linear.app/",
+        "quote": "The system for product development"
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "org_linear",
+      "name": "Linear",
+      "type": "organization",
+      "aliases": [
+        "Linear.app"
+      ],
+      "description": "Purpose-built for planning and building products; designed for the AI era.",
+      "url": "https://linear.app",
+      "salience": 1,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "The product development system for teams and agents"
+        },
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Purpose-built for planning and building products. Designed for the AI era."
+        }
+      ]
+    },
+    {
+      "id": "feat_issues",
+      "name": "Issue tracking",
+      "type": "feature",
+      "aliases": [
+        "Issues",
+        "Issue tracker"
+      ],
+      "description": "Make progress on product work with issue tracking.",
+      "url": "https://linear.app/features",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Make progress with issue tracking and cycle planning"
+        }
+      ]
+    },
+    {
+      "id": "feat_cycles",
+      "name": "Cycles",
+      "type": "feature",
+      "aliases": [
+        "Cycle planning"
+      ],
+      "description": "Cycle planning to keep teams moving on a cadence.",
+      "url": "https://linear.app/features",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Make progress with issue tracking and cycle planning"
+        }
+      ]
+    },
+    {
+      "id": "feat_projects",
+      "name": "Projects and initiatives",
+      "type": "feature",
+      "aliases": [
+        "Projects",
+        "Initiatives",
+        "Roadmaps"
+      ],
+      "description": "Set the product direction with projects and initiatives.",
+      "url": "https://linear.app/features",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Set the product direction with projects and initiatives"
+        },
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs",
+          "url": "https://linear.app/docs",
+          "quote": "Shape your product ideas and plan what to build next"
+        }
+      ]
+    },
+    {
+      "id": "feat_ai",
+      "name": "AI agents",
+      "type": "feature",
+      "aliases": [
+        "AI workflows",
+        "Agents"
+      ],
+      "description": "Build and deploy AI agents that work alongside your team.",
+      "url": "https://linear.app/features",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3e5",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Build and deploy AI agents that work alongside your team"
+        },
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Streamline product development with AI-powered workflows and agents"
+        }
+      ]
+    },
+    {
+      "id": "feat_insights",
+      "name": "Insights",
+      "type": "feature",
+      "aliases": [
+        "Analytics"
+      ],
+      "description": "Instant analytics for any stream of work.",
+      "url": "https://linear.app/features",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Instant analytics for any stream of work"
+        }
+      ]
+    },
+    {
+      "id": "uc_customer_requests",
+      "name": "Customer Requests",
+      "type": "use_case",
+      "aliases": [
+        "Customer feedback"
+      ],
+      "description": "Build what customers actually want from customer requests.",
+      "url": "https://linear.app/features",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Build what customers actually want"
+        },
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Turn conversations and customer feedback into actionable issues"
+        }
+      ]
+    },
+    {
+      "id": "int_github",
+      "name": "GitHub",
+      "type": "integration",
+      "aliases": [
+        "GitHub integration"
+      ],
+      "description": "Automate PR workflows, review code in Linear, and sync issues.",
+      "url": "https://linear.app/integrations",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/integrations",
+          "url": "https://linear.app/integrations",
+          "quote": "Connect GitHub to automate PR workflows, review code in Linear, sync issues"
+        }
+      ]
+    },
+    {
+      "id": "int_slack",
+      "name": "Slack",
+      "type": "integration",
+      "aliases": [
+        "Slack integration"
+      ],
+      "description": "Create issues from Slack messages and sync threads.",
+      "url": "https://linear.app/integrations",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/integrations",
+          "url": "https://linear.app/integrations",
+          "quote": "Create issues from Slack messages and sync threads."
+        }
+      ]
+    },
+    {
+      "id": "int_figma",
+      "name": "Figma",
+      "type": "integration",
+      "aliases": [
+        "Figma integration"
+      ],
+      "description": "Create and link issues directly from Figma.",
+      "url": "https://linear.app/integrations",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/integrations",
+          "url": "https://linear.app/integrations",
+          "quote": "Create and link issues directly from Figma."
+        }
+      ]
+    },
+    {
+      "id": "plan_free",
+      "name": "Free plan",
+      "type": "pricing_plan",
+      "aliases": [
+        "Free"
+      ],
+      "description": "Free for everyone with 2 teams and 250 issues.",
+      "url": "https://linear.app/pricing",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "Free for everyone"
+        },
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "250 issues"
+        }
+      ]
+    },
+    {
+      "id": "plan_business",
+      "name": "Business plan",
+      "type": "pricing_plan",
+      "aliases": [
+        "Business"
+      ],
+      "description": "Business plan at $16 per user/month with unlimited teams.",
+      "url": "https://linear.app/pricing",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "$16 per user/month"
+        },
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "Unlimited teams"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "cl_valueprop1",
+      "text": "Purpose-built for planning and building products. Designed for the AI era.",
+      "kind": "value_prop",
+      "subjectEntityId": "org_linear",
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Purpose-built for planning and building products. Designed for the AI era."
+        }
+      ]
+    },
+    {
+      "id": "cl_valueprop2",
+      "text": "Reduces noise and restores momentum to help teams ship with high velocity",
+      "kind": "value_prop",
+      "subjectEntityId": "org_linear",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Reduces noise and restores momentum to help teams ship with high velocity"
+        }
+      ]
+    },
+    {
+      "id": "cl_valueprop3",
+      "text": "Linear helps teams plan, track, and deliver work without a lot of overhead.",
+      "kind": "value_prop",
+      "subjectEntityId": "org_linear",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/start-guide",
+          "url": "https://linear.app/docs/start-guide",
+          "quote": "Linear helps teams plan, track, and deliver work without a lot of overhead."
+        }
+      ]
+    },
+    {
+      "id": "cl_cap_issues",
+      "text": "Make progress with issue tracking and cycle planning",
+      "kind": "capability",
+      "subjectEntityId": "feat_issues",
+      "sentiment": "positive",
+      "confidence": 0.86,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Make progress with issue tracking and cycle planning"
+        }
+      ]
+    },
+    {
+      "id": "cl_cap_projects",
+      "text": "Set the product direction with projects and initiatives",
+      "kind": "capability",
+      "subjectEntityId": "feat_projects",
+      "sentiment": "positive",
+      "confidence": 0.86,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Set the product direction with projects and initiatives"
+        }
+      ]
+    },
+    {
+      "id": "cl_cap_ai",
+      "text": "Build and deploy AI agents that work alongside your team",
+      "kind": "capability",
+      "subjectEntityId": "feat_ai",
+      "sentiment": "positive",
+      "confidence": 0.84,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3e5",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Build and deploy AI agents that work alongside your team"
+        }
+      ]
+    },
+    {
+      "id": "cl_cap_insights",
+      "text": "Instant analytics for any stream of work",
+      "kind": "capability",
+      "subjectEntityId": "feat_insights",
+      "sentiment": "positive",
+      "confidence": 0.82,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Instant analytics for any stream of work"
+        }
+      ]
+    },
+    {
+      "id": "cl_pos_newspecies",
+      "text": "A new species of product tool",
+      "kind": "positioning",
+      "subjectEntityId": "org_linear",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3e5",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "A new species of product tool"
+        }
+      ]
+    },
+    {
+      "id": "cl_guarantee_sec",
+      "text": "Best-in-class security practices keep your work safe and secure",
+      "kind": "guarantee",
+      "subjectEntityId": "org_linear",
+      "sentiment": "positive",
+      "confidence": 0.83,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Best-in-class security practices keep your work safe and secure"
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "st_teams",
+      "label": "product teams powered",
+      "valueRaw": "over 33,000",
+      "valueNumber": 33000,
+      "unit": "count",
+      "approximate": true,
+      "subjectEntityId": "org_linear",
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3f6",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Linear powers over 33,000 product teams"
+        }
+      ]
+    },
+    {
+      "id": "st_business_price",
+      "label": "Business plan price",
+      "valueRaw": "$16 per user/month",
+      "valueNumber": 16,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": false,
+      "subjectEntityId": "plan_business",
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "$16 per user/month"
+        }
+      ]
+    },
+    {
+      "id": "st_basic_price",
+      "label": "Basic plan price",
+      "valueRaw": "$10 per user/month",
+      "valueNumber": 10,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": false,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "$10 per user/month"
+        }
+      ]
+    },
+    {
+      "id": "st_free_price",
+      "label": "Free plan price",
+      "valueRaw": "$0",
+      "valueNumber": 0,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": false,
+      "subjectEntityId": "plan_free",
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "$0"
+        }
+      ]
+    },
+    {
+      "id": "st_free_issues",
+      "label": "Free plan issue limit",
+      "valueRaw": "250 issues",
+      "valueNumber": 250,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "plan_free",
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "250 issues"
+        }
+      ]
+    },
+    {
+      "id": "st_free_teams",
+      "label": "Free plan team limit",
+      "valueRaw": "2 teams",
+      "valueNumber": 2,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "plan_free",
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "2 teams"
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "tp_tracking",
+      "label": "Issue tracking & planning",
+      "weight": 0.3,
+      "keywords": [
+        "issues",
+        "cycles",
+        "projects",
+        "initiatives",
+        "planning"
+      ],
+      "routePaths": [
+        "/features",
+        "/docs"
+      ],
+      "entityIds": [
+        "feat_issues",
+        "feat_cycles",
+        "feat_projects"
+      ]
+    },
+    {
+      "id": "tp_ai",
+      "label": "AI & agents",
+      "weight": 0.25,
+      "keywords": [
+        "AI",
+        "agents",
+        "workflows",
+        "diffs"
+      ],
+      "routePaths": [
+        "/",
+        "/features"
+      ],
+      "entityIds": [
+        "feat_ai"
+      ]
+    },
+    {
+      "id": "tp_integrations",
+      "label": "Integrations",
+      "weight": 0.2,
+      "keywords": [
+        "GitHub",
+        "Slack",
+        "Figma",
+        "integrations"
+      ],
+      "routePaths": [
+        "/integrations"
+      ],
+      "entityIds": [
+        "int_github",
+        "int_slack",
+        "int_figma"
+      ]
+    },
+    {
+      "id": "tp_pricing",
+      "label": "Pricing & plans",
+      "weight": 0.15,
+      "keywords": [
+        "pricing",
+        "plans",
+        "free",
+        "business",
+        "enterprise"
+      ],
+      "routePaths": [
+        "/pricing"
+      ],
+      "entityIds": [
+        "plan_free",
+        "plan_business"
+      ]
+    },
+    {
+      "id": "tp_insights",
+      "label": "Insights & customer feedback",
+      "weight": 0.1,
+      "keywords": [
+        "analytics",
+        "insights",
+        "customer requests",
+        "feedback"
+      ],
+      "routePaths": [
+        "/features"
+      ],
+      "entityIds": [
+        "feat_insights",
+        "uc_customer_requests"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_off_issues",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "feat_issues",
+      "kind": "offers",
+      "confidence": 0.86,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Make progress with issue tracking and cycle planning"
+        }
+      ]
+    },
+    {
+      "id": "rel_off_cycles",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "feat_cycles",
+      "kind": "offers",
+      "confidence": 0.84,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Make progress with issue tracking and cycle planning"
+        }
+      ]
+    },
+    {
+      "id": "rel_off_projects",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "feat_projects",
+      "kind": "offers",
+      "confidence": 0.86,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Set the product direction with projects and initiatives"
+        }
+      ]
+    },
+    {
+      "id": "rel_off_ai",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "feat_ai",
+      "kind": "offers",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Streamline product development with AI-powered workflows and agents"
+        }
+      ]
+    },
+    {
+      "id": "rel_off_insights",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "feat_insights",
+      "kind": "offers",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Instant analytics for any stream of work"
+        }
+      ]
+    },
+    {
+      "id": "rel_off_cr",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "uc_customer_requests",
+      "kind": "offers",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Build what customers actually want"
+        }
+      ]
+    },
+    {
+      "id": "rel_int_github",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "int_github",
+      "kind": "integrates_with",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/integrations",
+          "url": "https://linear.app/integrations",
+          "quote": "Connect GitHub to automate PR workflows, review code in Linear, sync issues"
+        }
+      ]
+    },
+    {
+      "id": "rel_int_slack",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "int_slack",
+      "kind": "integrates_with",
+      "confidence": 0.86,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/integrations",
+          "url": "https://linear.app/integrations",
+          "quote": "Create issues from Slack messages and sync threads."
+        }
+      ]
+    },
+    {
+      "id": "rel_int_figma",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "int_figma",
+      "kind": "integrates_with",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/integrations",
+          "url": "https://linear.app/integrations",
+          "quote": "Create and link issues directly from Figma."
+        }
+      ]
+    },
+    {
+      "id": "rel_off_free",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "plan_free",
+      "kind": "offers",
+      "confidence": 0.84,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "Free for everyone"
+        }
+      ]
+    },
+    {
+      "id": "rel_off_business",
+      "sourceEntityId": "org_linear",
+      "targetEntityId": "plan_business",
+      "kind": "offers",
+      "confidence": 0.84,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "$16 per user/month"
+        }
+      ]
+    },
+    {
+      "id": "rel_issues_github",
+      "sourceEntityId": "feat_issues",
+      "targetEntityId": "int_github",
+      "kind": "integrates_with",
+      "label": "sync issues",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/integrations",
+          "url": "https://linear.app/integrations",
+          "quote": "Connect GitHub to automate PR workflows, review code in Linear, sync issues"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_what",
+      "question": "What is Linear?",
+      "answer": "Linear is the product development system for teams and agents, helping teams plan, track, and deliver work without a lot of overhead.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "org_linear"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "The product development system for teams and agents"
+        },
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/start-guide",
+          "url": "https://linear.app/docs/start-guide",
+          "quote": "Linear helps teams plan, track, and deliver work without a lot of overhead."
+        }
+      ]
+    },
+    {
+      "id": "q_who",
+      "question": "Who is Linear for?",
+      "answer": "Linear is purpose-built for modern teams with AI workflows at its core, and is designed for workflows shared by humans and agents.",
+      "category": "who_is_it_for",
+      "importance": 0.9,
+      "entityIds": [
+        "org_linear",
+        "feat_ai"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Purpose-built for modern teams with AI workflows at its core"
+        },
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Designed for workflows shared by humans and agents"
+        }
+      ]
+    },
+    {
+      "id": "q_how",
+      "question": "How do teams track and plan work in Linear?",
+      "answer": "Teams make progress with issue tracking and cycle planning, and set the product direction with projects and initiatives.",
+      "category": "how_it_works",
+      "importance": 0.85,
+      "entityIds": [
+        "feat_issues",
+        "feat_cycles",
+        "feat_projects"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Make progress with issue tracking and cycle planning"
+        },
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Set the product direction with projects and initiatives"
+        }
+      ]
+    },
+    {
+      "id": "q_pricing",
+      "question": "How much does Linear cost?",
+      "answer": "Linear has a Free plan at $0, a Basic plan at $10 per user/month, and a Business plan at $16 per user/month, with a custom Enterprise tier.",
+      "category": "pricing",
+      "importance": 0.85,
+      "entityIds": [
+        "plan_free",
+        "plan_business"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "$0"
+        },
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "$10 per user/month"
+        },
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "$16 per user/month"
+        }
+      ]
+    },
+    {
+      "id": "q_integrations",
+      "question": "What does Linear integrate with?",
+      "answer": "Linear connects with GitHub to automate PR workflows and sync issues, creates issues from Slack messages, and links issues directly from Figma, among many others.",
+      "category": "integrations",
+      "importance": 0.8,
+      "entityIds": [
+        "int_github",
+        "int_slack",
+        "int_figma"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/integrations",
+          "url": "https://linear.app/integrations",
+          "quote": "Connect GitHub to automate PR workflows, review code in Linear, sync issues"
+        },
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/integrations",
+          "url": "https://linear.app/integrations",
+          "quote": "Create and link issues directly from Figma."
+        }
+      ]
+    },
+    {
+      "id": "q_diff",
+      "question": "What makes Linear different?",
+      "answer": "Linear positions itself as a new species of product tool, built for the future and available today, designed for workflows shared by humans and agents.",
+      "category": "differentiators",
+      "importance": 0.78,
+      "entityIds": [
+        "org_linear",
+        "feat_ai"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3e5",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "A new species of product tool"
+        },
+        {
+          "chunkId": "c_a1b2c3e5",
+          "routePath": "/",
+          "url": "https://linear.app/",
+          "quote": "Built for the future. Available today."
+        }
+      ]
+    },
+    {
+      "id": "q_start",
+      "question": "How do I get started with Linear?",
+      "answer": "Sign up using your work email (recommended), then create a workspace for your organization.",
+      "category": "getting_started",
+      "importance": 0.72,
+      "entityIds": [
+        "org_linear"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/start-guide",
+          "url": "https://linear.app/docs/start-guide",
+          "quote": "Sign up using your work email (recommended)"
+        },
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/start-guide",
+          "url": "https://linear.app/docs/start-guide",
+          "quote": "Create a workspace for your organization."
+        }
+      ]
+    },
+    {
+      "id": "q_security",
+      "question": "How does Linear handle security?",
+      "answer": "Best-in-class security practices keep your work safe and secure, and the Enterprise tier adds SAML and SCIM with enterprise-grade security.",
+      "category": "trust_security",
+      "importance": 0.7,
+      "entityIds": [
+        "org_linear"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/features",
+          "url": "https://linear.app/features",
+          "quote": "Best-in-class security practices keep your work safe and secure"
+        },
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/pricing",
+          "url": "https://linear.app/pricing",
+          "quote": "SAML and SCIM"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 6,
+    "chunksAnalyzed": 24,
+    "entitiesWithSources": 12,
+    "ungroundedDropped": 0
+  },
+  "usedProvider": "heuristic",
+  "confidence": 0.82
+}

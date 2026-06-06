@@ -8758,6 +8758,50 @@ textarea:focus {
 
 /* How it works — sticky aside + timeline */
 /* Storage + Memory — lime bento */
+.lpStoreVisual {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.lpStoreVisualMedia {
+  overflow: hidden;
+  border: 1px solid rgba(17, 20, 22, 0.1);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 26px 60px rgba(22, 31, 45, 0.1);
+}
+
+.lpStoreVisualMedia img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lpStoreVisualNotes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lpStoreVisualNotes span {
+  min-width: 0;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  border: 1px solid rgba(17, 20, 22, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #344050;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.25;
+  text-align: center;
+  box-shadow: var(--cm-soft-shadow);
+}
+
 .lpStoreGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -8845,6 +8889,9 @@ textarea:focus {
 
 /* Architecture board */
 @media (max-width: 980px) {
+  .lpStoreVisualNotes {
+    grid-template-columns: 1fr;
+  }
   .lpStoreGrid {
     grid-template-columns: 1fr;
   }
@@ -8925,6 +8972,19 @@ textarea:focus {
   display: grid;
   place-items: center;
   overflow: hidden;
+}
+
+.lpUseGif.hasIllustration {
+  border-style: solid;
+  border-color: rgba(17, 20, 22, 0.1);
+  background: #ffffff;
+}
+
+.lpUseIllustration {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .lpUseGifHint {
@@ -10185,3 +10245,8 @@ textarea:focus {
 .proofGrid dd code { font-size: 11.5px; background: rgba(17,20,22,0.05); padding: 2px 6px; border-radius: 6px; overflow-wrap: anywhere; }
 
 .nsSimpleProof { font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 999px; background: var(--cm-teal); color: #fff; margin-left: auto; }
+
+
+/* ── Runs catalog row: proof badge ─────────────────────────────────────────── */
+.runRowEnd { display: flex; justify-content: flex-end; }
+.runProofBadge { font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 999px; background: var(--cm-teal); color: #fff; }

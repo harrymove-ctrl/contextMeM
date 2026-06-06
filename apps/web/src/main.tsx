@@ -766,13 +766,21 @@ const builtForUseCards = [
     eyebrow: "Resolve & verify",
     heading: "Resolve .wal.app names and Sui object IDs, then verify every blob.",
     highlights: [".wal.app", "Sui", "verify"],
-    body: "Paste a name, an object ID, or a web URL. ContextMeM reads the onchain resources and checks every hash, route, and content type before trusting a byte."
+    body: "Paste a name, an object ID, or a web URL. ContextMeM reads the onchain resources and checks every hash, route, and content type before trusting a byte.",
+    image: {
+      src: "/illustrations/resolve-verify-walrus-blobs.png",
+      alt: "A hand-drawn walrus blob turns a resolver crank while .wal.app names and Sui object IDs move through blob verification into trusted context."
+    }
   },
   {
     eyebrow: "Agent context",
     heading: "Package markdown, llms.txt, and design tokens agents can actually read.",
     highlights: ["markdown", "llms.txt", "design tokens"],
-    body: "Every run emits static, agent-readable artifacts — markdown, a resource manifest, screenshots — that you can inspect, diff, and download."
+    body: "Every run emits static, agent-readable artifacts — markdown, a resource manifest, screenshots — that you can inspect, diff, and download.",
+    image: {
+      src: "/illustrations/package-agent-context-walrus.svg",
+      alt: "Pastel walrus helpers package markdown, llms.txt, manifests, screenshots, and design token swatches into an agent-ready artifact bundle."
+    }
   },
   {
     eyebrow: "Walrus Memory",
@@ -2638,8 +2646,12 @@ function LandingPage({
               >
                 {card.heading}
               </BlurHighlight>
-              <div className="lpUseGif" role="img" aria-label="Demo placeholder — drop a GIF here">
-                <span className="lpUseGifHint"><Play size={15} /> Drop a GIF here</span>
+              <div className={`lpUseGif ${card.image ? "hasIllustration" : ""}`} role={card.image ? undefined : "img"} aria-label={card.image ? undefined : "Demo placeholder — drop a GIF here"}>
+                {card.image ? (
+                  <img className="lpUseIllustration" src={card.image.src} alt={card.image.alt} loading="lazy" decoding="async" />
+                ) : (
+                  <span className="lpUseGifHint"><Play size={15} /> Drop a GIF here</span>
+                )}
               </div>
               <p className="lpUseBody">{card.body}</p>
             </article>
@@ -2653,6 +2665,21 @@ function LandingPage({
           <h2>Walrus storage keeps the proof.<br />Walrus Memory remembers where it is.</h2>
           <p>Three layers, cleanly split through Tatum — so the integration is real provenance, not a logo on a slide.</p>
         </header>
+        <div className="lpStoreVisual" aria-label="Walrus blob handoff from certified storage proof to Walrus Memory recall pointer">
+          <div className="lpStoreVisualMedia">
+            <img
+              src="/illustrations/walrus-memory-handoff.png"
+              alt="A hand-drawn walrus blob pulls a pointer from a certified Walrus storage proof bundle to a Walrus Memory index board."
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+          <div className="lpStoreVisualNotes">
+            <span>Proof bytes stay certified in storage</span>
+            <span>Memory keeps the recall pointer</span>
+            <span>Agents re-fetch the real artifact</span>
+          </div>
+        </div>
         <div className="lpStoreGrid">
           {storageLayers.map((layer, index) => {
             const Icon = layer.icon;
@@ -3057,29 +3084,34 @@ function ArtifactsAppPage({
   onOpenRun: (runId: string) => Promise<void>;
   busy: boolean;
 }) {
+  const { items: packages } = useContextPackages();
+  const navigate = useNavigate();
+  void busy;
+  void onOpenRun;
   if (!artifact) {
-    const recent = history.slice(0, 6);
     return (
       <section className="appPanelStack artifactsEmptyStack">
         <div className="artifactsEmpty">
           <div className="artifactsEmptyIcon">
             <FolderOpen size={26} />
           </div>
-          <h2>No artifact package open</h2>
-          <p>Build a context package, or reopen a previous run to browse its markdown, images, manifests, and file previews.</p>
+          <h2>Browse context packages</h2>
+          <p>Open a verified context package to explore its knowledge graph, facts, and Walrus storage proof — or build a new one.</p>
           <Link to="/app" className="artifactsEmptyCta">
             <Play size={16} />
             Open Build
           </Link>
-          {recent.length ? (
+          {packages.length ? (
             <div className="artifactsRecent">
-              <span className="artifactsRecentLabel">Or reopen a recent run</span>
+              <span className="artifactsRecentLabel">Verified packages</span>
               <div className="artifactsRecentGrid">
-                {recent.map((item) => (
-                  <button key={item.runId} type="button" className="artifactsRecentCard" disabled={busy} onClick={() => void onOpenRun(item.runId)}>
-                    <strong>{compactTarget(item.target)}</strong>
-                    <small>{item.pages} pages · {item.resources} resources</small>
-                    <time>{formatDateTime(item.updatedAt)}</time>
+                {packages.map((item) => (
+                  <button key={item.namespace} type="button" className="artifactsRecentCard" onClick={() => navigate(`/app/memory?ns=${encodeURIComponent(item.namespace)}`)}>
+                    <strong>{item.displayName}</strong>
+                    <small>
+                      {item.entities} entities · {item.relationships} links{item.proof?.certified ? " · ✓ Walrus" : ""}
+                    </small>
+                    <time>{compactTarget(item.target)}</time>
                   </button>
                 ))}
               </div>
@@ -3110,13 +3142,53 @@ function ArtifactsAppPage({
   );
 }
 
-function RunsAppPage({ history, busy, currentRunId, onRefresh, onOpenRun }: { history: RunHistoryItem[]; busy: boolean; currentRunId?: string; onRefresh: () => Promise<void>; onOpenRun: (runId: string) => Promise<void> }) {
+type ContextPackage = {
+  namespace: string;
+  displayName: string;
+  target: string;
+  entities: number;
+  relationships: number;
+  topics: number;
+  questions: number;
+  proof?: { blobId: string; certified: boolean } | null;
+};
+
+// Shared catalog of verified context packages (the public facts catalog), used by
+// Runs + Artifacts so they browse the same set the Memory/Namespaces pages show.
+function useContextPackages() {
+  const [items, setItems] = useState<ContextPackage[]>([]);
+  const [busy, setBusy] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/memwal/facts`);
+        const body = (await response.json()) as { namespaces?: ContextPackage[] };
+        if (!cancelled) setItems(body.namespaces ?? []);
+      } catch {
+        /* leave empty */
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return { items, busy };
+}
+
+function RunsAppPage({ busy, onRefresh }: { history: RunHistoryItem[]; busy: boolean; currentRunId?: string; onRefresh: () => Promise<void>; onOpenRun: (runId: string) => Promise<void> }) {
+  const { items, busy: catalogBusy } = useContextPackages();
+  const navigate = useNavigate();
   return (
     <section className="appPanelStack">
       <div className="pageToolbar">
         <div>
-          <strong>{history.length} packages</strong>
-          <span>Previous Walrus context runs from your account.</span>
+          <strong>
+            {items.length} context package{items.length === 1 ? "" : "s"}
+          </strong>
+          <span>Verified Walrus context packages — open one to browse its knowledge graph.</span>
         </div>
         <button onClick={() => void onRefresh()} disabled={busy}>
           <History size={16} />
@@ -3124,23 +3196,25 @@ function RunsAppPage({ history, busy, currentRunId, onRefresh, onOpenRun }: { hi
         </button>
       </div>
 
-      {history.length ? (
+      {items.length ? (
         <div className="runListPage">
-          {history.map((item) => (
-            <button key={item.runId} className={`runRow ${currentRunId === item.runId ? "selected" : ""}`} onClick={() => void onOpenRun(item.runId)} disabled={busy}>
+          {items.map((item) => (
+            <button key={item.namespace} className="runRow" onClick={() => navigate(`/app/memory?ns=${encodeURIComponent(item.namespace)}`)}>
               <span>
-                <strong>{compactTarget(item.target)}</strong>
-                <small>{item.namespace || compactHash(item.runId)}</small>
+                <strong>{item.displayName}</strong>
+                <small>{item.namespace}</small>
               </span>
-              <span>{item.mode}</span>
-              <span>{item.pages} pages</span>
-              <span>{item.resources} resources</span>
-              <time>{formatDateTime(item.updatedAt)}</time>
+              <span>{compactTarget(item.target)}</span>
+              <span>{item.entities} entities</span>
+              <span>{item.relationships} links</span>
+              <span className="runRowEnd">{item.proof?.certified ? <span className="runProofBadge">✓ Walrus</span> : null}</span>
             </button>
           ))}
         </div>
+      ) : catalogBusy ? (
+        <div className="panel subEmpty">Loading context packages…</div>
       ) : (
-        <div className="panel subEmpty">No run history yet. Build your first context package from the Build page.</div>
+        <div className="panel subEmpty">No context packages yet. Build your first from the Build page.</div>
       )}
     </section>
   );

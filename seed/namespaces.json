@@ -1,6 +1,6 @@
 {
   "owner": "0x8a1121b8f95d79e68bd07efaf71689ce6fd832b369cdb1b2a943ec7beb822392",
-  "generatedAt": "2026-06-06T00:00:00Z",
+  "generatedAt": "2026-06-06T12:00:00Z",
   "note": "Real seed data crawled from docs.sui.io, walrus.xyz + MystenLabs/walrus, and MystenLabs/seal. Every fact quote is a verbatim substring of fetched content (adversarially verified).",
   "namespaces": [
     {
@@ -134,6 +134,156 @@
         "quotesChecked": 67,
         "quotesPassed": 66
       }
+    },
+    {
+      "namespace": "demo:stripe",
+      "target": "https://stripe.com",
+      "displayName": "Stripe",
+      "description": "Stripe is payments infrastructure for the internet, offering developer-first APIs for online payments, billing and subscriptions, Connect marketplace payouts, and Radar fraud prevention.",
+      "visibility": "public",
+      "tags": [
+        "payments",
+        "fintech",
+        "developer-api",
+        "billing",
+        "marketplaces"
+      ],
+      "category": "web2"
+    },
+    {
+      "namespace": "demo:vercel",
+      "target": "https://vercel.com",
+      "displayName": "Vercel",
+      "description": "Vercel is a frontend cloud and deployment platform that turns Git pushes into globally deployed web apps on an edge network, with serverless fluid-compute functions, and is the company that maintains Next.js.",
+      "visibility": "public",
+      "tags": [
+        "deployment",
+        "frontend-cloud",
+        "edge-network",
+        "serverless",
+        "nextjs"
+      ],
+      "category": "web2"
+    },
+    {
+      "namespace": "demo:anthropic",
+      "target": "https://www.anthropic.com",
+      "displayName": "Anthropic",
+      "description": "Anthropic is an AI safety company and frontier model lab that builds Claude — a family of large language models — along with the Claude API and Agent SDK for developers.",
+      "visibility": "public",
+      "tags": [
+        "ai-safety",
+        "llm",
+        "claude",
+        "agent-sdk",
+        "developer-platform"
+      ],
+      "category": "web2"
+    },
+    {
+      "namespace": "demo:linear",
+      "target": "https://linear.app",
+      "displayName": "Linear",
+      "description": "Linear is a purpose-built product development system for software teams, combining fast issue tracking, cycles, projects, AI agents, and deep integrations to help teams plan and ship.",
+      "visibility": "public",
+      "tags": [
+        "issue-tracking",
+        "project-management",
+        "software-teams",
+        "ai-agents",
+        "productivity"
+      ],
+      "category": "web2"
+    },
+    {
+      "namespace": "demo:tatum",
+      "target": "https://tatum.io",
+      "displayName": "Tatum",
+      "description": "Tatum is an enterprise-grade blockchain infrastructure platform offering RPC nodes, data APIs, wallets, and real-time notifications across 130+ chains through a unified API and SDK.",
+      "visibility": "public",
+      "tags": [
+        "blockchain",
+        "rpc",
+        "web3-infrastructure",
+        "developer-platform",
+        "api"
+      ],
+      "category": "web3"
+    },
+    {
+      "namespace": "demo:suins",
+      "target": "https://suins.io",
+      "displayName": "SuiNS (Sui Name Service)",
+      "description": "The naming service for Sui that lets users register human-readable .sui names, owned as NFTs, which resolve to Sui addresses and objects.",
+      "visibility": "public",
+      "tags": [
+        "naming-service",
+        "sui",
+        "blockchain",
+        "web3-identity",
+        "nft"
+      ],
+      "category": "web3"
+    },
+    {
+      "namespace": "demo:deepbook",
+      "target": "https://docs.sui.io/standards/deepbookv3",
+      "displayName": "DeepBookV3",
+      "description": "DeepBookV3 is Sui's next-generation decentralized central limit order book (CLOB) that brings a high-performance, low-latency on-chain liquidity layer with flash loans, governance, shared-object pools, and the DEEP token.",
+      "visibility": "public",
+      "tags": [
+        "sui",
+        "clob",
+        "defi",
+        "onchain-orderbook",
+        "deep-token"
+      ],
+      "category": "web3"
+    },
+    {
+      "namespace": "demo:mysten-labs",
+      "target": "https://www.mystenlabs.com",
+      "displayName": "Mysten Labs",
+      "description": "Mysten Labs builds foundational web3 infrastructure — including the Sui blockchain, Walrus decentralized storage, and Seal encryption — to enable a more decentralized internet.",
+      "visibility": "public",
+      "tags": [
+        "web3",
+        "blockchain",
+        "sui",
+        "decentralized-infrastructure",
+        "crypto"
+      ],
+      "category": "web3"
+    },
+    {
+      "namespace": "demo:walrus-sites",
+      "target": "https://docs.wal.app/walrus-sites",
+      "displayName": "Walrus Sites",
+      "description": "Walrus Sites are fully decentralized \"web\"-sites whose files are stored on the Walrus decentralized storage network while a Sui smart contract manages each site's metadata and ownership, served to browsers through portals at *.wal.app with no central authority hosting them.",
+      "visibility": "public",
+      "tags": [
+        "decentralized-web",
+        "walrus",
+        "sui",
+        "web3",
+        "static-sites"
+      ],
+      "category": "web3"
+    },
+    {
+      "namespace": "demo:move-lang",
+      "target": "https://move-book.com",
+      "displayName": "The Move Book",
+      "description": "The Move Book is an open, in-development guide to the Move smart-contract language and the Sui blockchain, covering modules, primitive types, the abilities system (copy/drop/key/store), the object-centric storage model, and Sui programmability patterns like the hot potato.",
+      "visibility": "public",
+      "tags": [
+        "move",
+        "sui",
+        "smart-contracts",
+        "blockchain",
+        "developer-docs"
+      ],
+      "category": "web3"
     }
   ]
 }

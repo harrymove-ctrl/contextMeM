@@ -1,0 +1,1008 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T12:00:00.000Z",
+  "target": "https://tatum.io",
+  "identity": {
+    "name": "Tatum",
+    "oneLiner": "One platform with all the tools to power modern blockchain applications across 130+ chains.",
+    "category": "blockchain infrastructure platform",
+    "audience": [
+      "developers",
+      "enterprises"
+    ],
+    "primaryEntityId": "ent_tatum",
+    "sources": [
+      {
+        "chunkId": "c_1a2b3c4d",
+        "routePath": "/",
+        "url": "https://tatum.io/",
+        "quote": "One Platform - All the Tools You Need"
+      },
+      {
+        "chunkId": "c_3c4d5e6f",
+        "routePath": "/",
+        "url": "https://tatum.io/",
+        "quote": "130+ blockchains"
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "ent_tatum",
+      "name": "Tatum",
+      "type": "organization",
+      "aliases": [
+        "Tatum.io"
+      ],
+      "description": "A unified blockchain abstraction layer for accessing RPC nodes, data, and notifications across many chains.",
+      "url": "https://tatum.io/",
+      "salience": 1,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_5e6f7081",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Whatever you're building, it's easiest to start and scale your app with Tatum."
+        }
+      ]
+    },
+    {
+      "id": "ent_rpc",
+      "name": "RPC Nodes",
+      "type": "product",
+      "aliases": [
+        "Blockchain RPCs"
+      ],
+      "description": "Direct access to 100+ blockchain nodes via JSON-RPC.",
+      "url": "https://docs.tatum.io/docs/rpc-nodes",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Access 100+ blockchain nodes directly"
+        }
+      ]
+    },
+    {
+      "id": "ent_gateway",
+      "name": "RPC Gateway",
+      "type": "product",
+      "aliases": [],
+      "description": "Middleware that sits between applications and blockchain RPC nodes for reliable, scalable access.",
+      "url": "https://docs.tatum.io/docs/rpc-gateway",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "sits between your applications and blockchain RPC nodes"
+        }
+      ]
+    },
+    {
+      "id": "ent_dataapi",
+      "name": "Blockchain Data API",
+      "type": "product",
+      "aliases": [
+        "Data API"
+      ],
+      "description": "A reliable, scalable API for indexed blockchain data.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "A reliable API that will easily scale your app"
+        }
+      ]
+    },
+    {
+      "id": "ent_notif",
+      "name": "Web3 Notifications",
+      "type": "feature",
+      "aliases": [
+        "Notifications"
+      ],
+      "description": "Real-time blockchain event tracking and alerts.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Real-time blockchain event tracking"
+        }
+      ]
+    },
+    {
+      "id": "ent_smartrpc",
+      "name": "Smart RPC Routing",
+      "type": "feature",
+      "aliases": [],
+      "description": "An orchestration layer for routing RPC traffic across nodes.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "A powerful orchestration layer for your RPC traffic"
+        }
+      ]
+    },
+    {
+      "id": "ent_sdk",
+      "name": "JavaScript SDK",
+      "type": "technology",
+      "aliases": [
+        "JS SDK"
+      ],
+      "description": "A JavaScript SDK that abstracts blockchain complexity.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Abstract from the complexity of blockchain using JS"
+        }
+      ]
+    },
+    {
+      "id": "ent_jsonrpc",
+      "name": "JSON-RPC",
+      "type": "technology",
+      "aliases": [],
+      "description": "JSON-RPC connection protocol to 100+ blockchain nodes.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Utilize JSON-RPC for connection to over 100 blockchain nodes, streamlining your blockchain interaction."
+        }
+      ]
+    },
+    {
+      "id": "ent_kms",
+      "name": "Tatum KMS",
+      "type": "feature",
+      "aliases": [
+        "KMS"
+      ],
+      "description": "Tatum KMS provides key management with safe, local transaction signing.",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Tatum KMS offers robust key management for custodial applications, ensuring safe, local transaction signing."
+        }
+      ]
+    },
+    {
+      "id": "ent_mev",
+      "name": "MEV Protection",
+      "type": "feature",
+      "aliases": [],
+      "description": "A PowerUp that protects RPC traffic against MEV.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "MEV Protection"
+        }
+      ]
+    },
+    {
+      "id": "ent_plan",
+      "name": "Dedicated API Keys",
+      "type": "pricing_plan",
+      "aliases": [],
+      "description": "Dedicated API key plans giving isolated capacity for production workloads.",
+      "url": "https://tatum.io/pricing",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/pricing",
+          "url": "https://tatum.io/pricing",
+          "quote": "Isolated capacity for production workloads"
+        }
+      ]
+    },
+    {
+      "id": "ent_binance",
+      "name": "Binance",
+      "type": "customer",
+      "aliases": [],
+      "description": "Listed as a Tatum customer.",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Binance"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "clm_01",
+      "text": "Get everything you need to power modern blockchain applications.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_tatum",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Get everything you need to power modern blockchain applications."
+        }
+      ]
+    },
+    {
+      "id": "clm_02",
+      "text": "One Platform - All the Tools You Need",
+      "kind": "positioning",
+      "subjectEntityId": "ent_tatum",
+      "sentiment": "positive",
+      "confidence": 0.78,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "One Platform - All the Tools You Need"
+        }
+      ]
+    },
+    {
+      "id": "clm_03",
+      "text": "Whatever you're building, it's easiest to start and scale your app with Tatum.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_tatum",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_5e6f7081",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Whatever you're building, it's easiest to start and scale your app with Tatum."
+        }
+      ]
+    },
+    {
+      "id": "clm_04",
+      "text": "The RPC Gateway works with blockchain RPC nodes to provide a more reliable, stable, and scalable interface.",
+      "kind": "capability",
+      "subjectEntityId": "ent_gateway",
+      "sentiment": "neutral",
+      "confidence": 0.78,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "works with them to provide a more reliable, stable, and scalable interface."
+        }
+      ]
+    },
+    {
+      "id": "clm_05",
+      "text": "The gateway automatically failovers and load-balances across your nodes.",
+      "kind": "capability",
+      "subjectEntityId": "ent_gateway",
+      "sentiment": "neutral",
+      "confidence": 0.79,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "automatically failovers and load-balances across your nodes"
+        }
+      ]
+    },
+    {
+      "id": "clm_06",
+      "text": "Using blockchain notifications offers significant benefits compared to reading and parsing blocks manually.",
+      "kind": "capability",
+      "subjectEntityId": "ent_notif",
+      "sentiment": "positive",
+      "confidence": 0.77,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Using blockchain notifications offers significant benefits compared to reading and parsing blocks manually."
+        }
+      ]
+    },
+    {
+      "id": "clm_07",
+      "text": "Easily retrieve complex blockchain data indexed in a way that's easy to search, handle, and prepared to use in your app.",
+      "kind": "capability",
+      "subjectEntityId": "ent_dataapi",
+      "sentiment": "neutral",
+      "confidence": 0.77,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Easily retrieve complex blockchain data indexed in a way that's easy to search, handle, and prepared to use in your app."
+        }
+      ]
+    },
+    {
+      "id": "clm_08",
+      "text": "Tatum supports many blockchain protocols and nearly limitless assets in a single unified API and SDK.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_tatum",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_a3b4c5d6",
+          "routePath": "/docs/supported-blockchains",
+          "url": "https://docs.tatum.io/docs/supported-blockchains",
+          "quote": "Tatum supports many blockchain protocols and nearly limitless assets in a single unified API and SDK."
+        }
+      ]
+    },
+    {
+      "id": "clm_09",
+      "text": "Utilize JSON-RPC for connection to over 100 blockchain nodes, streamlining your blockchain interaction.",
+      "kind": "capability",
+      "subjectEntityId": "ent_jsonrpc",
+      "sentiment": "neutral",
+      "confidence": 0.78,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Utilize JSON-RPC for connection to over 100 blockchain nodes, streamlining your blockchain interaction."
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "stat_01",
+      "label": "blockchains supported",
+      "valueRaw": "130+",
+      "valueNumber": 130,
+      "unit": "count",
+      "approximate": true,
+      "subjectEntityId": "ent_tatum",
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "130+ blockchains"
+        }
+      ]
+    },
+    {
+      "id": "stat_02",
+      "label": "latency",
+      "valueRaw": "Sub 50 ms",
+      "valueNumber": 50,
+      "unit": "time",
+      "approximate": true,
+      "subjectEntityId": "ent_rpc",
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Sub 50 ms latency"
+        }
+      ]
+    },
+    {
+      "id": "stat_03",
+      "label": "uptime",
+      "valueRaw": "99.99%",
+      "valueNumber": 99.99,
+      "unit": "percent",
+      "approximate": false,
+      "subjectEntityId": "ent_tatum",
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "99.99% uptime"
+        }
+      ]
+    },
+    {
+      "id": "stat_04",
+      "label": "requests per second",
+      "valueRaw": "200 Req/s",
+      "valueNumber": 200,
+      "unit": "rate",
+      "approximate": false,
+      "subjectEntityId": "ent_rpc",
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "200 Req/s"
+        }
+      ]
+    },
+    {
+      "id": "stat_05",
+      "label": "networks managed by RPC Gateway",
+      "valueRaw": "180+",
+      "valueNumber": 180,
+      "unit": "count",
+      "approximate": true,
+      "subjectEntityId": "ent_gateway",
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "180+ blockchain networks"
+        }
+      ]
+    },
+    {
+      "id": "stat_06",
+      "label": "RPC Gateway uptime",
+      "valueRaw": "99.9%",
+      "valueNumber": 99.9,
+      "unit": "percent",
+      "approximate": true,
+      "subjectEntityId": "ent_gateway",
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "99.9% uptime or higher"
+        }
+      ]
+    },
+    {
+      "id": "stat_07",
+      "label": "free-tier lifetime credits",
+      "valueRaw": "100K",
+      "valueNumber": 100000,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_plan",
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/pricing",
+          "url": "https://tatum.io/pricing",
+          "quote": "100K Lifetime credits"
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "top_01",
+      "label": "RPC Infrastructure",
+      "weight": 0.3,
+      "keywords": [
+        "rpc",
+        "nodes",
+        "gateway",
+        "routing",
+        "blockchain",
+        "failover"
+      ],
+      "routePaths": [
+        "/",
+        "/docs/rpc-gateway",
+        "/docs/rpc-nodes"
+      ],
+      "entityIds": [
+        "ent_rpc",
+        "ent_gateway",
+        "ent_smartrpc",
+        "ent_jsonrpc",
+        "ent_mev"
+      ]
+    },
+    {
+      "id": "top_02",
+      "label": "Blockchain Data & APIs",
+      "weight": 0.16,
+      "keywords": [
+        "data",
+        "api",
+        "indexed",
+        "block",
+        "retrieve"
+      ],
+      "routePaths": [
+        "/"
+      ],
+      "entityIds": [
+        "ent_dataapi"
+      ]
+    },
+    {
+      "id": "top_03",
+      "label": "Notifications & Events",
+      "weight": 0.12,
+      "keywords": [
+        "notifications",
+        "real-time",
+        "events",
+        "alerts"
+      ],
+      "routePaths": [
+        "/"
+      ],
+      "entityIds": [
+        "ent_notif"
+      ]
+    },
+    {
+      "id": "top_04",
+      "label": "Developer Tools & SDK",
+      "weight": 0.15,
+      "keywords": [
+        "sdk",
+        "javascript",
+        "kms",
+        "key",
+        "signing"
+      ],
+      "routePaths": [
+        "/"
+      ],
+      "entityIds": [
+        "ent_sdk",
+        "ent_kms",
+        "ent_jsonrpc"
+      ]
+    },
+    {
+      "id": "top_05",
+      "label": "Supported Blockchains",
+      "weight": 0.14,
+      "keywords": [
+        "blockchains",
+        "tiers",
+        "uptime",
+        "support",
+        "unified"
+      ],
+      "routePaths": [
+        "/docs/supported-blockchains"
+      ],
+      "entityIds": [
+        "ent_tatum",
+        "ent_rpc"
+      ]
+    },
+    {
+      "id": "top_06",
+      "label": "Pricing & Plans",
+      "weight": 0.13,
+      "keywords": [
+        "pricing",
+        "plans",
+        "rps",
+        "credits",
+        "subscription"
+      ],
+      "routePaths": [
+        "/pricing"
+      ],
+      "entityIds": [
+        "ent_plan"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_01",
+      "sourceEntityId": "ent_tatum",
+      "targetEntityId": "ent_rpc",
+      "kind": "offers",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Access 100+ blockchain nodes directly"
+        }
+      ]
+    },
+    {
+      "id": "rel_02",
+      "sourceEntityId": "ent_tatum",
+      "targetEntityId": "ent_gateway",
+      "kind": "offers",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "sits between your applications and blockchain RPC nodes"
+        }
+      ]
+    },
+    {
+      "id": "rel_03",
+      "sourceEntityId": "ent_tatum",
+      "targetEntityId": "ent_dataapi",
+      "kind": "offers",
+      "confidence": 0.78,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "A reliable API that will easily scale your app"
+        }
+      ]
+    },
+    {
+      "id": "rel_04",
+      "sourceEntityId": "ent_tatum",
+      "targetEntityId": "ent_notif",
+      "kind": "offers",
+      "confidence": 0.78,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Real-time blockchain event tracking"
+        }
+      ]
+    },
+    {
+      "id": "rel_05",
+      "sourceEntityId": "ent_tatum",
+      "targetEntityId": "ent_smartrpc",
+      "kind": "offers",
+      "confidence": 0.77,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "A powerful orchestration layer for your RPC traffic"
+        }
+      ]
+    },
+    {
+      "id": "rel_06",
+      "sourceEntityId": "ent_tatum",
+      "targetEntityId": "ent_sdk",
+      "kind": "offers",
+      "confidence": 0.77,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Abstract from the complexity of blockchain using JS"
+        }
+      ]
+    },
+    {
+      "id": "rel_07",
+      "sourceEntityId": "ent_tatum",
+      "targetEntityId": "ent_kms",
+      "kind": "offers",
+      "confidence": 0.76,
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Tatum KMS offers robust key management for custodial applications, ensuring safe, local transaction signing."
+        }
+      ]
+    },
+    {
+      "id": "rel_08",
+      "sourceEntityId": "ent_smartrpc",
+      "targetEntityId": "ent_gateway",
+      "kind": "part_of",
+      "confidence": 0.7,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "A powerful orchestration layer for your RPC traffic"
+        }
+      ]
+    },
+    {
+      "id": "rel_09",
+      "sourceEntityId": "ent_mev",
+      "targetEntityId": "ent_gateway",
+      "kind": "part_of",
+      "confidence": 0.7,
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "MEV Protection"
+        }
+      ]
+    },
+    {
+      "id": "rel_10",
+      "sourceEntityId": "ent_rpc",
+      "targetEntityId": "ent_jsonrpc",
+      "kind": "built_with",
+      "confidence": 0.72,
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Utilize JSON-RPC for connection to over 100 blockchain nodes, streamlining your blockchain interaction."
+        }
+      ]
+    },
+    {
+      "id": "rel_11",
+      "sourceEntityId": "ent_tatum",
+      "targetEntityId": "ent_binance",
+      "kind": "used_by",
+      "confidence": 0.6,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Binance"
+        }
+      ]
+    },
+    {
+      "id": "rel_12",
+      "sourceEntityId": "ent_tatum",
+      "targetEntityId": "ent_plan",
+      "kind": "offers",
+      "confidence": 0.74,
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/pricing",
+          "url": "https://tatum.io/pricing",
+          "quote": "Isolated capacity for production workloads"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_01",
+      "question": "What is Tatum?",
+      "answer": "Tatum is a unified blockchain abstraction layer that makes it easy to start and scale apps across all blockchains.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "ent_tatum"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_5e6f7081",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Whatever you're building, it's easiest to start and scale your app with Tatum."
+        }
+      ]
+    },
+    {
+      "id": "q_02",
+      "question": "Who is Tatum for?",
+      "answer": "Tatum targets developers and enterprises building modern blockchain applications.",
+      "category": "who_is_it_for",
+      "importance": 0.85,
+      "entityIds": [
+        "ent_tatum"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Get everything you need to power modern blockchain applications."
+        }
+      ]
+    },
+    {
+      "id": "q_03",
+      "question": "How does Tatum's RPC Gateway work?",
+      "answer": "The RPC Gateway sits between your applications and blockchain RPC nodes, automatically failing over and load-balancing across nodes.",
+      "category": "how_it_works",
+      "importance": 0.8,
+      "entityIds": [
+        "ent_gateway"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "sits between your applications and blockchain RPC nodes"
+        },
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "automatically failovers and load-balances across your nodes"
+        }
+      ]
+    },
+    {
+      "id": "q_04",
+      "question": "How many blockchains does Tatum support?",
+      "answer": "Tatum provides access to 130+ blockchains, and its RPC Gateway manages 180+ blockchain networks.",
+      "category": "integrations",
+      "importance": 0.8,
+      "entityIds": [
+        "ent_tatum",
+        "ent_rpc",
+        "ent_gateway"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "130+ blockchains"
+        },
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "180+ blockchain networks"
+        }
+      ]
+    },
+    {
+      "id": "q_05",
+      "question": "How much does Tatum cost?",
+      "answer": "Tatum has a free tier with 100K lifetime credits plus dedicated API key plans that provide isolated capacity for production workloads.",
+      "category": "pricing",
+      "importance": 0.7,
+      "entityIds": [
+        "ent_plan"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/pricing",
+          "url": "https://tatum.io/pricing",
+          "quote": "100K Lifetime credits"
+        },
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/pricing",
+          "url": "https://tatum.io/pricing",
+          "quote": "Isolated capacity for production workloads"
+        }
+      ]
+    },
+    {
+      "id": "q_06",
+      "question": "How do I get started with Tatum?",
+      "answer": "Developers can abstract away blockchain complexity using Tatum's JavaScript SDK.",
+      "category": "getting_started",
+      "importance": 0.6,
+      "entityIds": [
+        "ent_sdk"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://tatum.io/",
+          "quote": "Abstract from the complexity of blockchain using JS"
+        }
+      ]
+    },
+    {
+      "id": "q_07",
+      "question": "What makes Tatum's infrastructure reliable?",
+      "answer": "Its gateway ensures 99.9% uptime or higher by automatically failing over and load-balancing across nodes.",
+      "category": "differentiators",
+      "importance": 0.72,
+      "entityIds": [
+        "ent_gateway"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "99.9% uptime or higher"
+        },
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/docs/rpc-gateway",
+          "url": "https://docs.tatum.io/docs/rpc-gateway",
+          "quote": "automatically failovers and load-balances across your nodes"
+        }
+      ]
+    },
+    {
+      "id": "q_08",
+      "question": "How does Tatum handle key management and security?",
+      "answer": "Tatum KMS offers robust key management for custodial applications, ensuring safe, local transaction signing.",
+      "category": "trust_security",
+      "importance": 0.65,
+      "entityIds": [
+        "ent_kms"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/",
+          "url": "https://docs.tatum.io/",
+          "quote": "Tatum KMS offers robust key management for custodial applications, ensuring safe, local transaction signing."
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 6,
+    "chunksAnalyzed": 11,
+    "entitiesWithSources": 12,
+    "ungroundedDropped": 2
+  },
+  "usedProvider": "heuristic",
+  "confidence": 0.84
+}

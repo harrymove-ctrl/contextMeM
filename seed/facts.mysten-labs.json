@@ -1,0 +1,1012 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T12:00:00.000Z",
+  "target": "https://www.mystenlabs.com",
+  "usedProvider": "heuristic",
+  "confidence": 0.82,
+  "identity": {
+    "name": "Mysten Labs",
+    "oneLiner": "Building critical infrastructure for a more decentralized internet — the team behind Sui, Walrus, and Seal.",
+    "category": "web3 infrastructure",
+    "audience": [
+      "builders",
+      "web3 enthusiasts",
+      "developers"
+    ],
+    "primaryEntityId": "ent_mysten",
+    "sources": [
+      {
+        "chunkId": "c_1a2b3c4d",
+        "routePath": "/",
+        "url": "https://www.mystenlabs.com/",
+        "quote": "At Mysten Labs, we are building critical infrastructure to enable a more decentralized internet"
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "ent_mysten",
+      "name": "Mysten Labs",
+      "type": "organization",
+      "aliases": [
+        "Mysten"
+      ],
+      "description": "A company building critical infrastructure to enable a more decentralized internet.",
+      "url": "https://www.mystenlabs.com/",
+      "salience": 1,
+      "mentions": 10,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "At Mysten Labs, we are building critical infrastructure to enable a more decentralized internet"
+        },
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/MystenLabs",
+          "url": "https://github.com/MystenLabs",
+          "quote": "We create foundational infrastructure to accelerate web3 adoption"
+        }
+      ]
+    },
+    {
+      "id": "ent_sui",
+      "name": "Sui",
+      "type": "platform",
+      "aliases": [
+        "Sui Network"
+      ],
+      "description": "A next-generation smart contract platform with high throughput, low latency, and an asset-oriented programming model.",
+      "url": "https://github.com/MystenLabs/sui",
+      "salience": 0.9,
+      "mentions": 9,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "Sui delivers the benefits of Web3 with the ease of Web2"
+        },
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/MystenLabs/sui",
+          "url": "https://github.com/MystenLabs/sui",
+          "quote": "Sui, a next-generation smart contract platform with high throughput, low latency, and an asset-oriented programming model powered by the Move programming language"
+        }
+      ]
+    },
+    {
+      "id": "ent_walrus",
+      "name": "Walrus",
+      "type": "product",
+      "aliases": [],
+      "description": "A decentralized storage and data availability protocol — a blob store that uses Sui for coordination and governance.",
+      "url": "https://github.com/MystenLabs/walrus",
+      "salience": 0.4,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "A decentralized storage and data availability protocol"
+        },
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/MystenLabs/walrus",
+          "url": "https://github.com/MystenLabs/walrus",
+          "quote": "A decentralized blob store using Sui for coordination and governance."
+        }
+      ]
+    },
+    {
+      "id": "ent_seal",
+      "name": "Seal",
+      "type": "product",
+      "aliases": [
+        "DSM"
+      ],
+      "description": "Robust encryption and onchain access control for sensitive data, using identity-based encryption with onchain policies on Sui.",
+      "url": "https://github.com/MystenLabs/seal",
+      "salience": 0.4,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "Robust encryption & onchain access control for sensitive data"
+        },
+        {
+          "chunkId": "c_92a3b4c5",
+          "routePath": "/MystenLabs/seal",
+          "url": "https://github.com/MystenLabs/seal",
+          "quote": "identity-based encryption and decryption of sensitive data, with access controlled by onchain policies on Sui."
+        }
+      ]
+    },
+    {
+      "id": "ent_move",
+      "name": "Move",
+      "type": "technology",
+      "aliases": [],
+      "description": "The native programming language for Sui.",
+      "url": "https://www.mystenlabs.com/",
+      "salience": 0.4,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "The native programming language for Sui"
+        },
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/MystenLabs/sui",
+          "url": "https://github.com/MystenLabs/sui",
+          "quote": "asset-oriented programming model powered by the Move programming language"
+        }
+      ]
+    },
+    {
+      "id": "ent_enoki",
+      "name": "Enoki",
+      "type": "product",
+      "aliases": [],
+      "description": "A Mysten Labs product to transform your business with more meaningful customer experiences.",
+      "url": "https://www.mystenlabs.com/",
+      "salience": 0.1,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "Transform your business with more meaningful customer experiences"
+        }
+      ]
+    },
+    {
+      "id": "ent_deepbook",
+      "name": "DeepBook",
+      "type": "product",
+      "aliases": [],
+      "description": "The most efficient DeFi foundation that unlocks financial innovation.",
+      "url": "https://www.mystenlabs.com/",
+      "salience": 0.1,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "The most efficient DeFi foundation that unlocks financial innovation"
+        }
+      ]
+    },
+    {
+      "id": "ent_kiosk",
+      "name": "Kiosk",
+      "type": "product",
+      "aliases": [],
+      "description": "A decentralized system for commerce applications on Sui.",
+      "url": "https://www.mystenlabs.com/",
+      "salience": 0.2,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "A decentralized system for commerce applications on Sui"
+        }
+      ]
+    },
+    {
+      "id": "ent_evan",
+      "name": "Evan Cheng",
+      "type": "person",
+      "aliases": [],
+      "description": "Co-Founder and CEO of Mysten Labs.",
+      "url": "https://www.mystenlabs.com/about",
+      "salience": 0.1,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/about",
+          "url": "https://www.mystenlabs.com/about",
+          "quote": "Evan Cheng (Co-Founder, CEO)"
+        }
+      ]
+    },
+    {
+      "id": "ent_sam",
+      "name": "Sam Blackshear",
+      "type": "person",
+      "aliases": [],
+      "description": "Co-Founder and CTO of Mysten Labs.",
+      "url": "https://www.mystenlabs.com/about",
+      "salience": 0.1,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/about",
+          "url": "https://www.mystenlabs.com/about",
+          "quote": "Sam Blackshear (Co-Founder, CTO)"
+        }
+      ]
+    },
+    {
+      "id": "ent_web3",
+      "name": "Web3 / Decentralized Internet",
+      "type": "concept",
+      "aliases": [
+        "Web3",
+        "decentralized internet"
+      ],
+      "description": "A decentralized internet model giving individuals and creators unprecedented ownership over their own data and content.",
+      "url": "https://www.mystenlabs.com/about",
+      "salience": 0.6,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/about",
+          "url": "https://www.mystenlabs.com/about",
+          "quote": "Web3 enables individuals and creators to have unprecedented ownership over their own data and content."
+        }
+      ]
+    },
+    {
+      "id": "ent_fastcrypto",
+      "name": "fastcrypto",
+      "type": "technology",
+      "aliases": [],
+      "description": "Common cryptographic library used in software at Mysten Labs.",
+      "url": "https://github.com/MystenLabs",
+      "salience": 0.1,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/MystenLabs",
+          "url": "https://github.com/MystenLabs",
+          "quote": "Common cryptographic library used in software at Mysten Labs"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "clm_01",
+      "text": "Mysten Labs builds critical infrastructure to enable a more decentralized internet.",
+      "kind": "positioning",
+      "subjectEntityId": "ent_mysten",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "At Mysten Labs, we are building critical infrastructure to enable a more decentralized internet"
+        }
+      ]
+    },
+    {
+      "id": "clm_02",
+      "text": "Sui delivers the benefits of Web3 with the ease of Web2.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_sui",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "Sui delivers the benefits of Web3 with the ease of Web2"
+        }
+      ]
+    },
+    {
+      "id": "clm_03",
+      "text": "Sui is a next-generation smart contract platform with high throughput, low latency, and an asset-oriented programming model powered by Move.",
+      "kind": "capability",
+      "subjectEntityId": "ent_sui",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/MystenLabs/sui",
+          "url": "https://github.com/MystenLabs/sui",
+          "quote": "Sui, a next-generation smart contract platform with high throughput, low latency, and an asset-oriented programming model powered by the Move programming language"
+        }
+      ]
+    },
+    {
+      "id": "clm_04",
+      "text": "Sui is the first internet-scale programmable blockchain platform, a foundational layer for web3.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_sui",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/MystenLabs/sui",
+          "url": "https://github.com/MystenLabs/sui",
+          "quote": "the first internet-scale programmable blockchain platform, a foundational layer for web3"
+        }
+      ]
+    },
+    {
+      "id": "clm_05",
+      "text": "Walrus is a decentralized blob store that uses Sui for coordination and governance.",
+      "kind": "capability",
+      "subjectEntityId": "ent_walrus",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/MystenLabs/walrus",
+          "url": "https://github.com/MystenLabs/walrus",
+          "quote": "A decentralized blob store using Sui for coordination and governance."
+        }
+      ]
+    },
+    {
+      "id": "clm_06",
+      "text": "Seal provides identity-based encryption with access controlled by onchain policies on Sui.",
+      "kind": "capability",
+      "subjectEntityId": "ent_seal",
+      "sentiment": "neutral",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_92a3b4c5",
+          "routePath": "/MystenLabs/seal",
+          "url": "https://github.com/MystenLabs/seal",
+          "quote": "identity-based encryption and decryption of sensitive data, with access controlled by onchain policies on Sui."
+        }
+      ]
+    },
+    {
+      "id": "clm_07",
+      "text": "Mysten Labs makes web3 secure, reliable and ready for mass adoption.",
+      "kind": "positioning",
+      "subjectEntityId": "ent_mysten",
+      "sentiment": "positive",
+      "confidence": 0.82,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/about",
+          "url": "https://www.mystenlabs.com/about",
+          "quote": "We make web3 secure, reliable and ready for mass adoption."
+        }
+      ]
+    },
+    {
+      "id": "clm_08",
+      "text": "Mysten Labs creates foundational infrastructure to accelerate web3 adoption.",
+      "kind": "positioning",
+      "subjectEntityId": "ent_mysten",
+      "sentiment": "neutral",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/MystenLabs",
+          "url": "https://github.com/MystenLabs",
+          "quote": "We create foundational infrastructure to accelerate web3 adoption"
+        }
+      ]
+    },
+    {
+      "id": "clm_09",
+      "text": "Sui claims to be the only blockchain today that can scale with the growth of web3 while achieving industry-leading performance, cost, programmability, and usability.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_sui",
+      "sentiment": "positive",
+      "confidence": 0.78,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/MystenLabs/sui",
+          "url": "https://github.com/MystenLabs/sui",
+          "quote": "the only blockchain today that can scale with the growth of web3 while achieving industry-leading performance, cost, programmability, and usability"
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "stat_01",
+      "label": "Sui GitHub stars",
+      "valueRaw": "7,695",
+      "valueNumber": 7695,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_sui",
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/MystenLabs",
+          "url": "https://github.com/MystenLabs",
+          "quote": "7,695 stars"
+        }
+      ]
+    },
+    {
+      "id": "stat_02",
+      "label": "Sui GitHub forks",
+      "valueRaw": "11,689",
+      "valueNumber": 11689,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_sui",
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/MystenLabs",
+          "url": "https://github.com/MystenLabs",
+          "quote": "11,689 forks"
+        }
+      ]
+    },
+    {
+      "id": "stat_03",
+      "label": "Walrus GitHub stars",
+      "valueRaw": "363",
+      "valueNumber": 363,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_walrus",
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/MystenLabs",
+          "url": "https://github.com/MystenLabs",
+          "quote": "363 stars"
+        }
+      ]
+    },
+    {
+      "id": "stat_04",
+      "label": "Mysten Labs GitHub followers",
+      "valueRaw": "4,000",
+      "valueNumber": 4000,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_mysten",
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/MystenLabs",
+          "url": "https://github.com/MystenLabs",
+          "quote": "4,000 followers"
+        }
+      ]
+    },
+    {
+      "id": "stat_05",
+      "label": "Mysten Labs public repositories",
+      "valueRaw": "167",
+      "valueNumber": 167,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_mysten",
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/MystenLabs",
+          "url": "https://github.com/MystenLabs",
+          "quote": "167 total repositories"
+        }
+      ]
+    },
+    {
+      "id": "stat_06",
+      "label": "Sui stablecoin volume since August",
+      "valueRaw": "over $1 trillion",
+      "valueNumber": 1000000000000,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": true,
+      "subjectEntityId": "ent_sui",
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "Sui processed over $1 trillion in stablecoin volume since August"
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "top_01",
+      "label": "Web3 Infrastructure",
+      "weight": 0.3,
+      "keywords": [
+        "web3",
+        "infrastructure",
+        "decentralized internet",
+        "mass adoption"
+      ],
+      "routePaths": [
+        "/",
+        "/about",
+        "/careers"
+      ],
+      "entityIds": [
+        "ent_mysten",
+        "ent_web3"
+      ]
+    },
+    {
+      "id": "top_02",
+      "label": "Sui Blockchain Platform",
+      "weight": 0.3,
+      "keywords": [
+        "Sui",
+        "smart contract",
+        "blockchain",
+        "throughput",
+        "Move"
+      ],
+      "routePaths": [
+        "/",
+        "/MystenLabs/sui"
+      ],
+      "entityIds": [
+        "ent_sui",
+        "ent_move"
+      ]
+    },
+    {
+      "id": "top_03",
+      "label": "Decentralized Storage & Data",
+      "weight": 0.15,
+      "keywords": [
+        "Walrus",
+        "blob store",
+        "data availability",
+        "storage"
+      ],
+      "routePaths": [
+        "/",
+        "/MystenLabs/walrus"
+      ],
+      "entityIds": [
+        "ent_walrus"
+      ]
+    },
+    {
+      "id": "top_04",
+      "label": "Data Privacy & Encryption",
+      "weight": 0.15,
+      "keywords": [
+        "Seal",
+        "encryption",
+        "access control",
+        "secrets management"
+      ],
+      "routePaths": [
+        "/",
+        "/MystenLabs/seal"
+      ],
+      "entityIds": [
+        "ent_seal"
+      ]
+    },
+    {
+      "id": "top_05",
+      "label": "Developer Products & DeFi",
+      "weight": 0.1,
+      "keywords": [
+        "Enoki",
+        "DeepBook",
+        "Kiosk",
+        "builders",
+        "DeFi"
+      ],
+      "routePaths": [
+        "/"
+      ],
+      "entityIds": [
+        "ent_enoki",
+        "ent_deepbook",
+        "ent_kiosk"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_01",
+      "sourceEntityId": "ent_mysten",
+      "targetEntityId": "ent_sui",
+      "kind": "offers",
+      "label": "offers",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "Sui delivers the benefits of Web3 with the ease of Web2"
+        }
+      ]
+    },
+    {
+      "id": "rel_02",
+      "sourceEntityId": "ent_mysten",
+      "targetEntityId": "ent_walrus",
+      "kind": "offers",
+      "label": "offers",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "A decentralized storage and data availability protocol"
+        }
+      ]
+    },
+    {
+      "id": "rel_03",
+      "sourceEntityId": "ent_mysten",
+      "targetEntityId": "ent_seal",
+      "kind": "offers",
+      "label": "offers",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "Robust encryption & onchain access control for sensitive data"
+        }
+      ]
+    },
+    {
+      "id": "rel_04",
+      "sourceEntityId": "ent_mysten",
+      "targetEntityId": "ent_enoki",
+      "kind": "offers",
+      "label": "offers",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "Transform your business with more meaningful customer experiences"
+        }
+      ]
+    },
+    {
+      "id": "rel_05",
+      "sourceEntityId": "ent_mysten",
+      "targetEntityId": "ent_deepbook",
+      "kind": "offers",
+      "label": "offers",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "The most efficient DeFi foundation that unlocks financial innovation"
+        }
+      ]
+    },
+    {
+      "id": "rel_06",
+      "sourceEntityId": "ent_mysten",
+      "targetEntityId": "ent_kiosk",
+      "kind": "offers",
+      "label": "offers",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "A decentralized system for commerce applications on Sui"
+        }
+      ]
+    },
+    {
+      "id": "rel_07",
+      "sourceEntityId": "ent_sui",
+      "targetEntityId": "ent_move",
+      "kind": "built_with",
+      "label": "powered by",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/MystenLabs/sui",
+          "url": "https://github.com/MystenLabs/sui",
+          "quote": "asset-oriented programming model powered by the Move programming language"
+        }
+      ]
+    },
+    {
+      "id": "rel_08",
+      "sourceEntityId": "ent_walrus",
+      "targetEntityId": "ent_sui",
+      "kind": "depends_on",
+      "label": "uses for coordination and governance",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/MystenLabs/walrus",
+          "url": "https://github.com/MystenLabs/walrus",
+          "quote": "A decentralized blob store using Sui for coordination and governance."
+        }
+      ]
+    },
+    {
+      "id": "rel_09",
+      "sourceEntityId": "ent_seal",
+      "targetEntityId": "ent_sui",
+      "kind": "depends_on",
+      "label": "access controlled by onchain policies on",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "chunkId": "c_92a3b4c5",
+          "routePath": "/MystenLabs/seal",
+          "url": "https://github.com/MystenLabs/seal",
+          "quote": "access controlled by onchain policies on Sui"
+        }
+      ]
+    },
+    {
+      "id": "rel_10",
+      "sourceEntityId": "ent_kiosk",
+      "targetEntityId": "ent_sui",
+      "kind": "built_with",
+      "label": "commerce applications on",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "A decentralized system for commerce applications on Sui"
+        }
+      ]
+    },
+    {
+      "id": "rel_11",
+      "sourceEntityId": "ent_evan",
+      "targetEntityId": "ent_mysten",
+      "kind": "part_of",
+      "label": "Co-Founder, CEO",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/about",
+          "url": "https://www.mystenlabs.com/about",
+          "quote": "Evan Cheng (Co-Founder, CEO)"
+        }
+      ]
+    },
+    {
+      "id": "rel_12",
+      "sourceEntityId": "ent_sam",
+      "targetEntityId": "ent_mysten",
+      "kind": "part_of",
+      "label": "Co-Founder, CTO",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/about",
+          "url": "https://www.mystenlabs.com/about",
+          "quote": "Sam Blackshear (Co-Founder, CTO)"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_01",
+      "question": "What is Mysten Labs?",
+      "answer": "Mysten Labs is developing crucial infrastructure to power a more decentralized internet, transforming how people connect and share information online.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "ent_mysten"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_5e6f7081",
+          "routePath": "/careers",
+          "url": "https://www.mystenlabs.com/careers",
+          "quote": "Mysten Labs is developing crucial infrastructure to power a more decentralized internet, transforming how people connect and share information online."
+        }
+      ]
+    },
+    {
+      "id": "q_02",
+      "question": "What is Sui?",
+      "answer": "Sui is a next-generation smart contract platform with high throughput, low latency, and an asset-oriented programming model powered by the Move programming language.",
+      "category": "what_is_it",
+      "importance": 0.95,
+      "entityIds": [
+        "ent_sui",
+        "ent_move"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/MystenLabs/sui",
+          "url": "https://github.com/MystenLabs/sui",
+          "quote": "Sui, a next-generation smart contract platform with high throughput, low latency, and an asset-oriented programming model powered by the Move programming language"
+        }
+      ]
+    },
+    {
+      "id": "q_03",
+      "question": "What is Walrus?",
+      "answer": "Walrus is a decentralized storage and data availability protocol — a blob store that uses Sui for coordination and governance.",
+      "category": "what_is_it",
+      "importance": 0.8,
+      "entityIds": [
+        "ent_walrus",
+        "ent_sui"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "A decentralized storage and data availability protocol"
+        }
+      ]
+    },
+    {
+      "id": "q_04",
+      "question": "What is Seal and how does it protect sensitive data?",
+      "answer": "Seal provides robust encryption and onchain access control, using identity-based encryption and decryption of sensitive data with access controlled by onchain policies on Sui.",
+      "category": "trust_security",
+      "importance": 0.8,
+      "entityIds": [
+        "ent_seal",
+        "ent_sui"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_92a3b4c5",
+          "routePath": "/MystenLabs/seal",
+          "url": "https://github.com/MystenLabs/seal",
+          "quote": "identity-based encryption and decryption of sensitive data, with access controlled by onchain policies on Sui."
+        }
+      ]
+    },
+    {
+      "id": "q_05",
+      "question": "Who are Mysten Labs' products built for?",
+      "answer": "Their products are made for builders, web3 enthusiasts, and explorers of new interactive models.",
+      "category": "who_is_it_for",
+      "importance": 0.75,
+      "entityIds": [
+        "ent_mysten"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/",
+          "url": "https://www.mystenlabs.com/",
+          "quote": "Our products are made for builders, web3 enthusiasts, and explorers of new interactive models"
+        }
+      ]
+    },
+    {
+      "id": "q_06",
+      "question": "What makes Sui different from other blockchains?",
+      "answer": "Sui positions itself as the only blockchain today that can scale with the growth of web3 while achieving industry-leading performance, cost, programmability, and usability.",
+      "category": "differentiators",
+      "importance": 0.7,
+      "entityIds": [
+        "ent_sui"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_708192a3",
+          "routePath": "/MystenLabs/sui",
+          "url": "https://github.com/MystenLabs/sui",
+          "quote": "the only blockchain today that can scale with the growth of web3 while achieving industry-leading performance, cost, programmability, and usability"
+        }
+      ]
+    },
+    {
+      "id": "q_07",
+      "question": "How does Walrus use Sui?",
+      "answer": "Walrus is a decentralized blob store that uses Sui for coordination and governance.",
+      "category": "how_it_works",
+      "importance": 0.65,
+      "entityIds": [
+        "ent_walrus",
+        "ent_sui"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_8192a3b4",
+          "routePath": "/MystenLabs/walrus",
+          "url": "https://github.com/MystenLabs/walrus",
+          "quote": "A decentralized blob store using Sui for coordination and governance."
+        }
+      ]
+    },
+    {
+      "id": "q_08",
+      "question": "Who founded Mysten Labs?",
+      "answer": "Mysten Labs was founded by Evan Cheng (Co-Founder, CEO) and Sam Blackshear (Co-Founder, CTO), among others.",
+      "category": "what_is_it",
+      "importance": 0.6,
+      "entityIds": [
+        "ent_mysten",
+        "ent_evan",
+        "ent_sam"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/about",
+          "url": "https://www.mystenlabs.com/about",
+          "quote": "Evan Cheng (Co-Founder, CEO)"
+        }
+      ]
+    },
+    {
+      "id": "q_09",
+      "question": "Where can I find Mysten Labs' open-source code?",
+      "answer": "Mysten Labs publishes its code on GitHub, where the organization has 167 total repositories including Sui, Walrus, and Seal.",
+      "category": "getting_started",
+      "importance": 0.55,
+      "entityIds": [
+        "ent_mysten",
+        "ent_sui"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_6f708192",
+          "routePath": "/MystenLabs",
+          "url": "https://github.com/MystenLabs",
+          "quote": "167 total repositories"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 7,
+    "chunksAnalyzed": 18,
+    "entitiesWithSources": 12,
+    "ungroundedDropped": 0
+  }
+}

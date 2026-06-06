@@ -1,0 +1,1026 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T12:00:00.000Z",
+  "target": "https://docs.sui.io/standards/deepbookv3",
+  "identity": {
+    "name": "DeepBookV3",
+    "oneLiner": "Sui's next-generation decentralized central limit order book (CLOB) for low-latency on-chain trading.",
+    "category": "decentralized central limit order book (CLOB)",
+    "audience": [
+      "developers",
+      "decentralized exchanges",
+      "wallets",
+      "market makers"
+    ],
+    "primaryEntityId": "ent_deepbook",
+    "sources": [
+      {
+        "chunkId": "c_1a2b3c4d",
+        "routePath": "/standards/deepbookv3",
+        "url": "https://docs.sui.io/standards/deepbookv3",
+        "quote": "DeepBookV3 is a next-generation decentralized central limit order book (CLOB) built on Sui."
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "ent_deepbook",
+      "name": "DeepBookV3",
+      "type": "product",
+      "aliases": [
+        "DeepBook V3",
+        "DBv3",
+        "DeepBook"
+      ],
+      "description": "A next-generation decentralized central limit order book (CLOB) built on Sui.",
+      "url": "https://docs.sui.io/standards/deepbookv3",
+      "salience": 1,
+      "mentions": 18,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "DeepBookV3 is a next-generation decentralized central limit order book (CLOB) built on Sui."
+        }
+      ]
+    },
+    {
+      "id": "ent_sui",
+      "name": "Sui",
+      "type": "platform",
+      "aliases": [
+        "Sui network",
+        "Sui blockchain"
+      ],
+      "description": "The Layer-1 blockchain whose parallel execution and low fees DeepBookV3 is built on.",
+      "salience": 0.33,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "DeepBookV3 leverages Sui's parallel execution and low transaction fees to bring a highly performant, low-latency exchange on chain."
+        }
+      ]
+    },
+    {
+      "id": "ent_deep",
+      "name": "DEEP token",
+      "type": "technology",
+      "aliases": [
+        "DEEP",
+        "$DEEP"
+      ],
+      "description": "The token that pays for DeepBookV3 trading fees and unlocks staking incentives.",
+      "salience": 0.61,
+      "mentions": 11,
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "The DEEP token pays for trading fees on the exchange."
+        }
+      ]
+    },
+    {
+      "id": "ent_clob",
+      "name": "Central limit order book (CLOB)",
+      "type": "concept",
+      "aliases": [
+        "CLOB",
+        "order book"
+      ],
+      "description": "An on-chain order book that logs bids and asks in chronological order and matches the two sides.",
+      "salience": 0.33,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f01",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "As a CLOB, DeepBookV3 works like a digital ledger, logging bids and asks in chronological order and automatically finding matches between the two sides."
+        }
+      ]
+    },
+    {
+      "id": "ent_pool",
+      "name": "Pool",
+      "type": "concept",
+      "aliases": [
+        "Pool shared object"
+      ],
+      "description": "A shared object that represents one market and manages its order book, users, and stakes.",
+      "salience": 0.56,
+      "mentions": 10,
+      "sources": [
+        {
+          "chunkId": "c_7a1b2c3d",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "A shared object that represents one market and is responsible for managing its order book, users, stakes, and so on."
+        }
+      ]
+    },
+    {
+      "id": "ent_balancemanager",
+      "name": "BalanceManager",
+      "type": "concept",
+      "aliases": [
+        "balance manager"
+      ],
+      "description": "A shared object that holds all balances of a single account, with one owner and up to 1000 traders.",
+      "salience": 0.5,
+      "mentions": 9,
+      "sources": [
+        {
+          "chunkId": "c_2f607182",
+          "routePath": "/MystenLabs/deepbookv3",
+          "url": "https://github.com/MystenLabs/deepbookv3",
+          "quote": "The `BalanceManager` is a shared object that holds all balances of a single account. It has one owner and can have up to 1000 traders."
+        }
+      ]
+    },
+    {
+      "id": "ent_flashloans",
+      "name": "Flash loans",
+      "type": "feature",
+      "aliases": [
+        "flashloans",
+        "flash loan"
+      ],
+      "description": "Uncollateralized loans borrowed and repaid within the same programmable transaction block.",
+      "salience": 0.22,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_6394a5c6",
+          "routePath": "/onchain-finance/deepbookv3/contract-information/flash-loans",
+          "url": "https://docs.sui.io/onchain-finance/deepbookv3/contract-information/flash-loans",
+          "quote": "Flash loans by definition are uncollateralized loans that are borrowed and repaid within the same programmable transaction block."
+        }
+      ]
+    },
+    {
+      "id": "ent_governance",
+      "name": "Governance & staking",
+      "type": "feature",
+      "aliases": [
+        "governance",
+        "staking"
+      ],
+      "description": "Stakers can propose taker fee, maker fee, and stake-required parameter changes each epoch.",
+      "salience": 0.33,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_8b2c3d4e",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "Every epoch, users with nonzero stake can submit a proposal to change these parameters."
+        }
+      ]
+    },
+    {
+      "id": "ent_matchingengine",
+      "name": "Matching engine",
+      "type": "technology",
+      "aliases": [
+        "matching engine"
+      ],
+      "description": "DeepBookV3 enhances the existing matching engine that pairs bids with asks.",
+      "salience": 0.17,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_5e6f0112",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "enhancements to the existing matching engine."
+        }
+      ]
+    },
+    {
+      "id": "ent_swaps",
+      "name": "Swaps",
+      "type": "feature",
+      "aliases": [
+        "swap",
+        "swap_exact_amount"
+      ],
+      "description": "An AMM-style swap interface callable directly with Coin objects without a BalanceManager.",
+      "salience": 0.22,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_85b6c7e8",
+          "routePath": "/onchain-finance/deepbookv3/contract-information/swaps",
+          "url": "https://docs.sui.io/onchain-finance/deepbookv3/contract-information/swaps",
+          "quote": "DeepBook provides a swap-like interface commonly seen in automatic market makers (AMMs)."
+        }
+      ]
+    },
+    {
+      "id": "ent_bigvector",
+      "name": "BigVector",
+      "type": "technology",
+      "aliases": [
+        "BigVector",
+        "B+ Tree"
+      ],
+      "description": "An onchain B+ Tree data structure backing the order book with near-constant-time access.",
+      "salience": 0.11,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_9c3d4e5f",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "`BigVector` is an arbitrary sized vector-like data structure, implemented using an onchain B+ Tree to support almost constant time (log base max_fan_out) random access, insertion and removal."
+        }
+      ]
+    },
+    {
+      "id": "ent_mysten",
+      "name": "MystenLabs",
+      "type": "organization",
+      "aliases": [
+        "Mysten Labs"
+      ],
+      "description": "The organization that owns the DeepBookV3 source repository.",
+      "url": "https://github.com/MystenLabs/deepbookv3",
+      "salience": 0.11,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_96c7d8f9",
+          "routePath": "/onchain-finance/deepbookv3/contract-information/swaps",
+          "url": "https://docs.sui.io/onchain-finance/deepbookv3/contract-information/swaps",
+          "quote": "org=\"MystenLabs\" repo=\"deepbookv3\""
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "clm_01",
+      "text": "DeepBookV3 is a next-generation decentralized central limit order book (CLOB) built on Sui.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_deepbook",
+      "sentiment": "positive",
+      "confidence": 0.92,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "DeepBookV3 is a next-generation decentralized central limit order book (CLOB) built on Sui."
+        }
+      ]
+    },
+    {
+      "id": "clm_02",
+      "text": "DeepBookV3 leverages Sui's parallel execution and low transaction fees to deliver a highly performant, low-latency on-chain exchange.",
+      "kind": "capability",
+      "subjectEntityId": "ent_deepbook",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_2b3c4d5e",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "DeepBookV3 leverages Sui's parallel execution and low transaction fees to bring a highly performant, low-latency exchange on chain."
+        }
+      ]
+    },
+    {
+      "id": "clm_03",
+      "text": "The DEEP token pays for trading fees on the exchange.",
+      "kind": "fact",
+      "subjectEntityId": "ent_deep",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "The DEEP token pays for trading fees on the exchange."
+        }
+      ]
+    },
+    {
+      "id": "clm_04",
+      "text": "Taker incentives from staking DEEP can halve trading fees to as low as 0.25 bps on stable pairs and 2.5 bps on volatile pairs.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_deep",
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "Taker incentives can reduce trading fees by half, dropping them to as low as 0.25 basis points (bps) on stable pairs and 2.5 bps on volatile pairs."
+        }
+      ]
+    },
+    {
+      "id": "clm_05",
+      "text": "DeepBookV3 does not include an end-user interface for token trading.",
+      "kind": "limitation",
+      "subjectEntityId": "ent_deepbook",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_6f011223",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "DeepBookV3 does not include an end-user interface for token trading."
+        }
+      ]
+    },
+    {
+      "id": "clm_06",
+      "text": "Flash loans are uncollateralized loans borrowed and repaid within the same programmable transaction block.",
+      "kind": "capability",
+      "subjectEntityId": "ent_flashloans",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_6394a5c6",
+          "routePath": "/onchain-finance/deepbookv3/contract-information/flash-loans",
+          "url": "https://docs.sui.io/onchain-finance/deepbookv3/contract-information/flash-loans",
+          "quote": "Flash loans by definition are uncollateralized loans that are borrowed and repaid within the same programmable transaction block."
+        }
+      ]
+    },
+    {
+      "id": "clm_07",
+      "text": "Governance quorum is equivalent to half of the total voting power.",
+      "kind": "fact",
+      "subjectEntityId": "ent_governance",
+      "sentiment": "neutral",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_0d4e5f60",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "Quorum is equivalent to half of the total voting power."
+        }
+      ]
+    },
+    {
+      "id": "clm_08",
+      "text": "A BalanceManager is a shared object holding all balances of a single account, with one owner and up to 1000 traders.",
+      "kind": "capability",
+      "subjectEntityId": "ent_balancemanager",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_2f607182",
+          "routePath": "/MystenLabs/deepbookv3",
+          "url": "https://github.com/MystenLabs/deepbookv3",
+          "quote": "The `BalanceManager` is a shared object that holds all balances of a single account. It has one owner and can have up to 1000 traders."
+        }
+      ]
+    },
+    {
+      "id": "clm_09",
+      "text": "DeepBookV3 is open for community development.",
+      "kind": "positioning",
+      "subjectEntityId": "ent_deepbook",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_6f011223",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "DeepBookV3 is open for community development."
+        }
+      ]
+    },
+    {
+      "id": "clm_10",
+      "text": "DeepBook provides a swap-like interface commonly seen in automatic market makers (AMMs).",
+      "kind": "capability",
+      "subjectEntityId": "ent_swaps",
+      "sentiment": "neutral",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_85b6c7e8",
+          "routePath": "/onchain-finance/deepbookv3/contract-information/swaps",
+          "url": "https://docs.sui.io/onchain-finance/deepbookv3/contract-information/swaps",
+          "quote": "DeepBook provides a swap-like interface commonly seen in automatic market makers (AMMs)."
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "stat_01",
+      "label": "Staked taker fee on stable pairs",
+      "valueRaw": "0.25 bps",
+      "valueNumber": 0.25,
+      "unit": "rate",
+      "approximate": false,
+      "subjectEntityId": "ent_deep",
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "dropping them to as low as 0.25 basis points (bps) on stable pairs and 2.5 bps on volatile pairs."
+        }
+      ]
+    },
+    {
+      "id": "stat_02",
+      "label": "Staked taker fee on volatile pairs",
+      "valueRaw": "2.5 bps",
+      "valueNumber": 2.5,
+      "unit": "rate",
+      "approximate": false,
+      "subjectEntityId": "ent_deep",
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "0.25 basis points (bps) on stable pairs and 2.5 bps on volatile pairs."
+        }
+      ]
+    },
+    {
+      "id": "stat_03",
+      "label": "DEEP-fee discount vs input tokens",
+      "valueRaw": "20%",
+      "valueNumber": 20,
+      "unit": "percent",
+      "approximate": false,
+      "subjectEntityId": "ent_deep",
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "governance determines the fee for paying in DEEP tokens, which is 20% lower than the fee for using input tokens."
+        }
+      ]
+    },
+    {
+      "id": "stat_04",
+      "label": "Max traders per BalanceManager",
+      "valueRaw": "1000",
+      "valueNumber": 1000,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_balancemanager",
+      "sources": [
+        {
+          "chunkId": "c_2f607182",
+          "routePath": "/MystenLabs/deepbookv3",
+          "url": "https://github.com/MystenLabs/deepbookv3",
+          "quote": "It has one owner and can have up to 1000 traders."
+        }
+      ]
+    },
+    {
+      "id": "stat_05",
+      "label": "DeepPrice conversion-rate data points",
+      "valueRaw": "100",
+      "valueNumber": 100,
+      "unit": "count",
+      "approximate": true,
+      "subjectEntityId": "ent_pool",
+      "sources": [
+        {
+          "chunkId": "c_1e5f6071",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "This object holds up to 100 data points representing the conversion rate between the pool's base or quote asset and DEEP."
+        }
+      ]
+    },
+    {
+      "id": "stat_06",
+      "label": "Voting power cutoff",
+      "valueRaw": "100,000 DEEP",
+      "valueNumber": 100000,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_governance",
+      "sources": [
+        {
+          "chunkId": "c_0d4e5f60",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "${V_c}$ is currently set to 100,000 DEEP."
+        }
+      ]
+    },
+    {
+      "id": "stat_07",
+      "label": "Whitelisted pool trading fees",
+      "valueRaw": "0%",
+      "valueNumber": 0,
+      "unit": "percent",
+      "approximate": false,
+      "subjectEntityId": "ent_pool",
+      "sources": [
+        {
+          "chunkId": "c_30718293",
+          "routePath": "/MystenLabs/deepbookv3",
+          "url": "https://github.com/MystenLabs/deepbookv3",
+          "quote": "Whitelisted pools have 0% trading fees."
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "top_01",
+      "label": "Tokenomics & DEEP token",
+      "weight": 0.25,
+      "keywords": [
+        "DEEP",
+        "trading fees",
+        "staking",
+        "rebates",
+        "bps"
+      ],
+      "routePaths": [
+        "/standards/deepbookv3"
+      ],
+      "entityIds": [
+        "ent_deep",
+        "ent_governance"
+      ]
+    },
+    {
+      "id": "top_02",
+      "label": "Protocol design & shared objects",
+      "weight": 0.3,
+      "keywords": [
+        "Pool",
+        "PoolRegistry",
+        "BalanceManager",
+        "Book",
+        "State",
+        "Vault"
+      ],
+      "routePaths": [
+        "/standards/deepbookv3/design"
+      ],
+      "entityIds": [
+        "ent_pool",
+        "ent_balancemanager",
+        "ent_bigvector"
+      ]
+    },
+    {
+      "id": "top_03",
+      "label": "Governance & staking",
+      "weight": 0.15,
+      "keywords": [
+        "governance",
+        "stake",
+        "proposal",
+        "quorum",
+        "epoch"
+      ],
+      "routePaths": [
+        "/standards/deepbookv3/design"
+      ],
+      "entityIds": [
+        "ent_governance",
+        "ent_deep"
+      ]
+    },
+    {
+      "id": "top_04",
+      "label": "Liquidity & order matching",
+      "weight": 0.18,
+      "keywords": [
+        "CLOB",
+        "limit order",
+        "market order",
+        "bids",
+        "asks",
+        "matching engine"
+      ],
+      "routePaths": [
+        "/standards/deepbookv3"
+      ],
+      "entityIds": [
+        "ent_clob",
+        "ent_matchingengine"
+      ]
+    },
+    {
+      "id": "top_05",
+      "label": "Flash loans & swaps",
+      "weight": 0.12,
+      "keywords": [
+        "flash loans",
+        "swaps",
+        "hot potato",
+        "AMM",
+        "Coin"
+      ],
+      "routePaths": [
+        "/onchain-finance/deepbookv3/contract-information/flash-loans",
+        "/onchain-finance/deepbookv3/contract-information/swaps"
+      ],
+      "entityIds": [
+        "ent_flashloans",
+        "ent_swaps"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_01",
+      "sourceEntityId": "ent_deepbook",
+      "targetEntityId": "ent_sui",
+      "kind": "built_with",
+      "label": "built on",
+      "confidence": 0.92,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "DeepBookV3 is a next-generation decentralized central limit order book (CLOB) built on Sui."
+        }
+      ]
+    },
+    {
+      "id": "rel_02",
+      "sourceEntityId": "ent_deepbook",
+      "targetEntityId": "ent_flashloans",
+      "kind": "offers",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_5e6f0112",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "The latest version delivers new features including flash loans, governance, improved account abstraction, and enhancements to the existing matching engine."
+        }
+      ]
+    },
+    {
+      "id": "rel_03",
+      "sourceEntityId": "ent_deepbook",
+      "targetEntityId": "ent_swaps",
+      "kind": "offers",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_85b6c7e8",
+          "routePath": "/onchain-finance/deepbookv3/contract-information/swaps",
+          "url": "https://docs.sui.io/onchain-finance/deepbookv3/contract-information/swaps",
+          "quote": "DeepBook provides a swap-like interface commonly seen in automatic market makers (AMMs)."
+        }
+      ]
+    },
+    {
+      "id": "rel_04",
+      "sourceEntityId": "ent_deep",
+      "targetEntityId": "ent_deepbook",
+      "kind": "part_of",
+      "label": "tokenomics of",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "The DEEP token pays for trading fees on the exchange."
+        }
+      ]
+    },
+    {
+      "id": "rel_05",
+      "sourceEntityId": "ent_pool",
+      "targetEntityId": "ent_deepbook",
+      "kind": "part_of",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "chunkId": "c_7a1b2c3d",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "A shared object that represents one market and is responsible for managing its order book, users, stakes, and so on."
+        }
+      ]
+    },
+    {
+      "id": "rel_06",
+      "sourceEntityId": "ent_pool",
+      "targetEntityId": "ent_balancemanager",
+      "kind": "depends_on",
+      "label": "sources funds from",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_9c3d4e5f",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "Used to source a user's funds when placing orders. A single `BalanceManager` can be used between all pools."
+        }
+      ]
+    },
+    {
+      "id": "rel_07",
+      "sourceEntityId": "ent_pool",
+      "targetEntityId": "ent_bigvector",
+      "kind": "built_with",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_9c3d4e5f",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "The `Book` struct maintains two `BigVector<Order>` objects for bids and asks, as well as some metadata."
+        }
+      ]
+    },
+    {
+      "id": "rel_08",
+      "sourceEntityId": "ent_governance",
+      "targetEntityId": "ent_pool",
+      "kind": "part_of",
+      "confidence": 0.83,
+      "sources": [
+        {
+          "chunkId": "c_0d4e5f60",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "stores `Governance`, `History`, and `Account`."
+        }
+      ]
+    },
+    {
+      "id": "rel_09",
+      "sourceEntityId": "ent_deepbook",
+      "targetEntityId": "ent_clob",
+      "kind": "built_with",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f01",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "DeepBookV3's CLOB architecture enables you to enter market and limit orders."
+        }
+      ]
+    },
+    {
+      "id": "rel_10",
+      "sourceEntityId": "ent_deepbook",
+      "targetEntityId": "ent_mysten",
+      "kind": "owned_by",
+      "confidence": 0.78,
+      "sources": [
+        {
+          "chunkId": "c_96c7d8f9",
+          "routePath": "/onchain-finance/deepbookv3/contract-information/swaps",
+          "url": "https://docs.sui.io/onchain-finance/deepbookv3/contract-information/swaps",
+          "quote": "org=\"MystenLabs\" repo=\"deepbookv3\""
+        }
+      ]
+    },
+    {
+      "id": "rel_11",
+      "sourceEntityId": "ent_matchingengine",
+      "targetEntityId": "ent_deepbook",
+      "kind": "part_of",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_5e6f0112",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "enhancements to the existing matching engine."
+        }
+      ]
+    },
+    {
+      "id": "rel_12",
+      "sourceEntityId": "ent_governance",
+      "targetEntityId": "ent_deep",
+      "kind": "depends_on",
+      "label": "requires staked",
+      "confidence": 0.83,
+      "sources": [
+        {
+          "chunkId": "c_1e5f6071",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "Stake required represents the amount of DEEP tokens that a user must have staked in this specific pool to be eligible for taker and maker incentives."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_01",
+      "question": "What is DeepBookV3?",
+      "answer": "DeepBookV3 is a next-generation decentralized central limit order book (CLOB) built on Sui, leveraging Sui's parallel execution and low transaction fees for a highly performant, low-latency on-chain exchange.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "ent_deepbook",
+        "ent_clob",
+        "ent_sui"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "DeepBookV3 is a next-generation decentralized central limit order book (CLOB) built on Sui."
+        }
+      ]
+    },
+    {
+      "id": "q_02",
+      "question": "How is DeepBookV3 designed architecturally?",
+      "answer": "The design revolves around three shared objects: the Pool (one market), the PoolRegistry (prevents duplicate pools), and the BalanceManager (sources user funds across pools).",
+      "category": "how_it_works",
+      "importance": 0.9,
+      "entityIds": [
+        "ent_pool",
+        "ent_balancemanager"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_7a1b2c3d",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "the DeepBookV3 design follows the following flow, which revolves around three shared objects:"
+        }
+      ]
+    },
+    {
+      "id": "q_03",
+      "question": "How much are DeepBookV3 trading fees?",
+      "answer": "Paying in DEEP is 20% lower than paying in input tokens, and staked takers can cut fees by half to as low as 0.25 bps on stable pairs and 2.5 bps on volatile pairs.",
+      "category": "pricing",
+      "importance": 0.85,
+      "entityIds": [
+        "ent_deep"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "governance determines the fee for paying in DEEP tokens, which is 20% lower than the fee for using input tokens."
+        }
+      ]
+    },
+    {
+      "id": "q_04",
+      "question": "What new features does DeepBookV3 add?",
+      "answer": "DeepBookV3 delivers flash loans, governance, improved account abstraction, and enhancements to the existing matching engine.",
+      "category": "differentiators",
+      "importance": 0.8,
+      "entityIds": [
+        "ent_flashloans",
+        "ent_governance",
+        "ent_matchingengine"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_5e6f0112",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "The latest version delivers new features including flash loans, governance, improved account abstraction, and enhancements to the existing matching engine."
+        }
+      ]
+    },
+    {
+      "id": "q_05",
+      "question": "What is a BalanceManager?",
+      "answer": "A BalanceManager is a shared object that holds all balances of a single account; it has one owner and can have up to 1000 traders, and a single one can be used across all pools.",
+      "category": "how_it_works",
+      "importance": 0.75,
+      "entityIds": [
+        "ent_balancemanager"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_2f607182",
+          "routePath": "/MystenLabs/deepbookv3",
+          "url": "https://github.com/MystenLabs/deepbookv3",
+          "quote": "The `BalanceManager` is a shared object that holds all balances of a single account. It has one owner and can have up to 1000 traders."
+        }
+      ]
+    },
+    {
+      "id": "q_06",
+      "question": "How do flash loans work in DeepBookV3?",
+      "answer": "Flash loans are uncollateralized loans borrowed and repaid within the same programmable transaction block; they return a FlashLoan hot potato that must be returned by the end of the call, and the whole atomic transaction fails otherwise.",
+      "category": "how_it_works",
+      "importance": 0.7,
+      "entityIds": [
+        "ent_flashloans"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_74a5b6d7",
+          "routePath": "/onchain-finance/deepbookv3/contract-information/flash-loans",
+          "url": "https://docs.sui.io/onchain-finance/deepbookv3/contract-information/flash-loans",
+          "quote": "Flash loans return a `FlashLoan` hot potato (struct with no abilities), which must be returned back to the pool by the end of the call."
+        }
+      ]
+    },
+    {
+      "id": "q_07",
+      "question": "Who is DeepBookV3 for?",
+      "answer": "It has no end-user trading interface; instead it offers built-in trading functionality that can support token trades from decentralized exchanges, wallets, or other apps, lowering the barrier for active market makers.",
+      "category": "who_is_it_for",
+      "importance": 0.78,
+      "entityIds": [
+        "ent_deepbook",
+        "ent_swaps"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_6f011223",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "it offers built-in trading functionality that can support token trades from decentralized exchanges, wallets, or other apps."
+        }
+      ]
+    },
+    {
+      "id": "q_08",
+      "question": "How does DeepBookV3 governance work?",
+      "answer": "Every epoch, users with nonzero stake can submit proposals to change the taker fee, maker fee, and stake required; quorum is half of total voting power, with the voting power cutoff currently set to 100,000 DEEP.",
+      "category": "how_it_works",
+      "importance": 0.72,
+      "entityIds": [
+        "ent_governance",
+        "ent_deep"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_8b2c3d4e",
+          "routePath": "/standards/deepbookv3/design",
+          "url": "https://docs.sui.io/standards/deepbookv3/design",
+          "quote": "Every epoch, users with nonzero stake can submit a proposal to change these parameters."
+        }
+      ]
+    },
+    {
+      "id": "q_09",
+      "question": "How does DeepBookV3 ensure transparency?",
+      "answer": "As a CLOB it works like a digital ledger that logs bids and asks chronologically; the ledger is open so people can view trades and prices, giving clear proof of fairness.",
+      "category": "trust_security",
+      "importance": 0.68,
+      "entityIds": [
+        "ent_deepbook",
+        "ent_clob"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f01",
+          "routePath": "/standards/deepbookv3",
+          "url": "https://docs.sui.io/standards/deepbookv3",
+          "quote": "The digital ledger is open so people can view the trades and prices, giving clear proof of fairness."
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 6,
+    "chunksAnalyzed": 24,
+    "entitiesWithSources": 12,
+    "ungroundedDropped": 0
+  },
+  "usedProvider": "heuristic",
+  "confidence": 0.82
+}
