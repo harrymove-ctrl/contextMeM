@@ -530,14 +530,26 @@ const outputOptions: Array<{ id: string; label: string; detail?: string }> = [
   { id: "screenshots", label: "screenshots", detail: "slower/full" }
 ];
 const launchOptions = readLaunchOptions();
-const revealHeadline = "ContextMeM turns Walrus Sites into portable agent context with verified resources, markdown, assets, visual systems, onchain provenance, and MemWal recall.";
+const revealHeadline = "ContextMeM turns Walrus Sites into portable agent context with verified resources, markdown, assets, visual systems, onchain provenance, and Walrus Memory recall.";
 const revealWords = revealHeadline.split(" ");
-const loopItems = ["Walrus Sites", ".wal.app", "Sui object IDs", "Walrus resources", "Markdown", "Design tokens", "Screenshots", "MemWal"];
+const loopItems = ["Walrus Sites", ".wal.app", "Sui object IDs", "Walrus resources", "Markdown", "Design tokens", "Screenshots", "Walrus Memory"];
 const showcaseCards = [
   { title: "Resolve", detail: "Resolve .wal.app names, Walrus object IDs, and fallback web URLs into a target map.", icon: Search },
   { title: "Verify", detail: "Check Sui provenance, Walrus blob IDs, hashes, routes, and resource metadata.", icon: ShieldCheck },
   { title: "Package", detail: "Bundle markdown, screenshots, assets, design tokens, and resource manifests for agents.", icon: Boxes },
-  { title: "Remember", detail: "Sync verified context into MemWal account memory for future agent recall.", icon: Brain }
+  { title: "Remember", detail: "Sync verified context into Walrus Memory for future agent recall.", icon: Brain }
+];
+const pipelineSteps = [
+  { n: "01", title: "Resolve the target", detail: "Paste a .wal.app name, a Sui object ID, or any web URL. ContextMeM resolves it to the on-chain Walrus Site object and its full resource map.", icon: Globe2 },
+  { n: "02", title: "Verify on Sui + Walrus", detail: "Read dynamic resource fields from Sui, fetch blobs from a Walrus aggregator, and check every hash, route, and content type before trusting a byte.", icon: ShieldCheck },
+  { n: "03", title: "Package agent context", detail: "Emit markdown, llms.txt, design tokens, screenshots, and a resource manifest as static, agent-readable artifacts you can diff and download.", icon: Boxes },
+  { n: "04", title: "Store the proof on Walrus", detail: "Tar the context bundle and upload it to Walrus persistent storage through Tatum, then poll the job until the blob is CERTIFIED on the network.", icon: Database },
+  { n: "05", title: "Remember in Walrus Memory", detail: "Index the certified receipt — blobId, digest, what changed — into Walrus Memory so agents recall the pointer and re-fetch the real artifact.", icon: Brain }
+];
+const storageLayers = [
+  { tag: "Walrus Storage", title: "Real artifacts, kept on-chain", detail: "The tarred context bundle — manifest, llms.txt, markdown, proofs, screenshots — is uploaded via Tatum POST /v4/data/storage/upload and polled to CERTIFIED. Storage holds the bytes, keyed by blobId.", icon: Database, accent: "blue" },
+  { tag: "Walrus Memory", title: "A recall-able index, not the bytes", detail: "Walrus Memory remembers only the semantic pointer: target, namespace, artifactDigest, blobId, jobId, and what changed. Agents recall it, then re-fetch the real artifact from storage.", icon: Brain, accent: "accent" },
+  { tag: "Tatum", title: "One gateway for storage + chain", detail: "A single Tatum API key powers the Walrus storage REST and Sui chain reads — and the same key drives the @tatumio/blockchain-mcp server so agents read blockchain data directly.", icon: Cpu, accent: "teal" }
 ];
 const sdkImportTitle = "Import MemWal SDK credentials";
 const sdkImportBody = "Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted and unlocks verified Walrus context.";
@@ -1137,7 +1149,7 @@ function ContextMemExperience() {
     }
   }
 
-  const statusLabel = hasMemWalDelegate ? "MemWal ready" : "SDK import needed";
+  const statusLabel = hasMemWalDelegate ? "Walrus Memory ready" : "SDK import needed";
   const statusTone: "ready" | "needsMemWal" | "preview" = hasMemWalDelegate ? "ready" : "needsMemWal";
   const sessionSlot = me.authenticated ? (
     <button className="sessionButton" onClick={logout}>
@@ -2162,7 +2174,7 @@ function LandingPage({
   const previewLogItems = [
     { label: demoPreview?.phase === "starting" ? "start hosted preview job" : "resolve Walrus Site object", state: demoLogState(0, demoPreview) },
     { label: demoPreview?.phase === "queued" ? "waiting for Worker slot" : "verify blob/resource manifest", state: demoLogState(1, demoPreview) },
-    { label: demoPreview?.phase === "running" ? "exporting public share package" : "export MemWal-ready context", state: demoLogState(2, demoPreview) }
+    { label: demoPreview?.phase === "running" ? "exporting public share package" : "export Walrus Memory context", state: demoLogState(2, demoPreview) }
   ];
 
   return (
@@ -2200,7 +2212,7 @@ function LandingPage({
               </span>
             </h1>
             <p>
-              Resolve .wal.app names and Walrus Site object IDs, verify resources from Sui and Walrus, then package markdown, assets, design tokens, screenshots, and MemWal-ready memory for agents.
+              Resolve .wal.app names and Walrus Site object IDs, verify resources from Sui and Walrus, then package markdown, assets, design tokens, screenshots, and Walrus Memory–ready memory for agents.
             </p>
             <div className="heroTarget">
               <Search size={18} />
@@ -2264,7 +2276,7 @@ function LandingPage({
                 ["resolve", ".wal.app or object ID", Globe2],
                 ["verify", "Sui + Walrus resources", Cpu],
                 ["package", "agent context bundle", Boxes],
-                ["remember", "MemWal account memory", Brain]
+                ["remember", "Walrus Memory account", Brain]
               ].map(([step, label, Icon], index) => {
                 const StepIcon = Icon as typeof Globe2;
                 return (
@@ -2341,6 +2353,59 @@ function LandingPage({
             </article>
           );
         })}
+      </section>
+
+      <section className="lpHow" aria-label="How ContextMeM works">
+        <div className="lpHowGrid">
+          <aside className="lpHowAside">
+            <span className="lpEyebrow"><Sparkles size={14} /> How it works</span>
+            <h2>From an onchain URL to verified agent memory.</h2>
+            <p>Every run is reproducible — resolve, verify, package, store, remember. Each step writes an artifact you can inspect, diff, and download.</p>
+            <button className="lpHowCta" onClick={hasMemWalDelegate ? onOpenApp : onHeroAction} disabled={!hasMemWalDelegate && demoActive}>
+              {hasMemWalDelegate ? "Open app" : demoActive ? demoPreviewButtonLabel(demoPreview) : "Run public preview"}
+              <ArrowDownRight size={17} />
+            </button>
+          </aside>
+          <ol className="lpTimeline">
+            {pipelineSteps.map((step) => {
+              const Icon = step.icon;
+              return (
+                <li className="lpTimelineItem" key={step.n}>
+                  <div className="lpTimelineBadge"><Icon size={18} /></div>
+                  <div className="lpTimelineBody">
+                    <span className="lpTimelineNum">Step {step.n}</span>
+                    <h3>{step.title}</h3>
+                    <p>{step.detail}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </section>
+
+      <section className="lpStore" aria-label="Walrus storage and memory via Tatum">
+        <header className="lpSectionHead">
+          <span className="lpEyebrow"><Database size={14} /> Storage + Memory</span>
+          <h2>Walrus storage keeps the proof.<br />Walrus Memory remembers where it is.</h2>
+          <p>Three layers, cleanly split through Tatum — so the integration is real provenance, not a logo on a slide.</p>
+        </header>
+        <div className="lpStoreGrid">
+          {storageLayers.map((layer, index) => {
+            const Icon = layer.icon;
+            return (
+              <article className={`lpBento ${index === 0 ? "isPrimary" : ""}`} key={layer.tag}>
+                <div className="lpBentoIcon"><Icon size={22} /></div>
+                <span className="lpBentoTag">{layer.tag}</span>
+                <h3>{layer.title}</h3>
+                <p>{layer.detail}</p>
+              </article>
+            );
+          })}
+        </div>
+        <div className="lpFlowPill">
+          <code>context/ → tar → Tatum upload → <strong>CERTIFIED</strong> → blobId → Walrus Memory</code>
+        </div>
       </section>
 
       <section className="pageEnd" aria-label="ContextMeM page end">
@@ -3296,7 +3361,7 @@ function StatusPill({ statusLabel, statusTone, run, hasMemWalDelegate, sessionSl
           <strong>Walrus mainnet</strong>
         </div>
         <div className="statusRow">
-          <span>MemWal</span>
+          <span>Walrus Memory</span>
           <strong className={`statusValue statusValue-${statusTone}`}>{statusLabel}</strong>
         </div>
         <div className="statusRow">

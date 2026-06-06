@@ -5,9 +5,7 @@
   "preview_urls": false,
   "vars": {
     "CONTEXTMEM_WORKER_BASE_URL": "https://contextmem-hosted-namespace-mcp.petlofi.workers.dev",
-    "CONTEXTMEM_DEMO_SAMPLE_TARGET": "https://seal-docs.wal.app/",
-    "TATUM_STORAGE_URL": "https://api.tatum.io/v4/data/storage/upload",
-    "SUI_FULLNODE_URL": "https://fullnode.mainnet.sui.io"
+    "CONTEXTMEM_DEMO_SAMPLE_TARGET": "https://seal-docs.wal.app/"
   },
   "compatibility_date": "2026-05-21",
   "compatibility_flags": ["nodejs_compat"],
@@ -49,6 +47,6 @@
     "crons": ["*/30 * * * *"]
   },
   "secrets": {
-    "required": ["CONTEXTMEM_NAMESPACE_IMPORT_TOKEN", "TATUM_API_KEY"]
+    "required": ["CONTEXTMEM_NAMESPACE_IMPORT_TOKEN", "FIRECRAWL_API_KEY", "MEMWAL_ACCOUNT_ID", "MEMWAL_API_URL", "MEMWAL_PRIVATE_KEY"]
   }
 }

@@ -2833,9 +2833,9 @@ textarea {
   inset: 0;
   z-index: -2;
   background:
-    linear-gradient(90deg, rgba(248, 251, 244, 0.94) 0%, rgba(248, 251, 244, 0.72) 44%, rgba(248, 251, 244, 0.28) 100%),
+    linear-gradient(90deg, rgba(248, 251, 244, 0.95) 0%, rgba(248, 251, 244, 0.86) 50%, rgba(248, 251, 244, 0.92) 100%),
     url("/BG.jpg") center / cover no-repeat;
-  filter: saturate(1.08) contrast(1.02);
+  filter: saturate(1.02) contrast(1) blur(1px);
   transform: translate3d(var(--hero-x, 0), var(--hero-y, 0), 0) scale(1.05);
   transition: transform 420ms cubic-bezier(0.23, 1, 0.32, 1);
   will-change: transform;
@@ -3175,11 +3175,10 @@ textarea {
 .heroPreview {
   min-width: 0;
   padding: 14px;
-  border: 1px solid rgba(17, 20, 22, 0.12);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(17, 20, 22, 0.1);
+  border-radius: 14px;
+  background: #ffffff;
   box-shadow: var(--cm-shadow);
-  backdrop-filter: blur(18px);
   transform: translate3d(calc(var(--hero-x, 0) * -0.2), calc(var(--hero-y, 0) * -0.2), 0);
   animation-delay: 460ms;
   transition: transform 420ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -8831,4 +8830,827 @@ textarea:focus {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* ── Landing: extended marketing sections (saas-style) ──────────────── */
+.lpHow,
+.lpStore,
+.lpArch {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto 64px;
+  padding: 0 18px;
+}
+
+.lpEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: var(--cm-accent);
+  color: #1b220b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lpEyebrow svg {
+  color: #1b220b;
+}
+
+.lpSectionHead {
+  max-width: 720px;
+  margin: 0 auto 34px;
+  text-align: center;
+}
+
+.lpSectionHead h2 {
+  margin: 18px 0 0;
+  font-size: 40px;
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--cm-ink);
+}
+
+.lpSectionHead p {
+  margin: 16px auto 0;
+  max-width: 580px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--cm-muted);
+}
+
+/* How it works — sticky aside + timeline */
+.lpHowGrid {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 56px;
+  align-items: start;
+}
+
+.lpHowAside {
+  position: sticky;
+  top: 96px;
+}
+
+.lpHowAside h2 {
+  margin: 22px 0 0;
+  font-size: 44px;
+  line-height: 1.06;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--cm-ink);
+}
+
+.lpHowAside p {
+  margin: 20px 0 0;
+  max-width: 380px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--cm-muted);
+}
+
+.lpHowCta {
+  margin-top: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 22px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--cm-ink);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+  box-shadow: 8px 8px 0 var(--cm-accent);
+}
+
+.lpHowCta:hover {
+  transform: translateY(-2px);
+}
+
+.lpHowCta svg {
+  transition: transform 260ms ease;
+}
+
+.lpHowCta:hover svg {
+  transform: rotate(-45deg);
+}
+
+.lpHowCta:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.lpTimeline {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lpTimeline::before {
+  content: "";
+  position: absolute;
+  left: 24px;
+  top: 16px;
+  bottom: 36px;
+  width: 2px;
+  background: linear-gradient(var(--cm-accent), rgba(168, 217, 70, 0.12));
+}
+
+.lpTimelineItem {
+  position: relative;
+  display: flex;
+  gap: 22px;
+  padding-bottom: 38px;
+}
+
+.lpTimelineItem:last-child {
+  padding-bottom: 0;
+}
+
+.lpTimelineBadge {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 50px;
+  height: 50px;
+  border-radius: 999px;
+  background: var(--cm-accent);
+  color: #1b220b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(168, 217, 70, 0.42);
+}
+
+.lpTimelineBody {
+  padding-top: 3px;
+}
+
+.lpTimelineNum {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7c9a2e;
+}
+
+.lpTimelineBody h3 {
+  margin: 6px 0 0;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--cm-ink);
+}
+
+.lpTimelineBody p {
+  margin: 8px 0 0;
+  max-width: 470px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--cm-muted);
+}
+
+/* Storage + Memory — lime bento */
+.lpStoreGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.lpBento {
+  display: flex;
+  flex-direction: column;
+  min-height: 234px;
+  padding: 28px;
+  border-radius: 28px;
+  background: #e8f5c8;
+  color: var(--cm-ink);
+  transition: transform 360ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 360ms ease;
+}
+
+.lpBento:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 28px 62px rgba(22, 31, 45, 0.14);
+}
+
+.lpBento.isPrimary {
+  background: var(--cm-accent);
+}
+
+.lpBentoIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.62);
+  color: #1b220b;
+}
+
+.lpBento.isPrimary .lpBentoIcon {
+  background: rgba(17, 20, 22, 0.12);
+}
+
+.lpBentoTag {
+  margin-top: 22px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(17, 20, 22, 0.52);
+}
+
+.lpBento h3 {
+  margin: 8px 0 0;
+  font-size: 24px;
+  line-height: 1.16;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.lpBento p {
+  margin: 12px 0 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: rgba(17, 20, 22, 0.72);
+}
+
+.lpFlowPill {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.lpFlowPill code {
+  display: inline-block;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: var(--cm-ink);
+  color: #eef3e6;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+
+.lpFlowPill strong {
+  color: var(--cm-accent);
+}
+
+/* Architecture board */
+.lpRail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 32px;
+  border-radius: 28px;
+  border: 1px solid rgba(168, 217, 70, 0.45);
+  background: #eef6da;
+}
+
+.lpRailStrip {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.78fr) 2.2fr minmax(184px, 0.92fr);
+  gap: 28px;
+  align-items: center;
+}
+
+.lpRailLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6f7a55;
+}
+
+.lpRailLabel em {
+  font-style: normal;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--cm-ink);
+  color: #ffffff;
+}
+
+.lpRailHead {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lpRailChips {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.lpRailChip {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--cm-border);
+  background: #ffffff;
+  box-shadow: var(--cm-soft-shadow);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--cm-ink);
+}
+
+.lpRailHeadPort {
+  position: absolute;
+  right: -19px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--cm-accent);
+  box-shadow: 0 0 0 4px rgba(168, 217, 70, 0.22);
+  transform: translateY(-50%);
+}
+
+.lpRailTrack {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 96px;
+}
+
+.lpRailLine {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 34px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(17, 20, 22, 0.1);
+}
+
+.lpRailLineFill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--cm-accent);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+.lpRailNode {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 104px;
+  padding: 14px 16px 16px;
+  background: #ffffff;
+  border: 1px solid var(--cm-border);
+  border-radius: 16px;
+  box-shadow: var(--cm-soft-shadow);
+}
+
+.lpRailNodeNum {
+  font: 800 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+  color: var(--cm-muted);
+}
+
+.lpRailNodeName {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--cm-ink);
+  text-transform: capitalize;
+}
+
+.lpRailNodeDot {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 3px solid rgba(17, 20, 22, 0.18);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.lpRailNode--core {
+  border-color: rgba(168, 217, 70, 0.55);
+}
+
+.lpRailNode--core .lpRailNodeName {
+  color: var(--cm-teal);
+}
+
+.lpRailDrop {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 2px;
+  height: 36px;
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: top center;
+  background: repeating-linear-gradient(to bottom, rgba(168, 217, 70, 0.65) 0 5px, transparent 5px 9px);
+}
+
+.lpRailLedger {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lpRailLedger::before {
+  content: "";
+  position: absolute;
+  left: -19px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--cm-accent);
+  box-shadow: 0 0 0 4px rgba(168, 217, 70, 0.22);
+  transform: translateY(-50%);
+}
+
+.lpRailLedgerRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid var(--cm-border);
+  border-radius: 12px;
+  box-shadow: var(--cm-soft-shadow);
+}
+
+.lpRailLedgerTick {
+  flex: 0 0 auto;
+  color: var(--cm-teal);
+}
+
+.lpRailLedgerRow code {
+  font: 600 12.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--cm-ink);
+}
+
+.lpRailShelf {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px dashed rgba(168, 217, 70, 0.4);
+}
+
+.lpRailShelfLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6f7a55;
+}
+
+.lpRailShelfLabel em {
+  font-style: normal;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--cm-ink);
+  color: #ffffff;
+}
+
+.lpRailShelfRow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.lpRailBind {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 15px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--cm-border);
+  box-shadow: var(--cm-soft-shadow);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.lpRailBindIcon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border-radius: 9px;
+  background: rgba(168, 217, 70, 0.18);
+  color: var(--cm-teal);
+}
+
+.lpRailBindText strong {
+  display: block;
+  font-size: 14px;
+  color: var(--cm-ink);
+}
+
+.lpRailBindText span {
+  display: block;
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: var(--cm-muted);
+  overflow-wrap: anywhere;
+}
+
+.lpRailBind:hover {
+  border-color: rgba(168, 217, 70, 0.5);
+  box-shadow: 0 8px 24px rgba(17, 20, 22, 0.08);
+}
+
+@media (max-width: 980px) {
+  .lpHowGrid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  .lpHowAside {
+    position: static;
+  }
+  .lpHowAside h2 {
+    font-size: 32px;
+  }
+  .lpStoreGrid {
+    grid-template-columns: 1fr;
+  }
+  .lpRailStrip {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .lpRailTrack {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding-left: 30px;
+    min-height: 0;
+  }
+  .lpRailLine {
+    left: 20px;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    height: auto;
+  }
+  .lpRailNodeDot {
+    left: -30px;
+    bottom: auto;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .lpRailDrop {
+    display: none;
+  }
+  .lpRailHeadPort,
+  .lpRailLedger::before {
+    display: none;
+  }
+  .lpRailShelfRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .lpSectionHead h2 {
+    font-size: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lpRailLineFill {
+    transform: scaleX(1) !important;
+  }
+  .lpRailDrop {
+    transform: translateX(-50%) scaleY(1) !important;
+  }
+}
+
+/* ── Architecture: dark live "control-room" console (on the light board) ── */
+.lpConsole {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  background: radial-gradient(140% 130% at 18% 0%, #16211b 0%, #0e1512 58%, #0a0f0c 100%);
+  border: 1px solid #1d2a22;
+  box-shadow: 0 20px 50px rgba(8, 12, 9, 0.4), inset 0 0 0 1px rgba(168, 217, 70, 0.05);
+}
+
+.lpConsoleBar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(168, 217, 70, 0.12);
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  color: #9fb08f;
+}
+
+.lpConsoleLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  color: #bdf25f;
+}
+
+.lpConsolePulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #a8d946;
+  animation: lpConsolePulse 1.8s ease-out infinite;
+}
+
+@keyframes lpConsolePulse {
+  0% { box-shadow: 0 0 0 0 rgba(168, 217, 70, 0.5); }
+  70% { box-shadow: 0 0 0 7px rgba(168, 217, 70, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(168, 217, 70, 0); }
+}
+
+.lpConsoleNet {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(168, 217, 70, 0.12);
+  color: #bdf25f;
+}
+
+.lpConsoleSpacer { flex: 1; }
+.lpConsoleClock { color: #6f7e63; }
+
+.lpConsoleTrack {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 28px 18px 26px;
+}
+
+.lpConsoleWire {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  top: 50%;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(168, 217, 70, 0.16);
+  transform: translateY(-1px);
+}
+
+.lpConsoleWireFill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #5a8616, #a8d946);
+  transform-origin: left center;
+  transform: scaleX(0);
+  box-shadow: 0 0 12px rgba(168, 217, 70, 0.5);
+}
+
+.lpConsolePacket {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 999px;
+  background: #d8ff7a;
+  box-shadow: 0 0 10px 2px rgba(168, 217, 70, 0.8);
+  transform: translateX(-50%);
+}
+
+.lpConsoleNode {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 13px 14px;
+  border-radius: 13px;
+  background: rgba(20, 28, 22, 0.86);
+  border: 1px solid rgba(168, 217, 70, 0.14);
+}
+
+.lpConsoleNode.is-core {
+  border-color: rgba(168, 217, 70, 0.5);
+  box-shadow: 0 0 18px rgba(168, 217, 70, 0.18);
+}
+
+.lpConsoleNodeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lpConsoleNodeNum {
+  font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+  color: #7b8a6b;
+}
+
+.lpConsoleStatus {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #a8d946;
+  box-shadow: 0 0 6px rgba(168, 217, 70, 0.8);
+  animation: lpConsolePulse 2.4s ease-out infinite;
+}
+
+.lpConsoleNodeIcon {
+  display: inline-flex;
+  color: #bdf25f;
+}
+
+.lpConsoleNodeName {
+  font-weight: 700;
+  font-size: 13px;
+  color: #eef3e6;
+  text-transform: capitalize;
+}
+
+.lpConsoleNodeLatency {
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #7fcdbb;
+}
+
+.lpConsoleNode.is-core .lpConsoleNodeLatency { color: #bdf25f; }
+
+.lpConsoleNodeDot {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #a8d946;
+  border: 2px solid #0e1512;
+  box-shadow: 0 0 8px rgba(168, 217, 70, 0.7);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+/* live dot on each binding */
+.lpRailBind { position: relative; }
+.lpRailBindLive {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--cm-accent);
+  box-shadow: 0 0 0 3px rgba(168, 217, 70, 0.16);
+  animation: lpConsolePulse 2.6s ease-out infinite;
+}
+
+@media (max-width: 980px) {
+  .lpConsoleTrack {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .lpConsoleWire { display: none; }
+  .lpConsoleNodeDot { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lpConsoleWireFill { transform: scaleX(1) !important; }
+  .lpConsolePacket, .lpConsolePulse, .lpConsoleStatus, .lpRailBindLive { animation: none !important; }
+  .lpConsolePacket { display: none !important; }
 }
