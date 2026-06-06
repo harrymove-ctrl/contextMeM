@@ -782,7 +782,7 @@ const builtForUseCards = [
   },
   {
     eyebrow: "Onchain provenance",
-    heading: "Every artifact carries onchain proof, certified on Walrus.",
+    heading: "Artifacts can be sealed with onchain Walrus proof.",
     highlights: ["onchain", "certified", "Walrus"],
     body: "Tar the bundle, store it on Walrus through Tatum, and keep a verifiable blobId and digest for every run."
   }
@@ -3146,6 +3146,70 @@ function RunsAppPage({ history, busy, currentRunId, onRefresh, onOpenRun }: { hi
   );
 }
 
+type WalrusProof = {
+  namespace: string;
+  target: string;
+  provider: string;
+  endpoint: string;
+  blobId: string;
+  jobId: string;
+  status: string;
+  certified: boolean;
+  artifactDigest: string;
+  byteLength: number;
+  fileName: string;
+  uploadedAt: string;
+  certifiedAt?: string;
+  network: string;
+};
+
+// Real Tatum->Walrus storage receipt — the context bundle is stored + certified onchain.
+function WalrusProofPanel({ proof }: { proof: WalrusProof }) {
+  return (
+    <section className="proofPanel">
+      <div className="proofHead">
+        <span className="proofKicker">
+          <ShieldCheck size={14} /> Walrus storage proof
+        </span>
+        <span className={`proofBadge ${proof.certified ? "isCertified" : ""}`}>{proof.certified ? "CERTIFIED" : proof.status}</span>
+      </div>
+      <p className="proofSub">
+        This context bundle is stored on Walrus <strong>{proof.network}</strong> and its availability is certified onchain via {proof.provider}.
+      </p>
+      <dl className="proofGrid">
+        <div>
+          <dt>Walrus blob ID</dt>
+          <dd>
+            <code>{proof.blobId}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Tatum job</dt>
+          <dd>
+            <code>{proof.jobId}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Artifact digest</dt>
+          <dd>
+            <code>{proof.artifactDigest}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Bundle size</dt>
+          <dd>{(proof.byteLength / 1024).toFixed(1)} KB</dd>
+        </div>
+        {proof.certifiedAt ? (
+          <div>
+            <dt>Certified</dt>
+            <dd>{formatDateTime(proof.certifiedAt)}</dd>
+          </div>
+        ) : null}
+      </dl>
+    </section>
+  );
+}
+
 const MEMORY_EXPLORER_PROMPTS = [
   "What is this project and who is it for?",
   "How does it work technically?",
@@ -3164,7 +3228,10 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ text: string; raw: unknown; source?: string } | null>(null);
   const [facts, setFacts] = useState<SiteFacts | null>(null);
+  const [proof, setProof] = useState<WalrusProof | null>(null);
   const [factsBusy, setFactsBusy] = useState(false);
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
 
   useEffect(() => {
     void (async () => {
@@ -3187,10 +3254,12 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
   }, [authToken]);
 
   useEffect(() => {
-    // Switching namespace must not leave the previous graph/answer on screen.
+    // Switching namespace must not leave the previous graph/answer (or a spinner) on screen.
     setFacts(null);
+    setProof(null);
     setResult(null);
     setError(null);
+    setBusy(false);
     if (!selected) {
       return;
     }
@@ -3203,8 +3272,11 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
           if (!cancelled) setFacts(null);
           return;
         }
-        const body = (await response.json()) as { facts?: SiteFacts };
-        if (!cancelled) setFacts(body.facts ?? null);
+        const body = (await response.json()) as { facts?: SiteFacts; proof?: WalrusProof | null };
+        if (!cancelled) {
+          setFacts(body.facts ?? null);
+          setProof(body.proof ?? null);
+        }
       } catch {
         if (!cancelled) setFacts(null);
       } finally {
@@ -3218,7 +3290,8 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
 
   async function runRecall(prompt?: string) {
     const question = (prompt ?? query).trim();
-    if (!selected || !question || busy) return;
+    const ns = selected;
+    if (!ns || !question || busy) return;
     setBusy(true);
     setError(null);
     setResult(null);
@@ -3226,7 +3299,7 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
       const response = await fetch(`${API_BASE}/api/memwal/recall`, {
         method: "POST",
         headers: authHeaders(authToken, { "content-type": "application/json" }),
-        body: JSON.stringify({ namespace: selected, query: question })
+        body: JSON.stringify({ namespace: ns, query: question })
       });
       const text = await response.text();
       let body: { result?: unknown; error?: string; source?: string } = {};
@@ -3236,15 +3309,17 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
         /* non-JSON (e.g. a gateway HTML error page) — fall through to status-based error */
       }
       if (!response.ok) throw new Error(body.error ?? `Recall failed (${response.status}).`);
+      if (selectedRef.current !== ns) return; // namespace switched mid-recall — drop the stale answer
       setResult({ text: memoryPayloadToText(body.result, "recall"), raw: body.result, source: body.source });
     } catch (err) {
+      if (selectedRef.current !== ns) return; // stale error for a namespace we left
       const raw = err instanceof Error ? err.message : String(err);
       const friendly = /hexToBytes|non-hex|invalid.*key|Ed25519/i.test(raw)
         ? "Your Walrus Memory delegate key looks malformed (not a 64-char hex seed). Re-import it in Settings, or set MEMWAL_PRIVATE_KEY on the Worker."
         : raw;
       setError(friendly);
     } finally {
-      setBusy(false);
+      if (selectedRef.current === ns) setBusy(false);
     }
   }
 
@@ -3312,6 +3387,7 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
               <Boxes size={14} /> Knowledge
             </span>
           </div>
+          {proof ? <WalrusProofPanel proof={proof} /> : null}
           <FactsPanel facts={facts} />
         </div>
       ) : null}
@@ -5644,7 +5720,7 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
 // namespaces (from the public facts catalog) that links straight into the Knowledge browser.
 function NamespacesSimplePage() {
   const navigate = useNavigate();
-  const [namespaces, setNamespaces] = useState<Array<{ namespace: string; displayName: string; target: string; entities: number; relationships: number; topics: number; questions: number }>>([]);
+  const [namespaces, setNamespaces] = useState<Array<{ namespace: string; displayName: string; target: string; entities: number; relationships: number; topics: number; questions: number; proof?: { blobId: string; certified: boolean } | null }>>([]);
   const [busy, setBusy] = useState(true);
 
   useEffect(() => {
@@ -5673,6 +5749,7 @@ function NamespacesSimplePage() {
             <div className="nsSimpleHead">
               <Database size={16} />
               <strong>{ns.displayName}</strong>
+              {ns.proof?.certified ? <span className="nsSimpleProof" title={`Walrus blob ${ns.proof.blobId}`}>✓ Walrus</span> : null}
             </div>
             <code>{ns.namespace}</code>
             <span className="nsSimpleTarget">{ns.target}</span>

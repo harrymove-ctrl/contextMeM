@@ -18,6 +18,7 @@ import { MemWalMcpClient } from "@contextmem/memwal";
 import { buildChunks } from "@contextmem/core/chunks";
 import { buildSiteFacts, generateContextQuestions } from "@contextmem/core/facts";
 import { SEED_FACTS, SEED_FACTS_LIST } from "./seed-facts.js";
+import { SEED_PROOFS } from "./seed-proofs.js";
 import { isUtilityPageRoute } from "@contextmem/core/utils";
 import type {
   BuildProfile,
@@ -594,13 +595,17 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
   // Public seeded Knowledge (SiteFacts) — lets the app/Visualizer browse the
   // Sui/Walrus/Seal facts graph without running a build.
   if (request.method === "GET" && url.pathname === "/api/memwal/facts") {
-    return jsonCached({ namespaces: SEED_FACTS_LIST }, 300);
+    const namespaces = SEED_FACTS_LIST.map((entry) => {
+      const proof = SEED_PROOFS[entry.namespace];
+      return proof ? { ...entry, proof: { blobId: proof.blobId, certified: proof.certified } } : { ...entry, proof: null };
+    });
+    return jsonCached({ namespaces }, 300);
   }
   if (request.method === "GET" && url.pathname.startsWith("/api/memwal/facts/")) {
     const ns = decodeURIComponent(url.pathname.slice("/api/memwal/facts/".length));
     // Tier 1: bundled demo facts (public, edge-cacheable).
     const seeded = SEED_FACTS[ns];
-    if (seeded) return jsonCached({ namespace: ns, source: "seed", facts: seeded }, 300);
+    if (seeded) return jsonCached({ namespace: ns, source: "seed", facts: seeded, proof: SEED_PROOFS[ns] ?? null }, 300);
     // Tier 2: real built namespace — public for public namespaces, read-token for private.
     const auth = await store.authorizeNamespace(ns, readAccessToken(request));
     if (!auth.ok) return json({ error: auth.message }, auth.status);
