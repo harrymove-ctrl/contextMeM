@@ -1,7 +1,7 @@
 name: Deploy
 
 # Deploys both surfaces on push to main:
-#   - Worker  → contextmem-hosted-namespace-mcp (API/MCP backend)
+#   - Worker  → contextmem-backend (API/MCP backend)
 #   - Pages   → contextmem.pages.dev (web frontend)
 # Cloudflare Git auto-deploy for Pages should be DISABLED so this is the single
 # deploy path (avoids double-deploys).
@@ -56,7 +56,7 @@ jobs:
       - name: Build web
         run: bun run --filter @contextmem/web build
         env:
-          VITE_CONTEXTMEM_API_BASE: ${{ vars.CONTEXTMEM_API_BASE || 'https://contextmem-hosted-namespace-mcp.petlofi.workers.dev' }}
+          VITE_CONTEXTMEM_API_BASE: ${{ vars.CONTEXTMEM_API_BASE || 'https://contextmem-backend.petlofi.workers.dev' }}
       - name: Deploy Pages
         uses: cloudflare/wrangler-action@v3
         with:

@@ -35,7 +35,7 @@ type WorkersAiBinding = {
   run(model: string, options: { messages: Array<{ role: "system" | "user" | "assistant"; content: string }>; max_tokens?: number; temperature?: number; }): Promise<{ response?: string; result?: { response?: string } } | string>;
 };
 
-const defaultHostedWorkerBaseUrl = "https://contextmem-hosted-namespace-mcp.petlofi.workers.dev";
+const defaultHostedWorkerBaseUrl = "https://contextmem-backend.petlofi.workers.dev";
 const legacyInternalWorkerOrigin = "https://contextmem.worker";
 const hostedRunDefaultOutputs = ["markdown", "images", "brand", "styleguide", "sitemap"];
 
@@ -555,7 +555,7 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
 
   if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
   if (request.method === "GET" && url.pathname === "/health") {
-    return json({ ok: true, service: "contextmem-hosted-namespace-mcp" });
+    return json({ ok: true, service: "contextmem-backend" });
   }
   if (request.method === "GET" && url.pathname === "/api/me") {
     return getHostedMe(request);

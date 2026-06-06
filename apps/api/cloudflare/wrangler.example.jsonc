@@ -1,6 +1,6 @@
 {
   "$schema": "../../../node_modules/wrangler/config-schema.json",
-  "name": "contextmem-hosted-namespace-mcp",
+  "name": "contextmem-backend",
   "compatibility_date": "2026-05-21",
   "compatibility_flags": ["nodejs_compat"],
   "main": "../src/worker.ts",
