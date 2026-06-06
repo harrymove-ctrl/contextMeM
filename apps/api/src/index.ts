@@ -239,11 +239,14 @@ app.get("/api/memwal/facts/:namespace", async (request, reply) => {
 
 app.get("/api/memwal/namespaces", async () => {
   const raw = process.env.MEMWAL_NAMESPACES?.trim();
-  let namespaces = [
-    { namespace: "demo:sui-docs", label: "Sui Docs" },
-    { namespace: "demo:walrus-docs", label: "Walrus Docs" },
-    { namespace: "demo:seal-docs", label: "Seal Docs" }
-  ];
+  // List every seeded namespace (matches the Namespaces page), so opening any
+  // namespace card lands on a real chip instead of falling back to the first.
+  let namespaces: Array<{ namespace: string; label: string }> = (
+    SEED_FACTS_LIST as ReadonlyArray<{ namespace: string; displayName?: string }>
+  ).map((entry) => ({
+    namespace: entry.namespace,
+    label: entry.displayName || entry.namespace.replace(/^demo:/, "")
+  }));
   if (raw) {
     const parsed = raw
       .split(",")
@@ -296,6 +299,168 @@ app.post("/api/memwal/recall", async (request, reply) => {
     reply.code(502);
     return { error: error instanceof Error ? error.message : String(error) };
   }
+});
+
+// Build a rich grounded context block from a namespace's verified knowledge
+// graph (identity + entities + topics + claims + stats + Q&A).
+function localFactsGrounding(namespace: string): { block: string; lines: string[] } {
+  const facts = SEED_FACTS[namespace];
+  if (!facts) return { block: "", lines: [] };
+  const lines: string[] = [];
+  if (facts.identity?.name) lines.push(`Project: ${facts.identity.name}${facts.identity.oneLiner ? ` — ${facts.identity.oneLiner}` : ""}`);
+  if (facts.identity?.category) lines.push(`Category: ${facts.identity.category}`);
+  const topics = (facts.topics ?? []).map((t) => t.label).filter(Boolean);
+  if (topics.length) lines.push(`Topics: ${topics.slice(0, 12).join(", ")}`);
+  const entities = [...(facts.entities ?? [])].sort((a, b) => (b.salience ?? 0) - (a.salience ?? 0)).slice(0, 16);
+  for (const e of entities) if (e.description) lines.push(`Entity (${e.type}) ${e.name}: ${e.description}`);
+  for (const c of (facts.claims ?? []).slice(0, 12)) if (c.text) lines.push(`Claim: ${c.text}`);
+  for (const s of (facts.stats ?? []).slice(0, 12)) if (s.valueRaw) lines.push(`Stat: ${s.label} = ${s.valueRaw}`);
+  for (const q of (facts.questions ?? []).slice(0, 10)) if (q.answer) lines.push(`Q: ${q.question}\nA: ${q.answer}`);
+  return { block: lines.join("\n"), lines };
+}
+
+// Keyword-rank a namespace's facts against a query (deterministic, no LLM).
+function localFactsFallback(namespace: string, query: string): Array<{ text: string; score: number }> {
+  const facts = SEED_FACTS[namespace];
+  if (!facts) return [];
+  const candidates: string[] = [];
+  if (facts.identity?.oneLiner) candidates.push(`${facts.identity.name}: ${facts.identity.oneLiner}`);
+  for (const q of facts.questions ?? []) if (q.answer) candidates.push(`${q.question} — ${q.answer}`);
+  for (const c of facts.claims ?? []) if (c.text) candidates.push(c.text);
+  for (const e of facts.entities ?? []) if (e.description) candidates.push(`${e.name}: ${e.description}`);
+  for (const s of facts.stats ?? []) if (s.valueRaw) candidates.push(`${s.label}: ${s.valueRaw}`);
+  const queryTokens = new Set((query.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((t) => t.length > 2));
+  const scored = candidates
+    .map((text) => {
+      const tokens = text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+      let score = 0;
+      for (const token of tokens) if (queryTokens.has(token)) score += 1;
+      return { text, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6);
+  return scored.length ? scored : candidates.slice(0, 5).map((text) => ({ text, score: 0 }));
+}
+
+// POST /api/memwal/chat — local mirror of the Worker's grounded chat. Recall
+// from Walrus Memory (imported delegate or env) + verified facts, then
+// synthesize with an OpenAI-compatible model if OPENAI_API_KEY is set, else
+// return a deterministic facts-grounded answer so local dev never dead-errors.
+app.post("/api/memwal/chat", async (request, reply) => {
+  const input = z
+    .object({
+      namespace: z.string().min(1),
+      messages: z.array(z.object({ role: z.enum(["user", "assistant"]).optional(), content: z.string() })).optional()
+    })
+    .parse(request.body ?? {});
+  const namespace = input.namespace.trim();
+  const messages = (input.messages ?? [])
+    .map((m) => ({ role: m.role === "assistant" ? ("assistant" as const) : ("user" as const), content: (m.content ?? "").trim().slice(0, 2000) }))
+    .filter((m) => m.content)
+    .slice(-8);
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const query = (lastUser?.content ?? "").slice(0, 500);
+  if (!query) {
+    reply.code(400);
+    return { error: "namespace and a user message are required." };
+  }
+
+  // 1) Optional Walrus Memory recall (imported delegate, else env).
+  let recallHits: Array<{ text: string; distance?: number }> = [];
+  let memwal: MemWalMcpClient | null = null;
+  try {
+    const auth = await getOptionalAuth(request.headers.authorization);
+    if (auth?.account?.delegateKeyCiphertext) memwal = memwalClientForAccount(auth.account);
+  } catch {
+    /* not signed in */
+  }
+  if (!memwal) {
+    const privateKey = (process.env.MEMWAL_PRIVATE_KEY ?? process.env.MEMWAL_BEARER ?? "").trim().replace(/^bearer\s+/i, "").replace(/^0x/i, "").trim();
+    const accountId = process.env.MEMWAL_ACCOUNT_ID?.trim();
+    if (/^[0-9a-fA-F]{64}$/.test(privateKey) && accountId) {
+      const url = process.env.MEMWAL_API_URL ?? process.env.MEMWAL_MCP_URL ?? "https://relayer.memwal.ai";
+      memwal = new MemWalMcpClient({ url, privateKey, accountId });
+    }
+  }
+  if (memwal) {
+    try {
+      const result = (await memwal.recallSiteContext(namespace, query)) as { results?: Array<{ text?: string; distance?: number }> };
+      recallHits = (result?.results ?? [])
+        .map((r) => ({ text: String(r.text ?? "").trim(), distance: typeof r.distance === "number" ? r.distance : undefined }))
+        .filter((r) => r.text)
+        .slice(0, 6);
+    } catch {
+      /* fall through to facts grounding */
+    }
+  }
+
+  const { block: factsBlock } = localFactsGrounding(namespace);
+  const hasRecall = recallHits.length > 0;
+  const source: "walrus-memory" | "facts" | "mixed" = hasRecall && factsBlock ? "mixed" : hasRecall ? "walrus-memory" : "facts";
+  const facts = SEED_FACTS[namespace];
+  const subject = facts?.identity?.name ?? namespace;
+
+  const groundingParts: string[] = [];
+  if (hasRecall) groundingParts.push("[Walrus Memory recall]\n" + recallHits.map((h, i) => `(${i + 1}) ${h.text.slice(0, 700)}`).join("\n"));
+  if (factsBlock) groundingParts.push("[Verified facts]\n" + factsBlock);
+  const grounding = groundingParts.join("\n\n") || "(no stored context available for this namespace yet)";
+
+  let data: { answer: string; key_points: string[] } = { answer: "", key_points: [] };
+  let confidence = 0.5;
+  let usedProvider = "facts-grounded";
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (apiKey) {
+    try {
+      const response = await fetch(`${process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1"}/chat/completions`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: `You are ContextMeM, chatting naturally about "${subject}". Answer the user's latest message using ONLY this context (entities, topics, claims, stats, Q&A). Synthesize across ALL of it — entities and topics describe how it works and what it's made of. When asked for numbers, metrics, limits, prices, or costs, surface the specific Stat values from the context verbatim — do NOT abstain whenever any relevant Stat or fact is present. Be specific. Only when NOTHING in the context relates to the question, say you don't have that detail in memory yet; never invent specifics. Return strict JSON: {"answer": string, "key_points": string[2-5], "confidence": number}.\n\nContext:\n${grounding}`
+            },
+            ...messages
+          ]
+        })
+      });
+      if (response.ok) {
+        const jsonResp = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+        const parsed = JSON.parse(jsonResp.choices?.[0]?.message?.content ?? "{}") as Record<string, unknown>;
+        data = {
+          answer: typeof parsed.answer === "string" ? parsed.answer : "",
+          key_points: Array.isArray(parsed.key_points) ? parsed.key_points.map((k) => String(k)).filter(Boolean).slice(0, 6) : []
+        };
+        if (typeof parsed.confidence === "number") confidence = Math.max(0, Math.min(1, parsed.confidence));
+        usedProvider = "openai-compatible";
+      }
+    } catch {
+      /* fall through to deterministic answer */
+    }
+  }
+
+  if (!data.answer) {
+    // Deterministic facts-grounded answer (no LLM key required).
+    const ranked = hasRecall ? recallHits.map((h) => ({ text: h.text, score: 1 })) : localFactsFallback(namespace, query);
+    const top = ranked.slice(0, 4);
+    data = {
+      answer: top.length
+        ? `Here's what ContextMeM has on ${subject} for that: ${top.map((t) => t.text).join(" ").slice(0, 600)}`
+        : `I don't have anything in memory for ${subject} that matches that yet.`,
+      key_points: top.map((t) => t.text.slice(0, 160))
+    };
+    confidence = top.length ? 0.4 : 0.1;
+  }
+
+  const sources = hasRecall
+    ? recallHits.map((h, i) => ({ url: "", routePath: `walrus-memory#${i + 1}`, quote: h.text.slice(0, 280), blobId: typeof h.distance === "number" ? `distance ${h.distance.toFixed(3)}` : undefined }))
+    : localFactsFallback(namespace, query).slice(0, 4).map((r, i) => ({ url: "", routePath: `verified-fact#${i + 1}`, quote: r.text.slice(0, 280) }));
+
+  return { namespace, target: subject, source, data, confidence, usedProvider, sources };
 });
 
 app.get("/api/runs", async (request) => {

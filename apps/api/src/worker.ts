@@ -46,6 +46,12 @@ export type WorkerEnv = {
   MEMWAL_NAMESPACES?: string;
   AI?: WorkersAiBinding;
   FIRECRAWL_API_KEY?: string;
+  // Optional OpenAI-compatible chat model for grounded chat synthesis. When set,
+  // it is preferred over Workers AI (higher quality). OpenRouter works here:
+  // OPENAI_BASE_URL=https://openrouter.ai/api/v1, OPENAI_API_KEY=<openrouter key>.
+  OPENAI_API_KEY?: string;
+  OPENAI_BASE_URL?: string;
+  OPENAI_MODEL?: string;
 };
 
 type WorkersAiBinding = {
@@ -624,6 +630,9 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
   }
   if (request.method === "POST" && url.pathname === "/api/memwal/recall") {
     return memwalRecall(request, env);
+  }
+  if (request.method === "POST" && url.pathname === "/api/memwal/chat") {
+    return memwalChat(request, env);
   }
   if (request.method === "POST" && url.pathname === "/api/runs") {
     return createHostedRun(request, env, ctx);
@@ -3282,11 +3291,15 @@ function buildImportResponse(
   };
 }
 
-const DEFAULT_MEMWAL_NAMESPACES: Array<{ namespace: string; label: string }> = [
-  { namespace: "demo:sui-docs", label: "Sui Docs" },
-  { namespace: "demo:walrus-docs", label: "Walrus Docs" },
-  { namespace: "demo:seal-docs", label: "Seal Docs" }
-];
+// The Memory page namespace picker must list EVERY seeded namespace (same set the
+// Namespaces page shows), so opening any namespace card lands on a real chip and
+// not a fallback. Derived from SEED_FACTS_LIST so the two surfaces never drift.
+const DEFAULT_MEMWAL_NAMESPACES: Array<{ namespace: string; label: string }> = (
+  SEED_FACTS_LIST as ReadonlyArray<{ namespace: string; displayName?: string }>
+).map((entry) => ({
+  namespace: entry.namespace,
+  label: entry.displayName || prettyNamespaceLabel(entry.namespace)
+}));
 
 function prettyNamespaceLabel(namespace: string): string {
   return namespace
@@ -3413,6 +3426,181 @@ async function memwalRecall(request: Request, env: WorkerEnv): Promise<Response>
   const fallback = factsFallbackRecall(namespace, query);
   if (fallback) return json({ namespace, query, source: "facts", result: fallback });
   return json({ error: "Walrus Memory recall needs a valid 64-char hex delegate. Re-import your delegate in Settings, or set MEMWAL_PRIVATE_KEY + MEMWAL_ACCOUNT_ID on the Worker." }, 503);
+}
+
+// Llama-3.1-8b ignores "JSON only" instructions often: it wraps JSON in a
+// ```json fence, or emits prose first. Recover {answer,key_points,confidence}
+// from whatever shape came back; degrade to the raw text as the answer.
+function parseChatEnvelope(answerText: string): { data: { answer: string; key_points: string[] }; confidence: number } {
+  let confidence = 0.5;
+  let jsonCandidate: string | null = null;
+  let trailingProse = "";
+  const fenceMatch = answerText.match(/```(?:json)?\s*([\s\S]*?)\s*```([\s\S]*)$/i);
+  if (fenceMatch) {
+    jsonCandidate = fenceMatch[1]!.trim();
+    trailingProse = (fenceMatch[2] ?? "").trim();
+  } else {
+    const firstBrace = answerText.indexOf("{");
+    if (firstBrace >= 0) {
+      // Grab from the first brace to the matching end — tolerate prose after it.
+      const lastBrace = answerText.lastIndexOf("}");
+      if (lastBrace > firstBrace) {
+        jsonCandidate = answerText.slice(firstBrace, lastBrace + 1).trim();
+        trailingProse = answerText.slice(lastBrace + 1).trim();
+      }
+    }
+  }
+  if (jsonCandidate) {
+    try {
+      const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
+      const answer = typeof parsed.answer === "string" && parsed.answer.trim() ? parsed.answer.trim() : trailingProse || answerText.trim();
+      const keyPoints = Array.isArray(parsed.key_points)
+        ? parsed.key_points.map((k) => String(k)).filter(Boolean).slice(0, 6)
+        : Array.isArray((parsed as { keyFacts?: unknown }).keyFacts)
+          ? ((parsed as { keyFacts: unknown[] }).keyFacts.map((k) => String(k)).filter(Boolean).slice(0, 6))
+          : [];
+      if (typeof parsed.confidence === "number") confidence = Math.max(0, Math.min(1, parsed.confidence));
+      return { data: { answer, key_points: keyPoints }, confidence };
+    } catch {
+      /* fall through to raw text */
+    }
+  }
+  return { data: { answer: answerText.trim(), key_points: [] }, confidence };
+}
+
+// Build a rich, grounded context block from a namespace's verified knowledge
+// graph: identity + entities (what it's made of) + topics + claims + stats +
+// Q&A. The more grounded material the model sees, the fewer "I don't know"s.
+function factsGroundingBlock(namespace: string): string {
+  const facts = SEED_FACTS[namespace];
+  if (!facts) return "";
+  const lines: string[] = [];
+  if (facts.identity?.name) lines.push(`Project: ${facts.identity.name}${facts.identity.oneLiner ? ` — ${facts.identity.oneLiner}` : ""}`);
+  if (facts.identity?.category) lines.push(`Category: ${facts.identity.category}`);
+  const topics = (facts.topics ?? []).map((t) => t.label).filter(Boolean);
+  if (topics.length) lines.push(`Topics: ${topics.slice(0, 12).join(", ")}`);
+  const entities = [...(facts.entities ?? [])].sort((a, b) => (b.salience ?? 0) - (a.salience ?? 0)).slice(0, 16);
+  for (const e of entities) if (e.description) lines.push(`Entity (${e.type}) ${e.name}: ${e.description}`);
+  for (const c of (facts.claims ?? []).slice(0, 12)) if (c.text) lines.push(`Claim: ${c.text}`);
+  for (const s of (facts.stats ?? []).slice(0, 12)) if (s.valueRaw) lines.push(`Stat: ${s.label} = ${s.valueRaw}`);
+  for (const q of (facts.questions ?? []).slice(0, 10)) if (q.answer) lines.push(`Q: ${q.question}\nA: ${q.answer}`);
+  return lines.join("\n");
+}
+
+// POST /api/memwal/chat { namespace, messages:[{role,content}], topK?, maxDistance? }
+// Multi-turn grounded chat: recall from Walrus Memory (when a delegate is present)
+// + the namespace's verified facts, synthesize a conversational answer with
+// Workers AI, and return an AiQueryResult-compatible envelope. Never a dead
+// error — falls back to facts-only grounding when recall is unavailable.
+async function memwalChat(request: Request, env: WorkerEnv): Promise<Response> {
+  let body: { namespace?: unknown; messages?: unknown; topK?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return json({ error: "Invalid JSON body." }, 400);
+  }
+  const namespace = typeof body.namespace === "string" ? body.namespace.trim() : "";
+  const rawMessages = Array.isArray(body.messages) ? body.messages : [];
+  const messages = rawMessages
+    .map((m) => {
+      const role = (m as { role?: unknown })?.role === "assistant" ? "assistant" : "user";
+      const content = typeof (m as { content?: unknown })?.content === "string" ? (m as { content: string }).content.trim().slice(0, 2000) : "";
+      return { role: role as "user" | "assistant", content };
+    })
+    .filter((m) => m.content)
+    .slice(-8); // keep the request small; replay only the last 8 turns
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const query = lastUser ? lastUser.content.slice(0, 500) : "";
+  if (!namespace || !query) return json({ error: "namespace and a user message are required." }, 400);
+
+  const { url, privateKey, accountId } = resolveMemwalCreds(request, env);
+
+  // 1) Grounding — real Walrus Memory recall when we have a valid delegate.
+  let recallHits: Array<{ text: string; distance?: number }> = [];
+  if (isMemwalSeed(privateKey) && accountId) {
+    try {
+      const result = (await new MemWalMcpClient({ url, privateKey, accountId }).recallSiteContext(namespace, query)) as {
+        results?: Array<{ text?: string; distance?: number }>;
+      };
+      recallHits = (result?.results ?? [])
+        .map((r) => ({ text: String(r.text ?? "").trim(), distance: typeof r.distance === "number" ? r.distance : undefined }))
+        .filter((r) => r.text)
+        .slice(0, 6);
+    } catch {
+      /* fall through to facts-only grounding so chat still answers */
+    }
+  }
+  const factsBlock = factsGroundingBlock(namespace);
+  const hasRecall = recallHits.length > 0;
+  const source: "walrus-memory" | "facts" | "mixed" = hasRecall && factsBlock ? "mixed" : hasRecall ? "walrus-memory" : "facts";
+
+  const groundingParts: string[] = [];
+  if (hasRecall) groundingParts.push("[Walrus Memory recall — stored context for this namespace]\n" + recallHits.map((h, i) => `(${i + 1}) ${h.text.slice(0, 700)}`).join("\n"));
+  if (factsBlock) groundingParts.push("[Verified facts — extracted knowledge graph]\n" + factsBlock);
+  const grounding = groundingParts.join("\n\n") || "(no stored context available for this namespace yet)";
+
+  const facts = SEED_FACTS[namespace];
+  const subject = facts?.identity?.name ?? namespace;
+  const systemPrompt = `You are ContextMeM, a helpful assistant that chats naturally about "${subject}". Answer the user's latest message using ONLY the provided context (Walrus Memory recall + the verified knowledge graph: entities, topics, claims, stats, Q&A). Synthesize across ALL of it — the entities and topics describe how it works and what it's made of, so use them to answer "how it works" and "key facts" questions. When the user asks for numbers, metrics, limits, prices, or costs, surface the specific Stat values from the context verbatim — do NOT abstain whenever any relevant Stat or fact is present. Be conversational and specific. Only when NOTHING in the context relates to the question should you say you don't have that detail in memory yet — never invent specifics that aren't in the context. Reply with a single JSON object on the FIRST line with keys: answer (string, a natural conversational reply), key_points (array of 2-5 short strings), confidence (0-1). You may add a short human paragraph after the JSON.\n\nContext for namespace ${namespace}:\n\n${grounding}`;
+
+  let answerText = "";
+  let usedProvider = "";
+  const aiMessages = [{ role: "system" as const, content: systemPrompt }, ...messages];
+  const openAiKey = env.OPENAI_API_KEY?.trim();
+  if (openAiKey) {
+    // Prefer an OpenAI-compatible model (OpenRouter, OpenAI, etc.) — higher
+    // quality than the on-edge llama. Set OPENAI_BASE_URL + OPENAI_MODEL to pick.
+    const baseUrl = (env.OPENAI_BASE_URL?.trim() || "https://openrouter.ai/api/v1").replace(/\/$/, "");
+    const model = env.OPENAI_MODEL?.trim() || "openai/gpt-4o-mini";
+    usedProvider = `openai-compatible:${model}`;
+    try {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${openAiKey}`,
+          "content-type": "application/json",
+          "HTTP-Referer": "https://contextmem.pages.dev",
+          "X-Title": "ContextMeM"
+        },
+        body: JSON.stringify({ model, messages: aiMessages, max_tokens: 800, temperature: 0.3 })
+      });
+      if (!response.ok) throw new Error(`${response.status} ${(await response.text()).slice(0, 160)}`);
+      const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+      answerText = payload.choices?.[0]?.message?.content ?? "";
+      if (!answerText.trim()) throw new Error("empty completion");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      usedProvider = `error:${message.slice(0, 80)}`;
+      answerText = `{"answer":"AI synthesis failed: ${message.replace(/[\\"]/g, "")}","key_points":[],"confidence":0}`;
+    }
+  } else if (env.AI) {
+    usedProvider = "workers-ai:@cf/meta/llama-3.1-8b-instruct";
+    try {
+      const aiResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+        messages: aiMessages,
+        max_tokens: 800,
+        temperature: 0.3
+      });
+      if (typeof aiResponse === "string") answerText = aiResponse;
+      else if (typeof (aiResponse as { response?: string })?.response === "string") answerText = (aiResponse as { response: string }).response;
+      else if (typeof (aiResponse as { result?: { response?: string } })?.result?.response === "string") answerText = (aiResponse as { result: { response: string } }).result.response;
+      else answerText = JSON.stringify(aiResponse);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      usedProvider = `error:${message.slice(0, 80)}`;
+      answerText = `{"answer":"AI synthesis failed: ${message.replace(/[\\"]/g, "")}","key_points":[],"confidence":0}`;
+    }
+  } else {
+    usedProvider = "fallback:no-ai-binding";
+    answerText = `{"answer":"This worker has no chat model configured (set OPENAI_API_KEY or bind Workers AI). Showing grounded facts only.","key_points":[],"confidence":0}`;
+  }
+
+  const { data, confidence } = parseChatEnvelope(answerText);
+  const sources = hasRecall
+    ? recallHits.map((h, index) => ({ url: "", routePath: `walrus-memory#${index + 1}`, quote: h.text.slice(0, 280), blobId: typeof h.distance === "number" ? `distance ${h.distance.toFixed(3)}` : undefined }))
+    : (factsFallbackRecall(namespace, query)?.results ?? []).slice(0, 4).map((r, index) => ({ url: "", routePath: `verified-fact#${index + 1}`, quote: r.text.slice(0, 280) }));
+
+  return json({ namespace, target: subject, source, data, confidence, usedProvider, sources });
 }
 
 function maybeWithMemWalRecall(store: CloudflareNamespaceStore, env: WorkerEnv, request: Request): HostedNamespaceStore {

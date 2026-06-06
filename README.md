@@ -4,16 +4,35 @@ ContextMeM is a Walrus-native web context engine for agents. It can inspect depl
 
 Live demo: https://contextmem.pages.dev/
 
-## Quickstart
+## Quickstart (run it locally)
 
 ```sh
+git clone https://github.com/harrymove-ctrl/contextMeM && cd contextMeM
 bun install
-bun run contextmem web scrape https://fmsprint.wal.app/
-bun run contextmem walrus inspect https://fmsprint.wal.app/
-bun run dev
+cp .env.example .env.local   # then fill in the values you need (see below)
+bun run dev                  # starts the API (:8791) + web app (:5173) together
 ```
 
 Open the web app at `http://localhost:5173` and the API at `http://localhost:8791`.
+
+### What to put in `.env.local`
+
+`.env.example` lists every supported variable. You only need a subset depending on what you're doing — never commit `.env.local` (it's gitignored):
+
+| You want to… | Set |
+|---|---|
+| Just browse the app + the seeded namespaces/facts/knowledge graphs | nothing — `bun run dev` works out of the box |
+| Walrus Memory recall / remember | `MEMWAL_ACCOUNT_ID`, `MEMWAL_PRIVATE_KEY` (64-char hex delegate seed), `MEMWAL_API_URL` (default `https://relayer.memwal.ai`) |
+| Crawl real sites in **Build** | `FIRECRAWL_API_KEY` (web) and/or `SUI_FULLNODE_URL` (Walrus Sites) |
+| Push a real Walrus storage proof (`contextmem storage push`) | `TATUM_API_KEY` (mainnet) + `TATUM_STORAGE_URL` |
+
+Useful CLI commands once running:
+
+```sh
+bun run contextmem web scrape https://fmsprint.wal.app/
+bun run contextmem walrus inspect https://fmsprint.wal.app/
+bun run contextmem storage push runs/<run-id>      # tar context/ → Walrus via Tatum
+```
 
 ## 90-Second Demo Path
 

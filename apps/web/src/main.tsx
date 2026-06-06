@@ -775,13 +775,21 @@ const builtForUseCards = [
     eyebrow: "Walrus Memory",
     heading: "Remember verified context so agents recall it later.",
     highlights: ["Remember", "recall"],
-    body: "Sync the certified context into Walrus Memory. Agents recall the pointer and re-fetch the real artifact, keyed by blobId."
+    body: "Sync the certified context into Walrus Memory. Agents recall the pointer and re-fetch the real artifact, keyed by blobId.",
+    image: {
+      src: "/illustrations/walrus-memory-recall-black-walrus.png",
+      alt: "A solid-black walrus worker stores only a blobId pointer in Walrus Memory so agents can recall and re-fetch the real artifact."
+    }
   },
   {
     eyebrow: "Onchain provenance",
     heading: "Artifacts can be sealed with onchain Walrus proof.",
     highlights: ["onchain", "certified", "Walrus"],
-    body: "Tar the bundle, store it on Walrus through Tatum, and keep a verifiable blobId and digest for every run."
+    body: "Tar the bundle, store it on Walrus through Tatum, and keep a verifiable blobId and digest for every run.",
+    image: {
+      src: "/illustrations/onchain-proof-black-walrus.png",
+      alt: "A solid-black walrus worker seals a tar bundle through Tatum and Walrus storage, producing a certified blobId and digest receipt."
+    }
   }
 ];
 const storageLayers = [
@@ -3287,15 +3295,9 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
   const [namespaces, setNamespaces] = useState<Array<{ namespace: string; label: string }>>([]);
   const [configured, setConfigured] = useState(true);
   const [selected, setSelected] = useState<string>("");
-  const [query, setQuery] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ text: string; raw: unknown; source?: string } | null>(null);
   const [facts, setFacts] = useState<SiteFacts | null>(null);
   const [proof, setProof] = useState<WalrusProof | null>(null);
   const [factsBusy, setFactsBusy] = useState(false);
-  const selectedRef = useRef(selected);
-  selectedRef.current = selected;
 
   useEffect(() => {
     void (async () => {
@@ -3318,12 +3320,9 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
   }, [authToken]);
 
   useEffect(() => {
-    // Switching namespace must not leave the previous graph/answer (or a spinner) on screen.
+    // Switching namespace must not leave the previous graph on screen.
     setFacts(null);
     setProof(null);
-    setResult(null);
-    setError(null);
-    setBusy(false);
     if (!selected) {
       return;
     }
@@ -3352,41 +3351,6 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
     };
   }, [selected, authToken]);
 
-  async function runRecall(prompt?: string) {
-    const question = (prompt ?? query).trim();
-    const ns = selected;
-    if (!ns || !question || busy) return;
-    setBusy(true);
-    setError(null);
-    setResult(null);
-    try {
-      const response = await fetch(`${API_BASE}/api/memwal/recall`, {
-        method: "POST",
-        headers: authHeaders(authToken, { "content-type": "application/json" }),
-        body: JSON.stringify({ namespace: ns, query: question })
-      });
-      const text = await response.text();
-      let body: { result?: unknown; error?: string; source?: string } = {};
-      try {
-        body = text ? (JSON.parse(text) as typeof body) : {};
-      } catch {
-        /* non-JSON (e.g. a gateway HTML error page) — fall through to status-based error */
-      }
-      if (!response.ok) throw new Error(body.error ?? `Recall failed (${response.status}).`);
-      if (selectedRef.current !== ns) return; // namespace switched mid-recall — drop the stale answer
-      setResult({ text: memoryPayloadToText(body.result, "recall"), raw: body.result, source: body.source });
-    } catch (err) {
-      if (selectedRef.current !== ns) return; // stale error for a namespace we left
-      const raw = err instanceof Error ? err.message : String(err);
-      const friendly = /hexToBytes|non-hex|invalid.*key|Ed25519/i.test(raw)
-        ? "Your Walrus Memory delegate key looks malformed (not a 64-char hex seed). Re-import it in Settings, or set MEMWAL_PRIVATE_KEY on the Worker."
-        : raw;
-      setError(friendly);
-    } finally {
-      if (selectedRef.current === ns) setBusy(false);
-    }
-  }
-
   return (
     <section className="panel memoryExplorer">
       <div className="memoryExplorerHead">
@@ -3408,39 +3372,7 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
           ))}
         </div>
       ) : null}
-      <div className="memoryExplorerInput">
-        <textarea
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-              event.preventDefault();
-              void runRecall();
-            }
-          }}
-          placeholder={selected ? `Ask about ${selected}…  (⌘/Ctrl+Enter to recall)` : "Pick a namespace first…"}
-          rows={2}
-        />
-        <button className="primary" type="button" disabled={!selected || !query.trim() || busy} onClick={() => void runRecall()}>
-          {busy ? <LoaderCircle size={16} className="spin" /> : <Sparkles size={16} />}
-          Recall
-        </button>
-      </div>
-      <div className="memoryExplorerPrompts">
-        {MEMORY_EXPLORER_PROMPTS.map((prompt) => (
-          <button key={prompt} type="button" onClick={() => void runRecall(prompt)} disabled={busy || !selected}>
-            {prompt}
-          </button>
-        ))}
-      </div>
-      {error ? <div className="error">{error}</div> : null}
-      {result ? (
-        <div className="memoryExplorerResult">
-          {result.source === "facts" ? <span className="memoryResultSource">From the verified knowledge graph · connect a Walrus Memory delegate for full recall</span> : null}
-          <div className="memoryResultText">{result.text}</div>
-          <MemoryRawResult data={result.raw} empty="No memories matched." />
-        </div>
-      ) : null}
+      <MemoryChatPanel key={selected} namespace={selected} authToken={authToken} />
 
       {factsBusy && !facts ? (
         <div className="memoryKnowledgeLoading">Loading knowledge graph…</div>
@@ -3456,6 +3388,162 @@ function MemoryExplorerPanel({ authToken }: { authToken: string }) {
         </div>
       ) : null}
     </section>
+  );
+}
+
+type MemoryChatResult = AiQueryResult & { source?: string };
+type MemoryChatTurn = { id: string; question: string; result: MemoryChatResult };
+
+function memoryChatSourceLabel(source?: string): string {
+  if (source === "walrus-memory") return "Walrus Memory";
+  if (source === "mixed") return "Memory + facts";
+  return "Verified facts";
+}
+
+// Multi-turn, namespace-scoped chat grounded in Walrus Memory recall + the
+// verified knowledge graph. Posts the full conversation to POST /api/memwal/chat
+// (server recalls on the latest user message, synthesizes with an LLM). Remounts
+// per namespace (key={selected}) so each namespace gets a fresh thread.
+function MemoryChatPanel({ namespace, authToken }: { namespace: string; authToken: string }) {
+  const [turns, setTurns] = useState<MemoryChatTurn[]>([]);
+  const [question, setQuestion] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const streamRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight, behavior: "smooth" });
+  }, [turns, busy]);
+
+  async function send(text?: string) {
+    const prompt = (text ?? question).trim();
+    if (!prompt || !namespace || busy) return;
+    setBusy(true);
+    setError(null);
+    setQuestion("");
+    // Replay prior turns (user + assistant answer) so the model has context.
+    const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
+    for (const turn of turns) {
+      messages.push({ role: "user", content: turn.question });
+      const answer = typeof turn.result.data?.answer === "string" ? (turn.result.data.answer as string) : "";
+      if (answer) messages.push({ role: "assistant", content: answer });
+    }
+    messages.push({ role: "user", content: prompt });
+    try {
+      const response = await fetch(`${API_BASE}/api/memwal/chat`, {
+        method: "POST",
+        headers: authHeaders(authToken, { "content-type": "application/json" }),
+        body: JSON.stringify({ namespace, messages })
+      });
+      const bodyText = await response.text();
+      let body: MemoryChatResult & { error?: string };
+      try {
+        body = bodyText ? (JSON.parse(bodyText) as typeof body) : ({} as typeof body);
+      } catch {
+        body = {} as typeof body;
+      }
+      if (!response.ok) throw new Error(body?.error ?? `Chat failed (${response.status}).`);
+      setTurns((prev) => [...prev, { id: `${Date.now()}`, question: prompt, result: body }]);
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      const friendly = /hexToBytes|non-hex|invalid.*key|Ed25519/i.test(raw)
+        ? "Your Walrus Memory delegate key looks malformed (not a 64-char hex seed). Re-import it in Settings, or set MEMWAL_PRIVATE_KEY on the Worker."
+        : /Failed to fetch/i.test(raw)
+          ? "Can't reach the API. On a local preview, start the dev server (bun run dev) or point the app at the hosted backend."
+          : raw;
+      setError(friendly);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="memoryChat">
+      <div className="memoryChatStream" aria-live="polite" ref={streamRef}>
+        {turns.length === 0 ? (
+          <div className="memoryChatEmpty">
+            <MessageSquare size={18} />
+            <strong>Chat with this namespace</strong>
+            <span>
+              Ask anything — answers are grounded in Walrus Memory recall and the verified knowledge graph for{" "}
+              <code>{namespace || "a namespace"}</code>.
+            </span>
+          </div>
+        ) : (
+          turns.map((turn) => (
+            <article key={turn.id} className="aiChatTurn">
+              <div className="aiChatUser">
+                <span>You</span>
+                <p>{turn.question}</p>
+              </div>
+              <div className="aiChatAssistant">
+                <div className="aiChatAssistantHead">
+                  <span>ContextMeM</span>
+                  <small>
+                    {memoryChatSourceLabel(turn.result.source)} · {turn.result.usedProvider} · {Math.round((turn.result.confidence ?? 0) * 100)}%
+                  </small>
+                </div>
+                <AiResultData data={turn.result.data} />
+                {turn.result.sources?.length ? (
+                  <details className="aiChatSources">
+                    <summary>
+                      {turn.result.sources.length} source{turn.result.sources.length === 1 ? "" : "s"}
+                    </summary>
+                    <div className="sourceGrid">
+                      {turn.result.sources.map((source, index) => (
+                        <article key={`${source.routePath ?? source.url}-${index}`}>
+                          <strong>{source.routePath ?? source.url}</strong>
+                          {source.quote ? <p>{source.quote}</p> : null}
+                          {source.blobId ? <code>{source.blobId}</code> : null}
+                        </article>
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+            </article>
+          ))
+        )}
+        {busy ? (
+          <div className="aiChatTyping">
+            <LoaderCircle size={14} className="spin" /> ContextMeM is thinking…
+          </div>
+        ) : null}
+      </div>
+      <div className="memoryExplorerPrompts">
+        {MEMORY_EXPLORER_PROMPTS.map((prompt) => (
+          <button key={prompt} type="button" onClick={() => void send(prompt)} disabled={busy || !namespace}>
+            {prompt}
+          </button>
+        ))}
+      </div>
+      <form
+        className="memoryChatForm"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void send();
+        }}
+      >
+        <textarea
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              void send();
+            }
+          }}
+          placeholder={namespace ? `Message ${namespace}…  (Enter to send, Shift+Enter = newline)` : "Pick a namespace first…"}
+          rows={2}
+          disabled={!namespace || busy}
+        />
+        <button className="primary" type="submit" disabled={!namespace || busy || !question.trim()}>
+          {busy ? <LoaderCircle size={16} className="spin" /> : <MessageSquare size={16} />}
+          Send
+        </button>
+      </form>
+      {error ? <div className="error">{error}</div> : null}
+    </div>
   );
 }
 
