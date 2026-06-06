@@ -5717,16 +5717,29 @@ textarea {
 .runRow {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 90px 100px 130px 180px;
+  grid-template-columns: minmax(200px, 1.5fr) minmax(150px, 1fr) 104px 84px 84px;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
+  gap: 16px;
+  padding: 12px 14px;
   border: 1px solid var(--cm-border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.88);
   color: #344050;
   cursor: pointer;
   text-align: left;
+}
+
+/* Each data column truncates instead of overflowing into its neighbour. */
+.runRow > span:not(:first-child) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--cm-muted);
+  font-size: 12.5px;
+}
+.runRow > span.runRowEnd {
+  overflow: visible;
 }
 
 .runRow:hover:not(:disabled),

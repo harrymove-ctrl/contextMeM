@@ -778,8 +778,8 @@ const builtForUseCards = [
     highlights: ["markdown", "llms.txt", "design tokens"],
     body: "Every run emits static, agent-readable artifacts — markdown, a resource manifest, screenshots — that you can inspect, diff, and download.",
     image: {
-      src: "/illustrations/package-agent-context-walrus.svg",
-      alt: "Pastel walrus helpers package markdown, llms.txt, manifests, screenshots, and design token swatches into an agent-ready artifact bundle."
+      src: "/illustrations/package-agent-context-black-walrus.png",
+      alt: "A solid-black walrus worker packages markdown, llms.txt, manifests, screenshots, and design token swatches into an agent-ready artifact bundle."
     }
   },
   {
@@ -1533,7 +1533,7 @@ function ContextMemExperience() {
         path="/app/artifacts"
         element={renderShell(
           "Artifacts",
-          "Browse generated markdown, manifests, screenshots, and file previews for the selected run.",
+          "Open a verified context package to browse its knowledge graph, facts, and Walrus proof.",
           <ArtifactsAppPage stats={stats} run={run} artifact={artifact} authToken={sessionToken} setArtifact={setArtifact} history={history} accountLabel={me.account?.memwalAccountId ?? me.account?.ownerAddress ?? ""} onOpenRun={openRunAndViewArtifacts} busy={busy} />
         )}
       />
@@ -1541,7 +1541,7 @@ function ContextMemExperience() {
         path="/app/runs"
         element={renderShell(
           "Runs",
-          "Review previous context packages and reopen any run into the artifact browser.",
+          "Verified context packages — open one to browse its knowledge graph, facts, and Walrus proof.",
           <RunsAppPage history={history} busy={busy} currentRunId={run?.manifest.runId} onRefresh={refreshHistory} onOpenRun={openRunAndViewArtifacts} />
         )}
       />
