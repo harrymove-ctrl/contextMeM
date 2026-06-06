@@ -1021,7 +1021,10 @@ function ContextMemExperience() {
         });
       }
       const shareUrl = `${window.location.origin}/share/${shareId}`;
-      const mcpUrl = `${window.location.origin}/mcp?namespace=${encodeURIComponent(body.job.namespace)}`;
+      // MCP must hit the worker gateway directly (the Pages same-origin proxy isn't active),
+      // so build it from API_BASE (the hosted worker) rather than window.location.origin.
+      const mcpBase = isLocalApiBase(API_BASE) ? window.location.origin : API_BASE;
+      const mcpUrl = `${mcpBase}/mcp?namespace=${encodeURIComponent(body.job.namespace)}`;
       setHostedBuildResult({ shareId, namespace: body.job.namespace, shareUrl, mcpUrl });
       setAuthHint(`Hosted build complete. Public share + MCP endpoint below.`);
       if (artifactResp.ok) {

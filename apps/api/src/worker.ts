@@ -3753,7 +3753,7 @@ function namespaceListItem(summary: HostedNamespaceSummary, request: Request, en
 }
 
 function requireImportAuthorization(request: Request, env: WorkerEnv): { ok: true } | { ok: false; status: number; message: string } {
-  if (!env.CONTEXTMEM_NAMESPACE_IMPORT_TOKEN) return { ok: false, status: 500, message: "Namespace import token is not configured." };
+  if (!env.CONTEXTMEM_NAMESPACE_IMPORT_TOKEN) return { ok: false, status: 401, message: "Namespace import is not enabled on this deployment." };
   const provided = readAccessToken(request);
   if (!provided || !constantTimeEqual(provided, env.CONTEXTMEM_NAMESPACE_IMPORT_TOKEN)) return { ok: false, status: 401, message: "Namespace import requires a valid bearer token." };
   return { ok: true };
