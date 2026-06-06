@@ -9320,3 +9320,485 @@ textarea:focus {
 .resultsExpandModalInnerWide .designHero h2 {
   font-size: 26px;
 }
+
+/* ============================================================================
+   Facts panel — grounded SiteFacts viewer (identity hero, stats, entities,
+   claims, FAQ). Brand-green aesthetic; reuses panel/card tokens.
+   ============================================================================ */
+.factsPanel {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.factsHero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px;
+  border: 1px solid var(--cm-border);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(168, 217, 70, 0.16), rgba(255, 255, 255, 0.9) 62%);
+  box-shadow: var(--cm-soft-shadow);
+}
+
+.factsHeroMain {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+.factsKicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cm-teal);
+}
+
+.factsHeroMain h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.12;
+  color: var(--cm-ink);
+  overflow-wrap: anywhere;
+}
+
+.factsOneLiner {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #263244;
+  max-width: 62ch;
+}
+
+.factsChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.factsChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--cm-border);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--cm-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.factsChipAccent {
+  border-color: rgba(168, 217, 70, 0.6);
+  background: rgba(168, 217, 70, 0.22);
+  color: #2f3a1a;
+}
+
+.factsHeroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.factsMetric {
+  display: grid;
+  gap: 1px;
+  text-align: right;
+}
+
+.factsMetric strong {
+  font-size: 20px;
+  color: var(--cm-ink);
+  line-height: 1;
+}
+
+.factsMetric span {
+  font-size: 11px;
+  color: var(--cm-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.factsSection {
+  display: grid;
+  gap: 12px;
+}
+
+/* Stat cards */
+.factsStatGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.factsStatCard {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--cm-border);
+  border-radius: 10px;
+  background: rgba(248, 251, 245, 0.8);
+}
+
+.factsStatCard > strong {
+  font-size: 22px;
+  line-height: 1.05;
+  color: var(--cm-ink);
+  overflow-wrap: anywhere;
+}
+
+.factsStatCard > span {
+  font-size: 12px;
+  color: var(--cm-muted);
+  text-transform: capitalize;
+}
+
+/* Entity groups */
+.factsEntityGroups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.factsEntityGroup {
+  border: 1px solid var(--cm-border);
+  border-radius: 10px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.factsEntityGroup h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cm-ink);
+}
+
+.factsEntityGroup h3 small {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--cm-muted);
+  font-weight: 600;
+}
+
+.factsTypeDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--cm-accent);
+  flex: 0 0 auto;
+}
+
+.factsEntityList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.factsEntityRow {
+  display: grid;
+  gap: 5px;
+}
+
+.factsEntityHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.factsEntityHead > strong {
+  font-size: 14px;
+  color: var(--cm-ink);
+  overflow-wrap: anywhere;
+}
+
+.factsEntityHead > strong a {
+  color: var(--cm-blue);
+  text-decoration: none;
+}
+
+.factsEntityHead > strong a:hover {
+  text-decoration: underline;
+}
+
+.factsEntityMentions {
+  font-size: 11px;
+  color: var(--cm-muted);
+}
+
+.factsEntityDesc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.factsSalienceTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(17, 20, 22, 0.07);
+  overflow: hidden;
+}
+
+.factsSalienceFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--cm-accent);
+}
+
+/* Per-EntityType color (closed enum -> stable legend mapping) */
+.factsType-organization { background: #1d63ed; }
+.factsType-product { background: #a8d946; }
+.factsType-platform { background: #0f766e; }
+.factsType-feature { background: #7c3aed; }
+.factsType-technology { background: #0891b2; }
+.factsType-integration { background: #d97706; }
+.factsType-pricing_plan { background: #16a34a; }
+.factsType-use_case { background: #db2777; }
+.factsType-person { background: #e36d52; }
+.factsType-customer { background: #2563eb; }
+.factsType-competitor { background: #b91c1c; }
+.factsType-metric { background: #ca8a04; }
+.factsType-location { background: #4f46e5; }
+.factsType-event { background: #be185d; }
+.factsType-concept { background: #64748b; }
+.factsType-other { background: #94a3b8; }
+
+/* Claims */
+.factsClaimGroups {
+  display: grid;
+  gap: 14px;
+}
+
+.factsClaimGroup h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cm-muted);
+}
+
+.factsClaimList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.factsClaimRow {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--cm-border);
+  border-left: 3px solid var(--cm-accent);
+  border-radius: 8px;
+  background: rgba(248, 251, 245, 0.66);
+}
+
+.factsClaimRow > p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1f2937;
+}
+
+.factsClaimMarketing {
+  opacity: 0.62;
+  border-left-color: var(--cm-border-strong);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.factsClaimMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.factsTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--cm-border);
+  background: #ffffff;
+  font-size: 11px;
+  color: var(--cm-muted);
+}
+
+.factsTagMarketing {
+  border-color: rgba(227, 109, 82, 0.4);
+  background: rgba(227, 109, 82, 0.12);
+  color: #9a3412;
+}
+
+/* "why" provenance popover (native details) */
+.factsWhy {
+  display: inline-block;
+}
+
+.factsWhy > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cm-teal);
+  padding: 1px 7px;
+  border: 1px solid rgba(15, 118, 110, 0.3);
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.factsWhy > summary::-webkit-details-marker {
+  display: none;
+}
+
+.factsWhy[open] > summary {
+  background: rgba(15, 118, 110, 0.16);
+}
+
+.factsWhyBody {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--cm-border);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--cm-soft-shadow);
+}
+
+.factsSource {
+  display: grid;
+  gap: 4px;
+}
+
+.factsSource code {
+  font-size: 11px;
+  color: var(--cm-muted);
+  overflow-wrap: anywhere;
+}
+
+.factsSource p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #334155;
+  font-style: italic;
+}
+
+/* FAQ accordion */
+.factsFaq {
+  display: grid;
+  gap: 8px;
+}
+
+.factsFaqItem {
+  border: 1px solid var(--cm-border);
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.factsFaqItem > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+}
+
+.factsFaqItem > summary::-webkit-details-marker {
+  display: none;
+}
+
+.factsFaqQ {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--cm-ink);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.factsFaqCat {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cm-muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(168, 217, 70, 0.18);
+}
+
+.factsFaqBody {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+.factsFaqAnswer {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.factsFaqGap {
+  border-color: rgba(227, 109, 82, 0.4);
+  background: rgba(227, 109, 82, 0.05);
+}
+
+.factsGapNote {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9a3412;
+}
+
+.factsFaqChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.factsSourceChip {
+  font-size: 11px;
+  color: var(--cm-blue);
+  padding: 2px 9px;
+  border: 1px solid var(--cm-border);
+  border-radius: 999px;
+  background: rgba(29, 99, 237, 0.06);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.factsCoverageNote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--cm-muted);
+  font-style: italic;
+}

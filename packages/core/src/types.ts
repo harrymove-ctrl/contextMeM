@@ -1,3 +1,26 @@
+// SiteFacts type-tree lives in facts.ts (co-located with buildSiteFacts) and is
+// re-exported here so the rest of the codebase can `import { SiteFacts } from
+// "./types.js"` exactly like every other manifest type.
+export type {
+  FactSourceRef,
+  EntityType,
+  SiteEntity,
+  ClaimKind,
+  Sentiment,
+  SiteClaim,
+  StatUnit,
+  SiteStat,
+  SiteTopic,
+  RelationKind,
+  SiteRelationship,
+  SiteIdentity,
+  ContextQuestionCategory,
+  ContextQuestion,
+  FactsProvider,
+  SiteFacts
+} from "./facts.js";
+import type { SiteFacts as SiteFactsType } from "./facts.js";
+
 export type TargetMode = "auto" | "web" | "walrus";
 export type TargetKind = "url" | "domain" | "email" | "ticker" | "name" | "walrus-object" | "walrus-url" | "preview-config";
 export type RunStatus = "queued" | "running" | "completed" | "failed";
@@ -338,6 +361,7 @@ export type DiscoveryStats = {
   sitemapSources: string[];
   markdownFallbacks: number;
   fetchErrors: number;
+  rankedPages?: Array<{ url: string; score: number; reason: string }>;
 };
 
 export type SiteStructureNodeKind =
@@ -690,6 +714,7 @@ export type WalrusPackageManifest = {
   styleguide?: Styleguide;
   designSystem?: DesignSystem;
   aiQuery?: AiQueryResult;
+  facts?: SiteFactsType;
   screenshots?: ScreenshotArtifact[];
   componentPreviews?: ComponentPreviewArtifact[];
   walrus?: {

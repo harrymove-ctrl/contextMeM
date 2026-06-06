@@ -12,6 +12,18 @@ import {
   type HostedNamespaceVisibility
 } from "@contextmem/mcp/hosted";
 import { MemWalMcpClient } from "@contextmem/memwal";
+import {
+  buildChunks,
+  buildSiteFacts,
+  generateContextQuestions,
+  isUtilityPageRoute,
+  type BuildProfile,
+  type ContextChunk,
+  type DiscoveryStats,
+  type FactsModel,
+  type PageArtifact,
+  type SiteFacts
+} from "@contextmem/core";
 
 export type WorkerEnv = {
   CONTEXTMEM_DB: D1DatabaseLike;
@@ -2203,6 +2215,170 @@ function renderNamespaceLlmsFull(title: string, description: string, job: Extrac
   ].join("\n");
 }
 
+// ----------------------------------------------------------------------------
+// Crawl tuning — profile-driven page budget + candidate signal ranking.
+// ----------------------------------------------------------------------------
+
+/** Read the build profile straight off the job row's tags (mirror hostedRunBuildProfile). */
+function extractionJobBuildProfile(job: ExtractionJobRow): BuildProfile {
+  const profile = parseTags(job.tags_json).find((tag) => tag.startsWith("profile:"))?.slice("profile:".length);
+  return profile === "fast" || profile === "balanced" || profile === "full" ? profile : "balanced";
+}
+
+// Profile drives the crawl footprint. 'balanced' is kept near today's 15-page
+// default so cost/quota stays flat; 'full' goes wide for the facts/question LLM.
+const PROFILE_PAGE_LIMIT: Record<BuildProfile, number> = { fast: 10, balanced: 15, full: 50 };
+const PROFILE_MAP_LIMIT: Record<BuildProfile, number> = { fast: 40, balanced: 100, full: 150 };
+// Only the top few ranked pages get the larger markdown budget so the highest-
+// signal pages feed the LLM with full content while staying within Worker memory.
+const TOP_PAGE_MARKDOWN_CHARS = 40000;
+const TAIL_PAGE_MARKDOWN_CHARS = 25000;
+const TOP_PAGE_COUNT = 5;
+
+const HIGH_SIGNAL_PATH = /\/(docs?|guide|guides|product|products|features?|pricing|plans?|about|how|how-it-works|api|use-cases?|solutions?|integrations?|customers?|security)\b/i;
+const UTILITY_PATH = /\/(login|signin|sign-in|signup|sign-up|register|cart|checkout|account|privacy|terms|cookie|legal|gdpr|sitemap|rss|feed|tag|tags|category|categories|author|search|404|unsubscribe|careers?|jobs)\b/i;
+const UTILITY_LABEL = /\b(login|log in|sign in|sign up|register|privacy|terms|cookie|cookies|legal|contact us|careers?)\b/i;
+
+/**
+ * Score a candidate URL by context-signal so high-value pages (docs/pricing/
+ * product/about) win the page budget over footer/utility links. Higher is better.
+ */
+function scoreCandidateUrl(url: URL, label: string | undefined, fromSitemap: boolean): { score: number; reason: string } {
+  const reasons: string[] = [];
+  let score = 0;
+  const pathname = url.pathname.toLowerCase();
+  if (HIGH_SIGNAL_PATH.test(pathname)) {
+    score += 3;
+    reasons.push("high-signal path");
+  }
+  const labelWords = (label ?? "").trim().split(/\s+/).filter(Boolean);
+  if (labelWords.length > 2 && !UTILITY_LABEL.test(label ?? "")) {
+    score += 2;
+    reasons.push("content-y label");
+  }
+  if (isUtilityPageRoute(pathname) || UTILITY_PATH.test(pathname) || UTILITY_LABEL.test(label ?? "")) {
+    score -= 5;
+    reasons.push("utility route");
+  }
+  // Deep, query-heavy URLs are usually pagination/filter noise.
+  if (url.search.length > 1 || pathname.split("/").filter(Boolean).length > 4) {
+    score -= 2;
+    reasons.push("deep/query-heavy");
+  }
+  // Sitemap URLs are ground-truth structure — give them a bonus so listed
+  // high-value pages are guaranteed in-budget rather than competing flat.
+  if (fromSitemap) {
+    score += 2;
+    reasons.push("sitemap");
+  }
+  // Shallow top-level sections are usually primary navigation.
+  if (pathname.split("/").filter(Boolean).length <= 1) {
+    score += 1;
+    reasons.push("shallow");
+  }
+  return { score, reason: reasons.join(", ") || "default" };
+}
+
+// ----------------------------------------------------------------------------
+// Facts — env.AI Workers-AI model adapter + grounded llms.txt sections.
+// ----------------------------------------------------------------------------
+
+/**
+ * Wrap env.AI (@cf/meta/llama-3.1-8b-instruct) as a FactsModel.complete() that
+ * returns parsed JSON or null on ANY failure (never throws). Reuses aiQueryRun's
+ * fenced-```json + first-line-JSON parser so the 8b model's fenced output parses.
+ */
+function workersAiFactsModel(env: WorkerEnv): FactsModel | undefined {
+  if (!env.AI) return undefined;
+  return {
+    provider: "workers-ai",
+    complete: async (system: string, user: string): Promise<Record<string, unknown> | null> => {
+      try {
+        const aiResponse = await env.AI!.run("@cf/meta/llama-3.1-8b-instruct", {
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user }
+          ],
+          max_tokens: 1500,
+          temperature: 0.1
+        });
+        let text = "";
+        if (typeof aiResponse === "string") text = aiResponse;
+        else if (typeof (aiResponse as { response?: string })?.response === "string") text = (aiResponse as { response: string }).response;
+        else if (typeof (aiResponse as { result?: { response?: string } })?.result?.response === "string") text = (aiResponse as { result: { response: string } }).result.response;
+        else text = JSON.stringify(aiResponse);
+        return parseFactsJson(text);
+      } catch {
+        return null;
+      }
+    }
+  };
+}
+
+/**
+ * Extract a JSON object from a Workers-AI text response. Handles a leading
+ * ```json fence, a first-line raw JSON object, or the first balanced {...} span.
+ * Returns null on any parse failure (so facts degrade to heuristic, never fail).
+ */
+function parseFactsJson(text: string): Record<string, unknown> | null {
+  if (!text) return null;
+  const tryParse = (candidate: string): Record<string, unknown> | null => {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  };
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch?.[1]) {
+    const fenced = tryParse(fenceMatch[1].trim());
+    if (fenced) return fenced;
+  }
+  const trimmed = text.trim();
+  const whole = tryParse(trimmed);
+  if (whole) return whole;
+  // First balanced {...} span (handles trailing prose after the JSON).
+  const first = trimmed.indexOf("{");
+  const last = trimmed.lastIndexOf("}");
+  if (first >= 0 && last > first) {
+    const span = tryParse(trimmed.slice(first, last + 1));
+    if (span) return span;
+  }
+  return null;
+}
+
+/** Grounded '## What this site is' / '## Key Facts' / '## FAQ' lines for llms.txt. */
+function factsLlmsSections(facts: SiteFacts): string[] {
+  const lines: string[] = [];
+  const identity = facts.identity;
+  if (identity && (identity.oneLiner || identity.category || identity.audience?.length)) {
+    lines.push("", "## What this site is");
+    if (identity.oneLiner) lines.push(identity.oneLiner);
+    if (identity.category) lines.push(`Category: ${identity.category}`);
+    if (identity.audience?.length) lines.push(`Audience: ${identity.audience.join(", ")}`);
+  }
+  const keyFacts: string[] = [];
+  for (const claim of facts.claims.slice(0, 5)) {
+    const route = claim.sources[0]?.routePath;
+    keyFacts.push(`- ${claim.text}${route ? ` (${route})` : ""}`);
+  }
+  for (const stat of facts.stats.slice(0, 5)) {
+    const route = stat.sources[0]?.routePath;
+    keyFacts.push(`- ${stat.label}: ${stat.valueRaw}${route ? ` (${route})` : ""}`);
+  }
+  if (keyFacts.length) lines.push("", "## Key Facts", ...keyFacts.slice(0, 8));
+  if (facts.questions.length) {
+    lines.push("", "## FAQ");
+    for (const q of facts.questions.slice(0, 12)) {
+      lines.push(`### ${q.question}`);
+      lines.push(q.unanswerable || !q.answer ? "Not covered on this site." : q.answer);
+      lines.push("");
+    }
+  }
+  return lines;
+}
+
 async function extractTargetContext(job: ExtractionJobRow, env: WorkerEnv): Promise<{ manifest: Record<string, unknown>; files: NamespaceImportInput["files"] }> {
   const target = new URL(job.target);
   const fetchedAt = new Date().toISOString();
@@ -2239,39 +2415,67 @@ async function extractTargetContext(job: ExtractionJobRow, env: WorkerEnv): Prom
   }));
   const extras = await fetchOptionalTextFiles(target);
   const sitemapUrls = parseSitemapUrls(extras, target);
+  // Profile drives the crawl footprint: fast=10, balanced=15 (~today), full=50.
+  const buildProfile = extractionJobBuildProfile(job);
+  const PAGE_LIMIT = PROFILE_PAGE_LIMIT[buildProfile];
   const targetKey = normalizeCrawlKey(target);
-  const candidateUrls = new Map<string, { url: URL; label?: string }>();
-  function pushCandidate(url: URL, label?: string) {
+  const candidateUrls = new Map<string, { url: URL; label?: string; fromSitemap: boolean }>();
+  function pushCandidate(url: URL, label?: string, fromSitemap = false) {
     if (url.origin !== target.origin) return;
     const key = normalizeCrawlKey(url);
     if (!key || key === targetKey) return;
-    if (candidateUrls.has(key)) return;
-    candidateUrls.set(key, { url, label });
+    const existing = candidateUrls.get(key);
+    if (existing) {
+      // Sitemap membership / a better label can arrive on a later pass.
+      if (fromSitemap) existing.fromSitemap = true;
+      if (!existing.label && label) existing.label = label;
+      return;
+    }
+    candidateUrls.set(key, { url, label, fromSitemap });
   }
+  // Sitemap-first: sitemap URLs are ground-truth structure, seed them ahead of
+  // HTML anchors so listed high-value pages are guaranteed a ranking bonus.
+  for (const sitemapUrl of sitemapUrls) pushCandidate(sitemapUrl, undefined, true);
   for (const link of links) pushCandidate(link.url, link.label);
-  for (const sitemapUrl of sitemapUrls) pushCandidate(sitemapUrl);
   // Firecrawl /map gives far better URL coverage on JS-rendered docs sites than
   // parsing anchors out of the home HTML. Merge it into the candidate set.
   if (usingFirecrawl && env.FIRECRAWL_API_KEY) {
-    const mapped = await firecrawlMap(target.toString(), env.FIRECRAWL_API_KEY, 40).catch(() => [] as URL[]);
+    const mapped = await firecrawlMap(target.toString(), env.FIRECRAWL_API_KEY, PROFILE_MAP_LIMIT[buildProfile]).catch(() => [] as URL[]);
     for (const mappedUrl of mapped) pushCandidate(mappedUrl);
   }
-  const PAGE_LIMIT = 15;
-  const sameOriginPages = Array.from(candidateUrls.values()).slice(0, PAGE_LIMIT);
+  // SIGNAL RANKING: score every candidate by context-signal (docs/pricing/product
+  // win; utility/footer lose) and take the top PAGE_LIMIT instead of insertion order.
+  const rankedCandidates = Array.from(candidateUrls.values())
+    .map((candidate) => ({ ...candidate, ...scoreCandidateUrl(candidate.url, candidate.label, candidate.fromSitemap) }))
+    .sort((a, b) => b.score - a.score || a.url.pathname.length - b.url.pathname.length || a.url.toString().localeCompare(b.url.toString()));
+  const rankedPages: DiscoveryStats["rankedPages"] = rankedCandidates.map((candidate) => ({ url: candidate.url.toString(), score: candidate.score, reason: candidate.reason }));
+  const sameOriginPages = rankedCandidates.slice(0, PAGE_LIMIT);
+  // The top few ranked pages get the larger markdown budget; the long tail is capped.
   const pageResults = await Promise.allSettled(
-    sameOriginPages.map(async (link) => {
+    sameOriginPages.map(async (link, rankIndex) => {
       const page = await fetchPageContent(link.url.toString(), env);
+      const cap = rankIndex < TOP_PAGE_COUNT ? TOP_PAGE_MARKDOWN_CHARS : TAIL_PAGE_MARKDOWN_CHARS;
       return {
         url: link.url.toString(),
         title: extractTitle(page.text) ?? link.label ?? link.url.pathname,
-        text: (page.markdown ?? htmlToText(page.text)).slice(0, 25000),
+        text: (page.markdown ?? htmlToText(page.text)).slice(0, cap),
         html: page.text
       };
     })
   );
+  // NEAR-DUPLICATE GUARD: drop a fetched page whose normalized content matches an
+  // already-emitted page (catches /index vs / and printer-friendly mirrors) before
+  // it consumes a slot, on top of the URL-key dedupe already done by pushCandidate.
+  const seenContentHashes = new Set<string>();
   const fetchedPages = pageResults
     .filter((result): result is PromiseFulfilledResult<{ url: string; title: string; text: string; html: string }> => result.status === "fulfilled")
-    .map((result) => result.value);
+    .map((result) => result.value)
+    .filter((page) => {
+      const hash = crawlContentHash(page.text);
+      if (!hash || seenContentHashes.has(hash)) return false;
+      seenContentHashes.add(hash);
+      return true;
+    });
   const manifest = {
     runId: job.id,
     namespace: job.namespace,
@@ -2379,6 +2583,77 @@ async function extractTargetContext(job: ExtractionJobRow, env: WorkerEnv): Prom
   (manifest as Record<string, unknown>).toc = tocFlat.slice(0, 500);
   (manifest as Record<string, unknown>).codeBlocks = codeBlocks.slice(0, 300);
 
+  // Grounded, viz-ready SiteFacts + auto context-questions. Built from the page
+  // markdown via @contextmem/core. The whole block is gated in try/catch and
+  // degrades to deterministic heuristic facts on ANY failure so a run never fails.
+  let facts: SiteFacts | undefined;
+  const factsPages: PageArtifact[] = manifestPages.map((page) => ({
+    url: page.url,
+    routePath: page.routePath,
+    title: page.title,
+    markdown: page.markdown ?? "",
+    html: "",
+    text: page.markdown ?? "",
+    metadata: {},
+    links: [],
+    images: [],
+    contentHash: ""
+  }));
+  let factsChunks: ContextChunk[] = [];
+  try {
+    factsChunks = buildChunks(factsPages);
+    const model = workersAiFactsModel(env);
+    facts = await buildSiteFacts(target.toString(), factsPages, factsChunks, { model });
+    facts = { ...facts, questions: await generateContextQuestions(target.toString(), factsChunks, facts, { model }) };
+  } catch {
+    // Heuristic fallback (no model) — never let facts fail the run.
+    try {
+      if (!factsChunks.length) factsChunks = buildChunks(factsPages);
+      facts = await buildSiteFacts(target.toString(), factsPages, factsChunks);
+      facts = { ...facts, questions: await generateContextQuestions(target.toString(), factsChunks, facts) };
+    } catch {
+      facts = undefined;
+    }
+  }
+  if (facts) {
+    // Map FactSourceRef.routePath -> artifactPath so 'why' popovers can link the
+    // worker's walrus page artifacts (/site/page-N.md), not just the route.
+    const artifactPathByRoute = new Map<string, string>();
+    for (const page of manifestPages) {
+      const artifactPath = (page as { artifactPath?: string }).artifactPath;
+      if (page.routePath && artifactPath) artifactPathByRoute.set(page.routePath, artifactPath);
+    }
+    for (const refList of [
+      ...facts.entities.map((entity) => entity.sources),
+      ...facts.claims.map((claim) => claim.sources),
+      ...facts.stats.map((stat) => stat.sources),
+      ...facts.relationships.map((rel) => rel.sources),
+      facts.identity.sources,
+      ...facts.questions.map((question) => question.sources)
+    ]) {
+      for (const ref of refList) {
+        if (!ref.resourcePath && ref.routePath && artifactPathByRoute.has(ref.routePath)) ref.resourcePath = artifactPathByRoute.get(ref.routePath);
+      }
+    }
+    (manifest as Record<string, unknown>).facts = facts;
+  }
+  const factsSections = facts ? factsLlmsSections(facts) : [];
+
+  // Discovery diagnostics: chosen profile + signal-ranked candidate pages with
+  // per-page scores + reasons, so the UI can show WHY each page was chosen.
+  const discovery: DiscoveryStats = {
+    strategy: target.hostname.endsWith(".wal.app") ? "walrus" : "web",
+    profile: buildProfile,
+    totalCandidates: candidateUrls.size,
+    pagesEmitted: 1 + fetchedPages.length,
+    skippedUtilityOrRedirect: Math.max(0, candidateUrls.size - sameOriginPages.length),
+    sitemapSources: sitemapUrls.slice(0, 50).map((url) => url.toString()),
+    markdownFallbacks: 0,
+    fetchErrors: pageResults.filter((result) => result.status === "rejected").length,
+    rankedPages: rankedPages.slice(0, 100)
+  };
+  (manifest as Record<string, unknown>).discovery = discovery;
+
   // T2: llms-full.txt — concatenated markdown of all pages with section headers.
   // This is the agent-consumption format. We keep llms.txt as the index.
   const llmsFullContent = [
@@ -2400,7 +2675,9 @@ async function extractTargetContext(job: ExtractionJobRow, env: WorkerEnv): Prom
       "",
       "---",
       ""
-    ])
+    ]),
+    // Grounded self-describing sections so the agent file is self-contained.
+    ...factsSections
   ].join("\n");
 
   const llms = [
@@ -2420,7 +2697,9 @@ async function extractTargetContext(job: ExtractionJobRow, env: WorkerEnv): Prom
     ...fetchedPages.map((page) => `- ${page.url}${page.title ? ` — ${page.title}` : ""}`),
     "",
     "## Resources",
-    ...resources.slice(0, 20).map((resource) => `- ${resource.url.toString()}`)
+    ...resources.slice(0, 20).map((resource) => `- ${resource.url.toString()}`),
+    // What this site is / Key Facts / FAQ — the most-consumed file describes itself.
+    ...factsSections
   ]
     .filter((line) => line !== undefined)
     .join("\n");
@@ -2437,8 +2716,12 @@ async function extractTargetContext(job: ExtractionJobRow, env: WorkerEnv): Prom
     { path: "/context/design-system.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(designSystem, null, 2) },
     { path: "/context/toc.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(tocFlat.slice(0, 500), null, 2) },
     { path: "/context/code-blocks.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(codeBlocks.slice(0, 300), null, 2) },
-    { path: "/context/resources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(resources.map((resource) => ({ url: resource.url.toString(), label: resource.label, kind: resource.kind })), null, 2) }
+    { path: "/context/resources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(resources.map((resource) => ({ url: resource.url.toString(), label: resource.label, kind: resource.kind })), null, 2) },
+    { path: "/context/discovery.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(discovery, null, 2) }
   ];
+  if (facts) {
+    files.push({ path: "/context/facts.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(facts, null, 2) });
+  }
   fetchedPages.forEach((page, index) => {
     files.push({ path: `/site/page-${index + 1}.md`, contentType: "text/markdown; charset=utf-8", encoding: "utf8", content: `# ${page.title || page.url}\n\n${page.text}` });
   });
@@ -2540,6 +2823,21 @@ async function fetchPageContent(url: string, env: WorkerEnv): Promise<FetchedTex
   const raw = await fetchText(url);
   raw.markdown = htmlToText(raw.text);
   return raw;
+}
+
+/**
+ * Cheap synchronous content fingerprint for the near-duplicate crawl guard.
+ * Hashes the whitespace-normalized leading content so /index vs / and printer-
+ * friendly mirrors collide. Not cryptographic — collision-tolerant by design.
+ */
+function crawlContentHash(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim().slice(0, 4000);
+  if (!normalized) return "";
+  let hash = 5381;
+  for (let i = 0; i < normalized.length; i++) {
+    hash = ((hash << 5) + hash + normalized.charCodeAt(i)) >>> 0;
+  }
+  return `${normalized.length}:${hash.toString(36)}`;
 }
 
 function normalizeCrawlKey(url: URL): string {

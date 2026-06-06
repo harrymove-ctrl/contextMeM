@@ -169,8 +169,171 @@ type ArtifactManifest = {
     }>;
   };
   aiQuery?: AiQueryResult;
+  facts?: SiteFacts;
   screenshots?: ScreenshotArtifact[];
   componentPreviews?: ComponentPreviewArtifact[];
+};
+
+// ============================================================================
+// SiteFacts — grounded, viz-ready structured facts + auto context questions.
+// Hand-copied from packages/core/src/facts.ts (the app duplicates manifest
+// types rather than importing from core). schemaVersion is the literal 2 while
+// existing manifests are v1 — guard all reads with optional chaining + empty-
+// array guards so old runs without facts.json keep working.
+// ============================================================================
+
+type FactSourceRef = {
+  chunkId?: string;
+  routePath?: string;
+  url?: string;
+  resourcePath?: string;
+  blobId?: string;
+  quote: string;
+};
+
+type EntityType =
+  | "organization"
+  | "product"
+  | "feature"
+  | "person"
+  | "technology"
+  | "integration"
+  | "platform"
+  | "pricing_plan"
+  | "use_case"
+  | "metric"
+  | "customer"
+  | "competitor"
+  | "location"
+  | "event"
+  | "concept"
+  | "other";
+
+type SiteEntity = {
+  id: string;
+  name: string;
+  type: EntityType;
+  aliases: string[];
+  description?: string;
+  url?: string;
+  salience: number;
+  mentions: number;
+  sources: FactSourceRef[];
+};
+
+type ClaimKind = "value_prop" | "capability" | "differentiator" | "limitation" | "guarantee" | "positioning" | "fact";
+
+type Sentiment = "positive" | "neutral" | "negative";
+
+type SiteClaim = {
+  id: string;
+  text: string;
+  kind: ClaimKind;
+  subjectEntityId?: string;
+  sentiment: Sentiment;
+  confidence: number;
+  isMarketing: boolean;
+  sources: FactSourceRef[];
+};
+
+type StatUnit = "count" | "percent" | "currency" | "time" | "data_size" | "ratio" | "rate" | "other";
+
+type SiteStat = {
+  id: string;
+  label: string;
+  valueRaw: string;
+  valueNumber?: number;
+  unit: StatUnit;
+  currency?: string;
+  approximate: boolean;
+  subjectEntityId?: string;
+  sources: FactSourceRef[];
+};
+
+type SiteTopic = {
+  id: string;
+  label: string;
+  weight: number;
+  keywords: string[];
+  routePaths: string[];
+  entityIds: string[];
+};
+
+type RelationKind =
+  | "offers"
+  | "part_of"
+  | "integrates_with"
+  | "competes_with"
+  | "built_with"
+  | "used_by"
+  | "priced_at"
+  | "depends_on"
+  | "alternative_to"
+  | "owned_by"
+  | "mentions";
+
+type SiteRelationship = {
+  id: string;
+  sourceEntityId: string;
+  targetEntityId: string;
+  kind: RelationKind;
+  label?: string;
+  confidence: number;
+  sources: FactSourceRef[];
+};
+
+type SiteIdentity = {
+  name: string;
+  oneLiner: string;
+  category: string;
+  audience: string[];
+  primaryEntityId?: string;
+  sources: FactSourceRef[];
+};
+
+type ContextQuestionCategory =
+  | "what_is_it"
+  | "who_is_it_for"
+  | "how_it_works"
+  | "pricing"
+  | "differentiators"
+  | "integrations"
+  | "getting_started"
+  | "limitations"
+  | "trust_security";
+
+type ContextQuestion = {
+  id: string;
+  question: string;
+  answer: string;
+  category: ContextQuestionCategory;
+  importance: number;
+  entityIds: string[];
+  sources: FactSourceRef[];
+  unanswerable?: boolean;
+};
+
+type FactsProvider = "openai-compatible" | "workers-ai" | "heuristic";
+
+type SiteFacts = {
+  schemaVersion: 2;
+  generatedAt: string;
+  target: string;
+  identity: SiteIdentity;
+  entities: SiteEntity[];
+  claims: SiteClaim[];
+  stats: SiteStat[];
+  topics: SiteTopic[];
+  relationships: SiteRelationship[];
+  questions: ContextQuestion[];
+  coverage: {
+    pagesAnalyzed: number;
+    chunksAnalyzed: number;
+    entitiesWithSources: number;
+    ungroundedDropped: number;
+  };
+  usedProvider: FactsProvider;
+  confidence: number;
 };
 
 type SiteStructure = {
@@ -1370,6 +1533,7 @@ const appNavItems = [
 const buildTabs = [
   ["Markdown", FileText],
   ["Structure", ListTree],
+  ["Facts", Brain],
   ["Images", Image],
   ["Brand", Globe2],
   ["Design System", Palette],
@@ -1497,6 +1661,7 @@ function ShareContentTabs({ manifest, artifacts, mcpUrl, namespace, shareId }: {
     const tabs: Array<{ key: string; label: string; count?: number }> = [];
     if (manifest.pages?.length) tabs.push({ key: "markdown", label: "Markdown", count: manifest.pages.length });
     if (manifest.siteStructure?.nodes?.length) tabs.push({ key: "structure", label: "Structure" });
+    if (manifest.facts) tabs.push({ key: "facts", label: "Facts" });
     if (manifest.images?.length) tabs.push({ key: "images", label: "Images", count: manifest.images.length });
     if (manifest.brand) tabs.push({ key: "brand", label: "Brand" });
     if (manifest.designSystem || manifest.styleguide) tabs.push({ key: "design", label: "Design System" });
@@ -1529,6 +1694,7 @@ function ShareContentTabs({ manifest, artifacts, mcpUrl, namespace, shareId }: {
       <div className="shareTabBody">
         {active === "markdown" ? <MarkdownPanel pages={manifest.pages} namespace={namespace} /> : null}
         {active === "structure" ? <ShareStructurePreview structure={manifest.siteStructure} /> : null}
+        {active === "facts" ? <FactsPanel facts={manifest.facts} /> : null}
         {active === "images" ? <ShareImagesGrid manifest={manifest} /> : null}
         {active === "brand" ? <BrandPanel data={manifest.brand} /> : null}
         {active === "design" ? <ShareDesignPreview manifest={manifest} /> : null}
@@ -3181,6 +3347,7 @@ function ResultPane({
   }
 
   if (tab === "Structure") return <StructurePanel data={artifact.siteStructure} run={run} authToken={authToken} />;
+  if (tab === "Facts") return <FactsPanel facts={artifact.facts} />;
   if (tab === "Images") {
     return (
       <div className="grid">
@@ -4202,7 +4369,14 @@ function buildNamespaceAiPrompts(artifact: ArtifactManifest, run: RunResponse | 
     prompts.push({ label: "Brand voice", question: `Summarize the brand voice, design tokens, and visual system for ${siteName} using this namespace.` });
   }
 
-  return uniquePrompts(prompts.concat(fallbackAiPrompts)).slice(0, 7);
+  // Seed the grounded auto-generated context questions (top by importance) as
+  // one-click prompts so the FAQ generator output doubles as the Q&A seed.
+  const factsQuestions = (artifact.facts?.questions ?? [])
+    .filter((question) => question.question && !question.unanswerable)
+    .slice(0, 5)
+    .map((question) => ({ label: factsPromptLabel(question), question: question.question }));
+
+  return uniquePrompts(factsQuestions.concat(prompts, fallbackAiPrompts)).slice(0, 7);
 }
 
 function buildNamespaceRecommendations(artifact: ArtifactManifest, run: RunResponse | null, accountLabel: string, history: RunHistoryItem[]): NamespaceRecommendation[] {
@@ -4247,6 +4421,22 @@ function uniquePrompts(prompts: AiQuickPrompt[]): AiQuickPrompt[] {
     seen.add(key);
     return true;
   });
+}
+
+const FACTS_CATEGORY_LABELS: Record<ContextQuestionCategory, string> = {
+  what_is_it: "What is it",
+  who_is_it_for: "Who it's for",
+  how_it_works: "How it works",
+  pricing: "Pricing",
+  differentiators: "Differentiators",
+  integrations: "Integrations",
+  getting_started: "Get started",
+  limitations: "Limitations",
+  trust_security: "Trust & security"
+};
+
+function factsPromptLabel(question: ContextQuestion): string {
+  return FACTS_CATEGORY_LABELS[question.category] ?? "Context Q";
 }
 
 function namespaceLabel(artifact: ArtifactManifest, run: RunResponse | null): string {
@@ -6355,6 +6545,306 @@ function TokenChips({ label, values }: { label: string; values: string[] }) {
       </div>
     </div>
   );
+}
+
+const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
+  organization: "Organizations",
+  product: "Products",
+  feature: "Features",
+  person: "People",
+  technology: "Technologies",
+  integration: "Integrations",
+  platform: "Platforms",
+  pricing_plan: "Pricing plans",
+  use_case: "Use cases",
+  metric: "Metrics",
+  customer: "Customers",
+  competitor: "Competitors",
+  location: "Locations",
+  event: "Events",
+  concept: "Concepts",
+  other: "Other"
+};
+
+const ENTITY_TYPE_ORDER: EntityType[] = [
+  "organization",
+  "product",
+  "platform",
+  "feature",
+  "technology",
+  "integration",
+  "pricing_plan",
+  "use_case",
+  "person",
+  "customer",
+  "competitor",
+  "metric",
+  "location",
+  "event",
+  "concept",
+  "other"
+];
+
+const CLAIM_KIND_LABELS: Record<ClaimKind, string> = {
+  value_prop: "Value props",
+  capability: "Capabilities",
+  differentiator: "Differentiators",
+  limitation: "Limitations",
+  guarantee: "Guarantees",
+  positioning: "Positioning",
+  fact: "Facts"
+};
+
+const CLAIM_KIND_ORDER: ClaimKind[] = ["value_prop", "differentiator", "capability", "guarantee", "positioning", "fact", "limitation"];
+
+function groupBy<T, K extends string>(items: T[], keyFn: (item: T) => K): Map<K, T[]> {
+  const map = new Map<K, T[]>();
+  for (const item of items) {
+    const key = keyFn(item);
+    const bucket = map.get(key);
+    if (bucket) bucket.push(item);
+    else map.set(key, [item]);
+  }
+  return map;
+}
+
+function FactsSourceWhy({ sources, label = "why" }: { sources: FactSourceRef[]; label?: string }) {
+  const grounded = sources.filter((source) => source.quote);
+  if (!grounded.length) return null;
+  return (
+    <details className="factsWhy">
+      <summary>{label}</summary>
+      <div className="factsWhyBody">
+        {grounded.map((source, index) => (
+          <article className="factsSource" key={`${source.chunkId ?? source.routePath ?? source.url}-${index}`}>
+            <code>{source.routePath ?? source.resourcePath ?? source.url ?? "source"}</code>
+            <p>“{source.quote}”</p>
+          </article>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function FactsPanel({ facts }: { facts?: SiteFacts }) {
+  if (!facts) {
+    return (
+      <div className="panel factsPanel">
+        <div className="tabEmptyState">
+          <strong>No grounded facts in this run</strong>
+          <p>
+            Re-run the Build to extract a grounded <code>SiteFacts</code> layer — identity, entities, claims, stats, topics, and an auto-generated FAQ — saved as <code>/context/facts.json</code>. Every fact carries a
+            verbatim source quote, so nothing is hallucinated.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const identity = facts.identity;
+  const stats = facts.stats ?? [];
+  const entities = (facts.entities ?? []).filter((entity) => entity.sources.length > 0);
+  const claims = facts.claims ?? [];
+  const questions = (facts.questions ?? []).slice().sort((a, b) => b.importance - a.importance);
+
+  const entitiesByType = groupBy(entities, (entity) => entity.type);
+  const orderedEntityTypes = ENTITY_TYPE_ORDER.filter((type) => entitiesByType.has(type));
+  const claimsByKind = groupBy(
+    claims.filter((claim) => claim.text),
+    (claim) => claim.kind
+  );
+  const orderedClaimKinds = CLAIM_KIND_ORDER.filter((kind) => claimsByKind.has(kind));
+
+  return (
+    <div className="panel factsPanel">
+      {/* IDENTITY HERO */}
+      <section className="factsHero">
+        <div className="factsHeroMain">
+          <span className="factsKicker">What this site is</span>
+          <h2>{identity.name || siteNameFromTargetSafe(facts.target)}</h2>
+          {identity.oneLiner ? <p className="factsOneLiner">{identity.oneLiner}</p> : null}
+          <div className="factsChips">
+            {identity.category ? <span className="factsChip factsChipAccent">{identity.category}</span> : null}
+            {identity.audience.map((audience) => (
+              <span className="factsChip" key={audience}>
+                {audience}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="factsHeroMeta">
+          <div className="factsMetric">
+            <strong>{Math.round((facts.confidence ?? 0) * 100)}%</strong>
+            <span>confidence</span>
+          </div>
+          <div className="factsMetric">
+            <strong>{facts.usedProvider === "heuristic" ? "heuristic" : "model"}</strong>
+            <span>source</span>
+          </div>
+          {facts.coverage ? (
+            <div className="factsMetric">
+              <strong>
+                {facts.coverage.pagesAnalyzed}/{facts.coverage.chunksAnalyzed}
+              </strong>
+              <span>pages / chunks</span>
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* FACTS AT A GLANCE — stat cards */}
+      {stats.length ? (
+        <section className="factsSection">
+          <div className="sectionHead">
+            <h2>Facts at a glance</h2>
+            <span>{stats.length} stat{stats.length === 1 ? "" : "s"}</span>
+          </div>
+          <div className="factsStatGrid">
+            {stats.map((stat) => {
+              const source = stat.sources.find((entry) => entry.quote);
+              return (
+                <article className="factsStatCard" key={stat.id} title={source?.routePath ?? source?.url ?? undefined}>
+                  <strong>{stat.valueRaw}</strong>
+                  <span>{stat.label}</span>
+                  {stat.sources.length ? <FactsSourceWhy sources={stat.sources} label="source" /> : null}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {/* ENTITIES grouped by type with salience bars */}
+      {orderedEntityTypes.length ? (
+        <section className="factsSection">
+          <div className="sectionHead">
+            <h2>Entities &amp; relationships</h2>
+            <span>
+              {entities.length} entit{entities.length === 1 ? "y" : "ies"} · {facts.relationships?.length ?? 0} edge{facts.relationships?.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="factsEntityGroups">
+            {orderedEntityTypes.map((type) => {
+              const group = (entitiesByType.get(type) ?? []).slice().sort((a, b) => b.salience - a.salience);
+              return (
+                <div className="factsEntityGroup" key={type}>
+                  <h3>
+                    <span className={`factsTypeDot factsType-${type}`} aria-hidden="true" />
+                    {ENTITY_TYPE_LABELS[type]}
+                    <small>{group.length}</small>
+                  </h3>
+                  <ul className="factsEntityList">
+                    {group.map((entity) => (
+                      <li className="factsEntityRow" key={entity.id}>
+                        <div className="factsEntityHead">
+                          <strong>
+                            {entity.url ? (
+                              <a href={entity.url} target="_blank" rel="noreferrer noopener">
+                                {entity.name}
+                              </a>
+                            ) : (
+                              entity.name
+                            )}
+                          </strong>
+                          <span className="factsEntityMentions">{entity.mentions} mention{entity.mentions === 1 ? "" : "s"}</span>
+                          <FactsSourceWhy sources={entity.sources} />
+                        </div>
+                        {entity.description ? <p className="factsEntityDesc">{entity.description}</p> : null}
+                        <div className="factsSalienceTrack" aria-hidden="true">
+                          <span className={`factsSalienceFill factsType-${type}`} style={{ width: `${Math.max(6, Math.round(entity.salience * 100))}%` }} />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {/* CLAIMS grouped by kind */}
+      {orderedClaimKinds.length ? (
+        <section className="factsSection">
+          <div className="sectionHead">
+            <h2>Claims</h2>
+            <span>{claims.length} extracted</span>
+          </div>
+          <div className="factsClaimGroups">
+            {orderedClaimKinds.map((kind) => (
+              <div className="factsClaimGroup" key={kind}>
+                <h3>{CLAIM_KIND_LABELS[kind]}</h3>
+                <ul className="factsClaimList">
+                  {(claimsByKind.get(kind) ?? []).map((claim) => (
+                    <li className={`factsClaimRow${claim.isMarketing ? " factsClaimMarketing" : ""}`} key={claim.id}>
+                      <p>{claim.text}</p>
+                      <div className="factsClaimMeta">
+                        {claim.isMarketing ? <span className="factsTag factsTagMarketing">marketing</span> : null}
+                        <span className="factsTag">{Math.round(claim.confidence * 100)}%</span>
+                        <FactsSourceWhy sources={claim.sources} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* FAQ accordion */}
+      {questions.length ? (
+        <section className="factsSection">
+          <div className="sectionHead">
+            <h2>Context questions</h2>
+            <span>{questions.length} answered &amp; gaps</span>
+          </div>
+          <div className="factsFaq">
+            {questions.map((question) => (
+              <details className={`factsFaqItem${question.unanswerable ? " factsFaqGap" : ""}`} key={question.id}>
+                <summary>
+                  <span className="factsFaqQ">{question.question}</span>
+                  <span className="factsFaqCat">{FACTS_CATEGORY_LABELS[question.category] ?? question.category}</span>
+                </summary>
+                <div className="factsFaqBody">
+                  {question.unanswerable ? (
+                    <p className="factsGapNote">Gap: not covered on this site.</p>
+                  ) : (
+                    <p className="factsFaqAnswer">{question.answer || "No answer extracted."}</p>
+                  )}
+                  {question.sources.some((source) => source.quote) ? (
+                    <div className="factsFaqChips">
+                      {question.sources
+                        .filter((source) => source.quote)
+                        .map((source, index) => (
+                          <span className="factsSourceChip" key={`${source.chunkId ?? source.routePath ?? source.url}-${index}`} title={source.quote}>
+                            {source.routePath ?? source.resourcePath ?? source.url ?? "source"}
+                          </span>
+                        ))}
+                    </div>
+                  ) : null}
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {facts.coverage && facts.coverage.ungroundedDropped > 0 ? (
+        <p className="factsCoverageNote">
+          {facts.coverage.ungroundedDropped} ungrounded fact{facts.coverage.ungroundedDropped === 1 ? "" : "s"} dropped (quote not found in cited source).
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function siteNameFromTargetSafe(target: string): string {
+  try {
+    return new URL(target).hostname.replace(/^www\./, "");
+  } catch {
+    return target || "This site";
+  }
 }
 
 function BrandPanel({ data }: { data?: ArtifactManifest["brand"] }) {
