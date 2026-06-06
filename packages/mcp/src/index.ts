@@ -21,7 +21,7 @@ import {
   type Network
 } from "@contextmem/core";
 import { MemWalMcpClient, summarizeSnapshot, type SiteSnapshot } from "@contextmem/memwal";
-import { getWalrusSiteHistory, materializeWalrusSite, resolveWalrusTarget } from "@contextmem/walrus";
+import { getWalrusSiteHistory, getWalrusStorageJob, materializeWalrusSite, packProofBundle, resolveWalrusTarget, uploadProofBundle } from "@contextmem/walrus";
 
 export type LocalContextMemMcpServerOptions = {
   runsDir?: string;
@@ -183,6 +183,52 @@ server.tool(
     const result = await new MemWalMcpClient().rememberSnapshot(snapshot);
     return text({ namespace: resolvedNamespace, result });
   }
+);
+
+server.tool(
+  "upload_proof_to_walrus",
+  {
+    runDir: z.string().describe("Run directory whose context/ bundle should be stored on Walrus"),
+    wait: z.boolean().default(true).describe("Poll until the upload is CERTIFIED"),
+    remember: z.boolean().default(false).describe("Index the certified receipt into Walrus Memory (MemWal)"),
+    namespace: z.string().optional(),
+    whatChanged: z.string().optional()
+  },
+  async ({ runDir, wait, remember, namespace, whatChanged }) => {
+    const absRunDir = path.resolve(runDir);
+    const manifest = JSON.parse(await fs.readFile(path.resolve(absRunDir, "context", "manifest.json"), "utf8"));
+    const bundle = await packProofBundle(absRunDir);
+    const receipt = await uploadProofBundle({
+      fileName: bundle.fileName,
+      data: bundle.data,
+      contentType: "application/gzip",
+      artifactDigest: bundle.artifactDigest,
+      wait
+    });
+    await fs.writeFile(path.resolve(absRunDir, "context", "storage.json"), JSON.stringify(receipt, null, 2), "utf8");
+    await fs.rm(bundle.filePath, { force: true }).catch(() => {});
+    let memory: unknown;
+    if (remember) {
+      const resolvedNamespace =
+        namespace ?? namespaceForTarget(manifest.target, manifest.walrus ? "walrus" : "web", manifest.walrus?.site?.network, manifest.walrus?.site?.siteObjectId);
+      memory = await new MemWalMcpClient().rememberStorageIndex({
+        namespace: resolvedNamespace,
+        target: manifest.target,
+        runId: path.basename(absRunDir),
+        receipt,
+        whatChanged
+      });
+    }
+    return text({ receipt, memory });
+  }
+);
+
+server.tool(
+  "check_walrus_storage_job",
+  {
+    jobId: z.string().describe("Tatum storage jobId returned by upload_proof_to_walrus")
+  },
+  async ({ jobId }) => text(await getWalrusStorageJob(jobId))
 );
 
 server.tool(

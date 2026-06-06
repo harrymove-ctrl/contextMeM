@@ -5,7 +5,9 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "../src/worker.ts",
   "vars": {
-    "CONTEXTMEM_WORKER_BASE_URL": "http://localhost:8787"
+    "CONTEXTMEM_WORKER_BASE_URL": "http://localhost:8787",
+    "TATUM_STORAGE_URL": "https://api.tatum.io/v4/data/storage/upload",
+    "SUI_FULLNODE_URL": "https://fullnode.mainnet.sui.io"
   },
   "d1_databases": [
     {
@@ -34,6 +36,6 @@
     ]
   },
   "secrets": {
-    "required": ["CONTEXTMEM_NAMESPACE_IMPORT_TOKEN"]
+    "required": ["CONTEXTMEM_NAMESPACE_IMPORT_TOKEN", "TATUM_API_KEY"]
   }
 }

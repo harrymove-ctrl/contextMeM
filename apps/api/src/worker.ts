@@ -31,6 +31,11 @@ export type WorkerEnv = {
   MEMWAL_ACCOUNT_ID?: string;
   AI?: WorkersAiBinding;
   FIRECRAWL_API_KEY?: string;
+  // Tatum gateway: Walrus storage REST (/v4/data/storage/upload) + Sui/chain
+  // reads. TATUM_API_KEY is a Worker secret; the others are plain vars.
+  TATUM_API_KEY?: string;
+  TATUM_STORAGE_URL?: string;
+  SUI_FULLNODE_URL?: string;
 };
 
 type WorkersAiBinding = {
