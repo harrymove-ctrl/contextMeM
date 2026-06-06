@@ -1524,7 +1524,10 @@ async function createDemoExtraction(request: Request, env: WorkerEnv, ctx: Worke
     // the site provides no description, not to a generic "Public ContextMeM
     // demo extraction" lie.
     description: undefined,
-    tags: ["demo", target.hostname.endsWith(".wal.app") ? "walrus" : "web"],
+    // Demo builds are interactive: the user waits on a spinner. Use the 'fast'
+    // profile (10 pages / map 40) so a real crawl finishes inside the client's
+    // poll window instead of timing out at "did not finish in time".
+    tags: ["demo", target.hostname.endsWith(".wal.app") ? "walrus" : "web", "profile:fast"],
     directoryEnabled: false
   };
   const job = await createExtractionJob(jobInput, env, ctx);

@@ -1223,15 +1223,26 @@ function ContextMemExperience() {
       if (!createRes.ok) throw new Error(await readResponseError(createRes));
       let body = (await createRes.json()) as { job: HostedExtractionJob };
       const jobId = body.job.id;
-      for (let attempt = 0; attempt < 60 && (body.job.status === "queued" || body.job.status === "running"); attempt += 1) {
+      // Real multi-page crawls run async in a Worker queue consumer and can take
+      // a couple of minutes. Poll generously (~3 min) before giving up so a
+      // normal build isn't reported as a failure at 54s.
+      for (let attempt = 0; attempt < 200 && (body.job.status === "queued" || body.job.status === "running"); attempt += 1) {
         await delay(900);
         const poll = await fetch(`${API_BASE}/api/demo/extractions/${encodeURIComponent(jobId)}`);
         if (!poll.ok) throw new Error(await readResponseError(poll));
         const next = (await poll.json()) as { job?: HostedExtractionJob } | HostedExtractionJob;
         body = { job: ("job" in next ? next.job : next) as HostedExtractionJob };
       }
+      if (body.job.status === "failed") {
+        throw new Error(body.job.error ?? "Hosted context build failed.");
+      }
       if (body.job.status !== "completed") {
-        throw new Error(body.job.error ?? "Hosted context build did not finish in time.");
+        // Still queued/running after the poll window. The build continues
+        // server-side and will land in Runs + Memory — surface that as info,
+        // NOT a red failure (the old behavior showed "build failed" wrongly).
+        setError(null);
+        setAuthHint(`Still building ${body.job.namespace} — large multi-page sites can take a few minutes. It keeps building in the background and will appear under Runs and Memory when ready.`);
+        return;
       }
       const result = (body.job.result ?? {}) as { share?: { id?: string } };
       const shareId = result.share?.id;
