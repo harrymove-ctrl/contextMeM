@@ -7,6 +7,8 @@ import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCi
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
 import { API_BASE } from "./lib/api-base.js";
+import { NamespaceMemoryConstellation } from "./components/namespace-memory/NamespaceMemoryConstellation.js";
+import { factsToMemoryGraph } from "./components/namespace-memory/facts-to-graph.js";
 import StaggeredText from "./components/react-bits/staggered-text.js";
 import { BlurHighlight } from "./components/react-bits/blur-highlight.js";
 import DotShift from "./components/react-bits/dot-shift.js";
@@ -7361,6 +7363,16 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
   useEffect(() => {
     setActiveEntityId(null);
   }, [facts]);
+  // Stable graph reference (recompute only when facts change) so the WebGL
+  // constellation doesn't rebuild every render. Hook stays before the early return.
+  const constellationGraph = useMemo(
+    () =>
+      factsToMemoryGraph(
+        (facts?.entities ?? []).filter((entity) => (entity.sources?.length ?? 0) > 0),
+        facts?.relationships ?? []
+      ),
+    [facts]
+  );
   if (!facts) {
     return (
       <div className="panel factsPanel">
@@ -7429,8 +7441,20 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
         </div>
       </section>
 
-      {/* KNOWLEDGE GRAPH — entities + relationships */}
-      <FactsGraph entities={entities} relationships={facts.relationships ?? []} activeId={activeEntityId} onActivate={setActiveEntityId} />
+      {/* KNOWLEDGE GRAPH — 3D constellation of entities + relationships */}
+      {entities.length ? (
+        <section className="factsSection factsGraphSection">
+          <div className="sectionHead">
+            <h2>Knowledge graph</h2>
+            <span>
+              {entities.length} entit{entities.length === 1 ? "y" : "ies"} · {facts.relationships?.length ?? 0} relationship{facts.relationships?.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="nmc-host">
+            <NamespaceMemoryConstellation graph={constellationGraph} />
+          </div>
+        </section>
+      ) : null}
 
       {/* FACTS AT A GLANCE — stat cards */}
       {stats.length ? (
