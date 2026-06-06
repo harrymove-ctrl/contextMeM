@@ -9680,3 +9680,487 @@ textarea:focus {
   color: var(--cm-muted);
   font-style: italic;
 }
+
+
+/* ── Next steps — calm "usage instructions" guide panel ───────────────────── */
+/* Sits on the light .results surface (~16px radius); house style: white card,   */
+/* cm-border hairline, soft shadow, accent reveal on hover (a8d946 family).      */
+.nextSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid var(--cm-border);
+  box-shadow: var(--cm-soft-shadow);
+}
+
+.nextStepsHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nextStepsEyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cm-muted);
+}
+
+.nextStepsHead h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--cm-ink);
+}
+
+/* Numbered checklist */
+.nextStepsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nextStepsItem {
+  min-width: 0;
+}
+
+.nextStepsLink {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--cm-border);
+  border-radius: 12px;
+  background: rgba(248, 251, 245, 0.78);
+  color: var(--cm-ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 220ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 220ms ease,
+    border-color 220ms ease,
+    background 220ms ease;
+}
+
+/* Accent rail — the "accent shows" reveal on hover */
+.nextStepsLink::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--cm-accent);
+  opacity: 0;
+  transform: scaleY(0.4);
+  transform-origin: center;
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.nextStepsLink:hover,
+.nextStepsLink:focus-visible {
+  transform: translateY(-2px);
+  background: #ffffff;
+  border-color: rgba(168, 217, 70, 0.64);
+  box-shadow: 0 14px 34px rgba(22, 31, 45, 0.1);
+  outline: none;
+}
+
+.nextStepsLink:hover::before,
+.nextStepsLink:focus-visible::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* Step number badge */
+.nextStepsNum {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: #e8f5c8;
+  color: #1b220b;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background 220ms ease, color 220ms ease;
+}
+
+.nextStepsLink:hover .nextStepsNum,
+.nextStepsLink:focus-visible .nextStepsNum {
+  background: var(--cm-accent);
+  color: var(--cm-ink);
+}
+
+/* Leading icon chip */
+.nextStepsIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--cm-border);
+  color: var(--cm-blue);
+  transition: border-color 220ms ease;
+}
+
+.nextStepsIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nextStepsLink:hover .nextStepsIcon,
+.nextStepsLink:focus-visible .nextStepsIcon {
+  border-color: rgba(168, 217, 70, 0.64);
+}
+
+/* Body — BlurHighlight animates its own content inside here */
+.nextStepsBody {
+  min-width: 0;
+  display: block;
+  font-size: 14.5px;
+  line-height: 1.5;
+  font-weight: 550;
+  color: var(--cm-ink);
+  overflow-wrap: anywhere;
+}
+
+.nextStepsBody small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--cm-muted);
+}
+
+/* Trailing affordance */
+.nextStepsGo {
+  justify-self: end;
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--cm-muted);
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1), color 220ms ease;
+}
+
+.nextStepsLink:hover .nextStepsGo,
+.nextStepsLink:focus-visible .nextStepsGo {
+  transform: translateX(3px);
+  color: var(--cm-blue);
+}
+
+/* Highlight token (highlightClassName) — only bumps weight */
+.nextStepsHi {
+  font-weight: 700;
+}
+
+/* Responsive — tighten to a single calm column on narrow surfaces */
+@media (max-width: 640px) {
+  .nextSteps {
+    padding: 18px;
+  }
+  .nextStepsLink {
+    gap: 12px;
+    padding: 11px 12px;
+  }
+  .nextStepsIcon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+  .nextStepsGo {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nextStepsLink,
+  .nextStepsLink::before,
+  .nextStepsNum,
+  .nextStepsIcon,
+  .nextStepsGo {
+    transition: none;
+  }
+  .nextStepsLink:hover,
+  .nextStepsLink:focus-visible {
+    transform: none;
+  }
+  .nextStepsLink:hover .nextStepsGo,
+  .nextStepsLink:focus-visible .nextStepsGo {
+    transform: none;
+  }
+}
+
+/* ── Facts: knowledge graph + topics band ─────────────────────────────────── */
+.factsGraphSection { min-width: 0; }
+
+.factsGraphWrap {
+  position: relative;
+  border: 1px solid var(--cm-border);
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(168, 217, 70, 0.06), transparent 60%),
+    #fbfdf8;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.factsGraph {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+.factsGraphEdge {
+  fill: none;
+  stroke: rgba(17, 20, 22, 0.22);
+  stroke-linecap: round;
+  transition: stroke 160ms ease, opacity 160ms ease;
+}
+.factsGraphEdge.isMention { stroke-dasharray: 3 5; stroke: rgba(17, 20, 22, 0.16); }
+.factsGraphEdge.isHot { stroke: var(--cm-blue); opacity: 0.95; }
+.factsGraphEdge.isDim { opacity: 0.12; }
+
+.factsGraphNodeG { cursor: pointer; }
+.factsGraphNode {
+  stroke: #ffffff;
+  stroke-width: 2;
+  transition: opacity 160ms ease, transform 160ms ease;
+  filter: drop-shadow(0 2px 5px rgba(22, 31, 45, 0.18));
+}
+.factsGraphNodeG.isDim { opacity: 0.28; }
+.factsGraphNodeG.isActive .factsGraphNode { stroke: var(--cm-ink); stroke-width: 2.5; }
+.factsGraphNodeG:hover .factsGraphNode { stroke: var(--cm-ink); }
+
+.factsGraphLabel {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--cm-ink);
+  paint-order: stroke;
+  stroke: #fbfdf8;
+  stroke-width: 3px;
+  pointer-events: none;
+}
+.factsGraphNodeG.isDim .factsGraphLabel { opacity: 0.3; }
+
+.factsGraphHint {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  font-size: 12px;
+  color: var(--cm-muted);
+  pointer-events: none;
+}
+
+.factsGraphCard {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  right: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 460px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--cm-border);
+  box-shadow: 0 10px 26px rgba(22, 31, 45, 0.12);
+  backdrop-filter: blur(4px);
+}
+.factsGraphCard .factsTypeDot { margin-top: 5px; flex-shrink: 0; }
+.factsGraphCard strong { display: block; font-size: 14px; color: var(--cm-ink); }
+.factsGraphCard em { display: block; font-size: 11.5px; font-style: normal; color: var(--cm-muted); margin-top: 1px; }
+.factsGraphCard p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--cm-ink); }
+
+.factsEntityRow { cursor: pointer; border-radius: 10px; transition: background 160ms ease, box-shadow 160ms ease; }
+.factsEntityRow.isActive { background: rgba(168, 217, 70, 0.12); box-shadow: inset 0 0 0 1px rgba(168, 217, 70, 0.55); }
+
+/* Topics band */
+.factsTopicBand { display: flex; flex-wrap: wrap; gap: 10px; }
+.factsTopicTile {
+  flex: 1 1 150px;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--cm-border);
+  border-top: 3px solid var(--cm-muted);
+  box-shadow: var(--cm-soft-shadow);
+}
+.factsTopicTop { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.factsTopicTop strong { font-size: 14px; color: var(--cm-ink); line-height: 1.2; }
+.factsTopicPct { font-size: 12px; font-weight: 700; color: var(--cm-muted); font-variant-numeric: tabular-nums; }
+.factsTopicKeywords { display: flex; flex-wrap: wrap; gap: 5px; }
+.factsTopicKeywords span {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(17, 20, 22, 0.05);
+  color: var(--cm-muted);
+}
+.factsTopicTile small { font-size: 11px; color: var(--cm-muted); }
+
+@media (max-width: 640px) {
+  .factsGraphHint { display: none; }
+  .factsGraphCard { left: 8px; right: 8px; bottom: 8px; }
+}
+
+
+/* ── Walrus Memory explorer (no-run recall) ───────────────────────────────── */
+.memoryExplorer { display: flex; flex-direction: column; gap: 16px; }
+.memoryExplorerHead { display: flex; flex-direction: column; gap: 6px; }
+.memoryExplorerHead h2 { margin: 0; font-size: 20px; color: var(--cm-ink); letter-spacing: -0.01em; }
+.memoryExplorerHead p { margin: 0; font-size: 13.5px; color: var(--cm-muted); }
+
+.memoryExplorerNamespaces { display: flex; flex-wrap: wrap; gap: 8px; }
+.memoryNsChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border-radius: 11px;
+  border: 1px solid var(--cm-border);
+  background: #ffffff;
+  color: var(--cm-ink);
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+.memoryNsChip span { font-size: 13.5px; font-weight: 600; }
+.memoryNsChip small { font-size: 11px; color: var(--cm-muted); }
+.memoryNsChip:hover { border-color: rgba(168, 217, 70, 0.6); }
+.memoryNsChip.selected { border-color: var(--cm-accent); background: rgba(168, 217, 70, 0.12); box-shadow: inset 0 0 0 1px rgba(168, 217, 70, 0.5); }
+
+.memoryExplorerInput { display: flex; gap: 10px; align-items: stretch; }
+.memoryExplorerInput textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 46px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--cm-border);
+  background: #fbfdf8;
+  font: inherit;
+  font-size: 14px;
+  color: var(--cm-ink);
+}
+.memoryExplorerInput textarea:focus { outline: none; border-color: rgba(168, 217, 70, 0.7); }
+.memoryExplorerInput .primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-end;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 12px;
+  background: var(--cm-ink);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.memoryExplorerInput .primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.memoryExplorerPrompts { display: flex; flex-wrap: wrap; gap: 8px; }
+.memoryExplorerPrompts button {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--cm-border);
+  background: rgba(17, 20, 22, 0.03);
+  color: var(--cm-muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.memoryExplorerPrompts button:hover:not(:disabled) { color: var(--cm-ink); border-color: rgba(168, 217, 70, 0.6); }
+.memoryExplorerPrompts button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.memoryExplorerResult {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--cm-border);
+  background: #fbfdf8;
+}
+.memoryResultText { font-size: 14px; line-height: 1.6; color: var(--cm-ink); white-space: pre-wrap; }
+
+
+/* ── Memory page: embedded Knowledge (facts) view ─────────────────────────── */
+.memoryKnowledge { margin-top: 18px; border-top: 1px solid var(--cm-border); padding-top: 18px; }
+.memoryKnowledgeHead { margin-bottom: 12px; }
+.memoryKnowledge .factsPanel { padding: 0; background: transparent; border: none; box-shadow: none; }
+.memoryKnowledgeLoading { margin-top: 18px; padding: 18px; border-radius: 12px; background: rgba(17,20,22,0.03); color: var(--cm-muted); font-size: 13.5px; }
+
+
+/* ── Error boundary fallback ───────────────────────────────────────────────── */
+.appErrorBoundary { display: flex; align-items: center; justify-content: center; min-height: 280px; padding: 32px; }
+.appErrorCard {
+  max-width: 460px;
+  text-align: center;
+  padding: 24px 26px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--cm-border);
+  box-shadow: var(--cm-soft-shadow);
+}
+.appErrorCard strong { display: block; font-size: 16px; color: var(--cm-ink); margin-bottom: 6px; }
+.appErrorCard p { margin: 0 0 16px; font-size: 13px; color: var(--cm-muted); word-break: break-word; }
+.appErrorActions { display: flex; gap: 10px; justify-content: center; }
+.appErrorActions button, .appErrorActions a {
+  display: inline-flex; align-items: center; padding: 9px 16px; border-radius: 10px;
+  font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--cm-border);
+}
+.appErrorActions button { background: var(--cm-ink); color: #fff; border-color: var(--cm-ink); }
+.appErrorActions a { background: #fff; color: var(--cm-ink); }
+
+
+/* ── Simplified Namespaces list ────────────────────────────────────────────── */
+.nsSimpleGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.nsSimpleCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 18px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--cm-border);
+  box-shadow: var(--cm-soft-shadow);
+  cursor: pointer;
+  transition: transform 200ms cubic-bezier(0.23,1,0.32,1), box-shadow 200ms ease, border-color 200ms ease;
+}
+.nsSimpleCard:hover { transform: translateY(-3px); border-color: rgba(168,217,70,0.6); box-shadow: 0 16px 36px rgba(22,31,45,0.12); }
+.nsSimpleHead { display: flex; align-items: center; gap: 8px; color: var(--cm-ink); }
+.nsSimpleHead strong { font-size: 15px; }
+.nsSimpleCard > code { font-size: 11.5px; color: var(--cm-muted); background: rgba(17,20,22,0.04); padding: 2px 7px; border-radius: 6px; }
+.nsSimpleTarget { font-size: 12px; color: var(--cm-blue); overflow-wrap: anywhere; }
+.nsSimpleCounts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.nsSimpleCounts span { font-size: 11px; color: var(--cm-muted); background: rgba(17,20,22,0.04); padding: 3px 8px; border-radius: 999px; }
+.nsSimpleBrowse { margin-top: 4px; font-size: 12.5px; font-weight: 700; color: var(--cm-ink); }
+.nsSimpleCard:hover .nsSimpleBrowse { color: var(--cm-blue); }
+
+.memoryResultSource { display: block; font-size: 11.5px; font-weight: 600; color: var(--cm-muted); margin-bottom: 6px; }

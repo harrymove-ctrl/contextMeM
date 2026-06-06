@@ -17,6 +17,7 @@ import { MemWalMcpClient } from "@contextmem/memwal";
 // top-level `__dirname` reference is undefined in the Workers runtime.
 import { buildChunks } from "@contextmem/core/chunks";
 import { buildSiteFacts, generateContextQuestions } from "@contextmem/core/facts";
+import { SEED_FACTS, SEED_FACTS_LIST } from "./seed-facts.js";
 import { isUtilityPageRoute } from "@contextmem/core/utils";
 import type {
   BuildProfile,
@@ -41,6 +42,7 @@ export type WorkerEnv = {
   MEMWAL_BEARER?: string;
   MEMWAL_PRIVATE_KEY?: string;
   MEMWAL_ACCOUNT_ID?: string;
+  MEMWAL_NAMESPACES?: string;
   AI?: WorkersAiBinding;
   FIRECRAWL_API_KEY?: string;
 };
@@ -582,6 +584,41 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
   }
   if (request.method === "GET" && url.pathname === "/api/me") {
     return getHostedMe(request);
+  }
+  // Public Walrus Memory explorer: list curated namespaces + recall using the
+  // server-side MEMWAL_* delegate (no per-user auth). Lets /app/memory show the
+  // seeded recall data without first opening a run.
+  if (request.method === "GET" && url.pathname === "/api/memwal/namespaces") {
+    return listMemwalNamespaces(request, env);
+  }
+  // Public seeded Knowledge (SiteFacts) — lets the app/Visualizer browse the
+  // Sui/Walrus/Seal facts graph without running a build.
+  if (request.method === "GET" && url.pathname === "/api/memwal/facts") {
+    return jsonCached({ namespaces: SEED_FACTS_LIST }, 300);
+  }
+  if (request.method === "GET" && url.pathname.startsWith("/api/memwal/facts/")) {
+    const ns = decodeURIComponent(url.pathname.slice("/api/memwal/facts/".length));
+    // Tier 1: bundled demo facts (public, edge-cacheable).
+    const seeded = SEED_FACTS[ns];
+    if (seeded) return jsonCached({ namespace: ns, source: "seed", facts: seeded }, 300);
+    // Tier 2: real built namespace — public for public namespaces, read-token for private.
+    const auth = await store.authorizeNamespace(ns, readAccessToken(request));
+    if (!auth.ok) return json({ error: auth.message }, auth.status);
+    let facts: unknown;
+    const factsArtifact = await store.readArtifact(ns, "/context/facts.json").catch(() => undefined);
+    if (factsArtifact?.encoding === "utf8") facts = safeJsonParse(factsArtifact.content);
+    if (!facts) {
+      // Older builds may only carry facts inside the manifest.
+      const manifestArtifact = await store.readArtifact(ns, "/context/manifest.json").catch(() => undefined);
+      const manifest = manifestArtifact?.encoding === "utf8" ? safeJsonParse(manifestArtifact.content) : undefined;
+      if (manifest && typeof manifest === "object") facts = (manifest as Record<string, unknown>).facts;
+    }
+    if (!facts) return json({ error: `No facts artifact for namespace "${ns}".` }, 404);
+    const payload = { namespace: ns, source: "r2", facts };
+    return auth.summary.visibility === "public" ? jsonCached(payload, 300) : json(payload);
+  }
+  if (request.method === "POST" && url.pathname === "/api/memwal/recall") {
+    return memwalRecall(request, env);
   }
   if (request.method === "POST" && url.pathname === "/api/runs") {
     return createHostedRun(request, env, ctx);
@@ -3225,6 +3262,139 @@ function buildImportResponse(
   };
 }
 
+const DEFAULT_MEMWAL_NAMESPACES: Array<{ namespace: string; label: string }> = [
+  { namespace: "demo:sui-docs", label: "Sui Docs" },
+  { namespace: "demo:walrus-docs", label: "Walrus Docs" },
+  { namespace: "demo:seal-docs", label: "Seal Docs" }
+];
+
+function prettyNamespaceLabel(namespace: string): string {
+  return namespace
+    .replace(/^demo:/, "")
+    .replace(/[-_:]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim();
+}
+
+// Walrus Memory relayer base. Must match the host the data was seeded against —
+// the SDK (packages/memwal), .env.example, and the seed scripts all use
+// relayer.memwal.ai, so recall MUST default to the same host or it queries an
+// index that never received the writes and returns nothing.
+const DEFAULT_MEMWAL_RELAYER = "https://relayer.memwal.ai";
+
+function memwalConfigured(env: WorkerEnv): boolean {
+  return Boolean((env.MEMWAL_PRIVATE_KEY ?? env.MEMWAL_BEARER) && env.MEMWAL_ACCOUNT_ID);
+}
+
+// Resolve MemWal delegate creds from per-request headers first (the browser's
+// imported delegate is sent as x-memwal-* headers), then env secrets. Lets recall
+// work either anonymously (server-configured) or with the user's own delegate —
+// without the private key ever being persisted server-side.
+// The SDK signs with a raw Ed25519 hex seed; strip a Bearer prefix, a 0x prefix,
+// and surrounding whitespace so a copy-pasted delegate key doesn't crash hexToBytes.
+function sanitizeMemwalKey(key?: string | null): string | undefined {
+  const cleaned = key?.trim().replace(/^bearer\s+/i, "").replace(/^0x/i, "").trim();
+  return cleaned || undefined;
+}
+
+// A valid MemWal delegate seed is a 64-char hex Ed25519 seed.
+function isMemwalSeed(key?: string): boolean {
+  return Boolean(key && /^[0-9a-fA-F]{64}$/.test(key));
+}
+
+function resolveMemwalCreds(request: Request, env: WorkerEnv): { url: string; privateKey?: string; accountId?: string } {
+  const headerKey = sanitizeMemwalKey(request.headers.get("x-memwal-private-key") ?? request.headers.get("x-memwal-bearer") ?? request.headers.get("x-memwal-authorization"));
+  const envKey = sanitizeMemwalKey(env.MEMWAL_PRIVATE_KEY ?? env.MEMWAL_BEARER);
+  const headerAccount = request.headers.get("x-memwal-account-id")?.trim();
+  const envAccount = env.MEMWAL_ACCOUNT_ID?.trim();
+  const url = request.headers.get("x-memwal-api-url") ?? request.headers.get("x-memwal-mcp-url") ?? env.MEMWAL_API_URL ?? env.MEMWAL_MCP_URL ?? DEFAULT_MEMWAL_RELAYER;
+  // Prefer a VALID header delegate; a malformed browser delegate must not shadow a
+  // configured env key. Pair the account id with whichever key we actually use.
+  if (isMemwalSeed(headerKey)) return { url, privateKey: headerKey, accountId: headerAccount ?? envAccount };
+  if (isMemwalSeed(envKey)) return { url, privateKey: envKey, accountId: envAccount ?? headerAccount };
+  return { url, privateKey: headerKey ?? envKey, accountId: headerAccount ?? envAccount };
+}
+
+// GET /api/memwal/namespaces — curated namespace picker for the Memory explorer.
+// Override via the MEMWAL_NAMESPACES env (comma-separated "namespace=Label").
+function listMemwalNamespaces(request: Request, env: WorkerEnv): Response {
+  // `configured` is true when recall can succeed without the user importing a
+  // delegate: either server env creds, OR the request already carries delegate headers.
+  const headerDelegate = Boolean(
+    (request.headers.get("x-memwal-authorization") || request.headers.get("x-memwal-bearer") || request.headers.get("x-memwal-private-key")) && request.headers.get("x-memwal-account-id")
+  );
+  const raw = env.MEMWAL_NAMESPACES?.trim();
+  let namespaces = DEFAULT_MEMWAL_NAMESPACES;
+  if (raw) {
+    const parsed = raw
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const eq = entry.indexOf("=");
+        const namespace = (eq === -1 ? entry : entry.slice(0, eq)).trim();
+        const label = eq === -1 ? "" : entry.slice(eq + 1).trim();
+        return { namespace, label: label || prettyNamespaceLabel(namespace) };
+      })
+      .filter((entry) => entry.namespace);
+    if (parsed.length) namespaces = parsed;
+  }
+  return json({ namespaces, configured: memwalConfigured(env) || headerDelegate });
+}
+
+// When Walrus Memory recall isn't available (no valid delegate), answer the query
+// from the namespace's verified facts so the Memory tab is never a dead error.
+function factsFallbackRecall(namespace: string, query: string): { results: Array<{ text: string; score: number }> } | null {
+  const facts = SEED_FACTS[namespace];
+  if (!facts) return null;
+  const candidates: string[] = [];
+  if (facts.identity?.oneLiner) candidates.push(`${facts.identity.name}: ${facts.identity.oneLiner}`);
+  for (const q of facts.questions ?? []) if (q.answer) candidates.push(`${q.question} — ${q.answer}`);
+  for (const c of facts.claims ?? []) if (c.text) candidates.push(c.text);
+  for (const e of facts.entities ?? []) if (e.description) candidates.push(`${e.name}: ${e.description}`);
+  for (const s of facts.stats ?? []) if (s.valueRaw) candidates.push(`${s.label}: ${s.valueRaw}`);
+  const queryTokens = new Set((query.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((token) => token.length > 2));
+  const scored = candidates
+    .map((text) => {
+      const tokens = text.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+      let score = 0;
+      for (const token of tokens) if (queryTokens.has(token)) score += 1;
+      return { text, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6);
+  const results = scored.length ? scored : candidates.slice(0, 5).map((text) => ({ text, score: 0 }));
+  return { results };
+}
+
+// POST /api/memwal/recall { namespace, query } — recall via the server-side delegate.
+async function memwalRecall(request: Request, env: WorkerEnv): Promise<Response> {
+  let body: { namespace?: unknown; query?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return json({ error: "Invalid JSON body." }, 400);
+  }
+  const namespace = typeof body.namespace === "string" ? body.namespace.trim() : "";
+  const query = typeof body.query === "string" ? body.query.trim().slice(0, 500) : "";
+  if (!namespace || !query) return json({ error: "namespace and query are required." }, 400);
+  const { url, privateKey, accountId } = resolveMemwalCreds(request, env);
+  // Try real Walrus Memory recall when we have a valid delegate.
+  if (isMemwalSeed(privateKey) && accountId) {
+    try {
+      const result = await new MemWalMcpClient({ url, privateKey, accountId }).recallSiteContext(namespace, query);
+      return json({ namespace, query, source: "walrus-memory", result });
+    } catch {
+      /* fall through to the facts fallback so the Memory tab still answers */
+    }
+  }
+  // Fallback: answer from the namespace's verified facts (no delegate required).
+  const fallback = factsFallbackRecall(namespace, query);
+  if (fallback) return json({ namespace, query, source: "facts", result: fallback });
+  return json({ error: "Walrus Memory recall needs a valid 64-char hex delegate. Re-import your delegate in Settings, or set MEMWAL_PRIVATE_KEY + MEMWAL_ACCOUNT_ID on the Worker." }, 503);
+}
+
 function maybeWithMemWalRecall(store: CloudflareNamespaceStore, env: WorkerEnv, request: Request): HostedNamespaceStore {
   // The Ed25519-signed MemWal SDK needs serverUrl + privateKey + accountId.
   // Header overrides let the web client supply per-session credentials; env
@@ -4883,6 +5053,20 @@ function json(value: unknown, status = 200): Response {
   );
 }
 
+// Like json() but edge-cacheable — for public, static-ish payloads (e.g. seeded
+// facts) the Visualizer fetches repeatedly. Never use for private/token data.
+function jsonCached(value: unknown, maxAgeSeconds = 300): Response {
+  return cors(
+    new Response(JSON.stringify(value, null, 2), {
+      status: 200,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": `public, max-age=${maxAgeSeconds}, must-revalidate`
+      }
+    })
+  );
+}
+
 function mcpJsonError(message: string, status: number): Response {
   return cors(
     new Response(
@@ -4909,7 +5093,7 @@ function cors(response: Response): Response {
   const headers = new Headers(response.headers);
   headers.set("access-control-allow-origin", "*");
   headers.set("access-control-allow-methods", "GET,POST,PATCH,DELETE,OPTIONS");
-  headers.set("access-control-allow-headers", "content-type, authorization, accept, mcp-session-id, mcp-protocol-version, x-memwal-mcp-url, x-memwal-account-id, x-memwal-authorization, x-memwal-bearer");
+  headers.set("access-control-allow-headers", "content-type, authorization, accept, mcp-session-id, mcp-protocol-version, x-memwal-mcp-url, x-memwal-api-url, x-memwal-account-id, x-memwal-authorization, x-memwal-bearer, x-memwal-private-key");
   headers.set("access-control-expose-headers", "mcp-session-id");
   return new Response(response.body, {
     status: response.status,

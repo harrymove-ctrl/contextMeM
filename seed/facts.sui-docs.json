@@ -1,0 +1,1049 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T00:00:00Z",
+  "target": "https://docs.sui.io",
+  "usedProvider": "heuristic",
+  "confidence": 0.82,
+  "identity": {
+    "name": "Sui",
+    "oneLiner": "Sui is a layer 1 blockchain where everything is an object, programmed in Move with parallel execution.",
+    "category": "layer 1 blockchain",
+    "audience": [
+      "developers",
+      "Move smart contract developers",
+      "validators",
+      "token holders"
+    ],
+    "primaryEntityId": "ent_sui",
+    "sources": [
+      {
+        "chunkId": "c_a1b2c3d4",
+        "routePath": "/concepts",
+        "url": "https://docs.sui.io/concepts",
+        "quote": "Sui is a layer 1 blockchain that performs its own consensus and validation of transaction blocks."
+      },
+      {
+        "chunkId": "c_a1b2c3d4",
+        "routePath": "/concepts",
+        "url": "https://docs.sui.io/concepts",
+        "quote": "Everything on the Sui blockchain is an object that has metadata, a type of ownership, and a referencing scheme."
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "ent_sui",
+      "name": "Sui",
+      "type": "platform",
+      "aliases": [
+        "Sui network",
+        "Sui blockchain"
+      ],
+      "description": "A layer 1 blockchain that performs its own consensus and validation of transaction blocks.",
+      "url": "https://docs.sui.io",
+      "salience": 1,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "Sui is a layer 1 blockchain that performs its own consensus and validation of transaction blocks."
+        }
+      ]
+    },
+    {
+      "id": "ent_object",
+      "name": "Object",
+      "type": "concept",
+      "aliases": [
+        "Sui object",
+        "object model",
+        "object-centric model"
+      ],
+      "description": "The fundamental unit of storage on Sui; every resource, asset, or piece of data onchain is an object.",
+      "url": "https://docs.sui.io/concepts/object-model",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "An object is a fundamental unit of storage on the network. Every resource, asset, or piece of data onchain is an object."
+        }
+      ]
+    },
+    {
+      "id": "ent_move",
+      "name": "Move",
+      "type": "technology",
+      "aliases": [
+        "Move on Sui",
+        "Sui Move"
+      ],
+      "description": "An open source language for writing safe packages to manipulate onchain objects.",
+      "url": "https://docs.sui.io/concepts/sui-move-concepts",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move is an open source language for writing safe packages to manipulate onchain objects"
+        }
+      ]
+    },
+    {
+      "id": "ent_sui_token",
+      "name": "SUI token",
+      "type": "product",
+      "aliases": [
+        "SUI",
+        "native SUI token"
+      ],
+      "description": "The native token used as the currency of the network and to pay for gas fees.",
+      "url": "https://docs.sui.io/concepts/tokenomics",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "the native SUI token as the currency of the network and to pay for the network's gas fees."
+        }
+      ]
+    },
+    {
+      "id": "ent_validator",
+      "name": "Validators",
+      "type": "concept",
+      "aliases": [
+        "validator set",
+        "validator entities"
+      ],
+      "description": "The entities that verify the blockchain's activity and lock SUI as collateral for an epoch.",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "the validator entities that verify this activity."
+        }
+      ]
+    },
+    {
+      "id": "ent_ptb",
+      "name": "Programmable Transaction Blocks (PTBs)",
+      "type": "feature",
+      "aliases": [
+        "PTB",
+        "PTBs",
+        "programmable transaction block"
+      ],
+      "description": "Groups of commands that define all user transactions on Sui.",
+      "url": "https://docs.sui.io/concepts/transactions/prog-txn-blocks",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_f6a7b8c9",
+          "routePath": "/concepts/transactions/prog-txn-blocks",
+          "url": "https://docs.sui.io/concepts/transactions/prog-txn-blocks",
+          "quote": "Programmable transaction blocks (PTBs) are groups of commands that define all user transactions on Sui."
+        }
+      ]
+    },
+    {
+      "id": "ent_shared_obj",
+      "name": "Shared and immutable objects",
+      "type": "concept",
+      "aliases": [
+        "shared objects",
+        "immutable objects",
+        "owned objects"
+      ],
+      "description": "Ownership categories of Sui objects; immutable objects cannot be mutated, transferred, or deleted.",
+      "url": "https://docs.sui.io/concepts/object-model",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "Not owned by anyone, so anyone can use it. It cannot be mutated, transferred, or deleted"
+        }
+      ]
+    },
+    {
+      "id": "ent_epoch",
+      "name": "Epochs",
+      "type": "concept",
+      "aliases": [
+        "epoch",
+        "reconfiguration"
+      ],
+      "description": "Time periods on Sui during which the validator set remains unchanged.",
+      "url": "https://docs.sui.io/concepts",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "Epochs define time periods on Sui where the validator set remains unchanged."
+        }
+      ]
+    },
+    {
+      "id": "ent_checkpoint",
+      "name": "Checkpoints",
+      "type": "concept",
+      "aliases": [
+        "checkpoint",
+        "checkpoint verification"
+      ],
+      "description": "Records that define the history of the blockchain so clients can verify their state.",
+      "url": "https://docs.sui.io/concepts",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "define the history of the blockchain"
+        }
+      ]
+    },
+    {
+      "id": "ent_storage_fund",
+      "name": "Storage fund",
+      "type": "concept",
+      "aliases": [
+        "storage fund mechanism"
+      ],
+      "description": "A perpetual reserve funded by storage fees that pays out only the returns on its capital.",
+      "url": "https://docs.sui.io/concepts/tokenomics",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "The storage fund pays out only the returns on its capital and does not distribute its principal"
+        }
+      ]
+    },
+    {
+      "id": "ent_crypto",
+      "name": "Cryptographic agility",
+      "type": "technology",
+      "aliases": [
+        "cryptography",
+        "signature schemes"
+      ],
+      "description": "Sui's support for multiple cryptography algorithms and primitives that it can switch between rapidly.",
+      "url": "https://docs.sui.io/concepts/cryptography",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_e5f6a7b8",
+          "routePath": "/concepts/cryptography",
+          "url": "https://docs.sui.io/concepts/cryptography",
+          "quote": "Cryptographic agility is core to Sui. The system supports multiple cryptography algorithms and primitives and can switch between them rapidly."
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "clm_01",
+      "text": "Sui is a layer 1 blockchain that performs its own consensus and validation of transaction blocks.",
+      "kind": "fact",
+      "subjectEntityId": "ent_sui",
+      "sentiment": "neutral",
+      "confidence": 0.92,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "Sui is a layer 1 blockchain that performs its own consensus and validation of transaction blocks."
+        }
+      ]
+    },
+    {
+      "id": "clm_02",
+      "text": "Everything on the Sui blockchain is an object that has metadata, a type of ownership, and a referencing scheme.",
+      "kind": "positioning",
+      "subjectEntityId": "ent_object",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "Everything on the Sui blockchain is an object that has metadata, a type of ownership, and a referencing scheme."
+        }
+      ]
+    },
+    {
+      "id": "clm_03",
+      "text": "Sui enhances Move with features to vastly improve throughput, reduce delays in finality, and make Move programming more approachable.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_move",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "enhancing it with the features to vastly improve throughput, reduce delays in finality, and make Move programming more approachable."
+        }
+      ]
+    },
+    {
+      "id": "clm_04",
+      "text": "Move on Sui addresses the scaling issue by not having global storage or its related operations.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_move",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui addresses the scaling issue by not having global storage or its related operations."
+        }
+      ]
+    },
+    {
+      "id": "clm_05",
+      "text": "PTBs let a user call multiple Move functions, manage their objects, and manage their coins in a single transaction without publishing a new Move package.",
+      "kind": "capability",
+      "subjectEntityId": "ent_ptb",
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_f6a7b8c9",
+          "routePath": "/concepts/transactions/prog-txn-blocks",
+          "url": "https://docs.sui.io/concepts/transactions/prog-txn-blocks",
+          "quote": "PTBs allow a user to call multiple Move functions, manage their objects, and manage their coins in a single transaction without publishing a new Move package."
+        }
+      ]
+    },
+    {
+      "id": "clm_06",
+      "text": "An immutable object is not owned by anyone, so anyone can use it, and it cannot be mutated, transferred, or deleted.",
+      "kind": "limitation",
+      "subjectEntityId": "ent_shared_obj",
+      "sentiment": "neutral",
+      "confidence": 0.86,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "Not owned by anyone, so anyone can use it. It cannot be mutated, transferred, or deleted"
+        }
+      ]
+    },
+    {
+      "id": "clm_07",
+      "text": "PTB execution is atomic: if one transaction command fails, the entire block fails and no effects from the commands are applied.",
+      "kind": "guarantee",
+      "subjectEntityId": "ent_ptb",
+      "sentiment": "positive",
+      "confidence": 0.87,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_f6a7b8c9",
+          "routePath": "/concepts/transactions/prog-txn-blocks",
+          "url": "https://docs.sui.io/concepts/transactions/prog-txn-blocks",
+          "quote": "if one transaction command fails, the entire block fails and no effects from the commands are applied"
+        }
+      ]
+    },
+    {
+      "id": "clm_08",
+      "text": "The total SUI supply is capped at 10,000,000,000 SUI on Mainnet.",
+      "kind": "fact",
+      "subjectEntityId": "ent_sui_token",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "10,000,000,000 SUI"
+        }
+      ]
+    },
+    {
+      "id": "clm_09",
+      "text": "Cryptographic agility is core to Sui, which supports multiple cryptography algorithms and primitives and can switch between them rapidly.",
+      "kind": "positioning",
+      "subjectEntityId": "ent_crypto",
+      "sentiment": "positive",
+      "confidence": 0.84,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_e5f6a7b8",
+          "routePath": "/concepts/cryptography",
+          "url": "https://docs.sui.io/concepts/cryptography",
+          "quote": "Cryptographic agility is core to Sui. The system supports multiple cryptography algorithms and primitives and can switch between them rapidly."
+        }
+      ]
+    },
+    {
+      "id": "clm_10",
+      "text": "The storage fund pays out only the returns on its capital and does not distribute its principal.",
+      "kind": "fact",
+      "subjectEntityId": "ent_storage_fund",
+      "sentiment": "neutral",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "The storage fund pays out only the returns on its capital and does not distribute its principal"
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "stat_01",
+      "label": "Total SUI supply (Mainnet cap)",
+      "valueRaw": "10,000,000,000 SUI",
+      "valueNumber": 10000000000,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_sui_token",
+      "sources": [
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "10,000,000,000 SUI"
+        }
+      ]
+    },
+    {
+      "id": "stat_02",
+      "label": "Max unique operations per PTB",
+      "valueRaw": "1,024 unique operations",
+      "valueNumber": 1024,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_ptb",
+      "sources": [
+        {
+          "chunkId": "c_f6a7b8c9",
+          "routePath": "/concepts/transactions/prog-txn-blocks",
+          "url": "https://docs.sui.io/concepts/transactions/prog-txn-blocks",
+          "quote": "up to 1,024 unique operations in a single execution"
+        }
+      ]
+    },
+    {
+      "id": "stat_03",
+      "label": "Object globally unique ID size",
+      "valueRaw": "32-byte globally unique ID",
+      "valueNumber": 32,
+      "unit": "data_size",
+      "approximate": false,
+      "subjectEntityId": "ent_object",
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "A 32-byte globally unique ID"
+        }
+      ]
+    },
+    {
+      "id": "stat_04",
+      "label": "Object version integer size",
+      "valueRaw": "8-byte unsigned integer version",
+      "valueNumber": 8,
+      "unit": "data_size",
+      "approximate": false,
+      "subjectEntityId": "ent_object",
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "An 8-byte unsigned integer version"
+        }
+      ]
+    },
+    {
+      "id": "stat_05",
+      "label": "Sui address/identifier size",
+      "valueRaw": "32 byte identifier",
+      "valueNumber": 32,
+      "unit": "data_size",
+      "approximate": false,
+      "subjectEntityId": "ent_move",
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "a 32 byte identifier used for both objects and accounts"
+        }
+      ]
+    },
+    {
+      "id": "stat_06",
+      "label": "Minimum voting power to join validator set",
+      "valueRaw": "at least 3 voting power",
+      "valueNumber": 3,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_validator",
+      "sources": [
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "accrue at least 3 voting power before they can request to join the validator set."
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "top_01",
+      "label": "Object Model & Ownership",
+      "weight": 0.25,
+      "keywords": [
+        "object",
+        "owned",
+        "shared",
+        "immutable",
+        "UID",
+        "version",
+        "digest"
+      ],
+      "routePaths": [
+        "/concepts/object-model",
+        "/concepts"
+      ],
+      "entityIds": [
+        "ent_object",
+        "ent_shared_obj",
+        "ent_sui"
+      ]
+    },
+    {
+      "id": "top_02",
+      "label": "Move Smart Contracts",
+      "weight": 0.2,
+      "keywords": [
+        "Move",
+        "packages",
+        "struct",
+        "key ability",
+        "modules",
+        "smart contracts"
+      ],
+      "routePaths": [
+        "/concepts/sui-move-concepts"
+      ],
+      "entityIds": [
+        "ent_move",
+        "ent_object"
+      ]
+    },
+    {
+      "id": "top_03",
+      "label": "Transactions & PTBs",
+      "weight": 0.2,
+      "keywords": [
+        "transaction",
+        "PTB",
+        "commands",
+        "inputs",
+        "gas",
+        "atomic"
+      ],
+      "routePaths": [
+        "/concepts/transactions/prog-txn-blocks"
+      ],
+      "entityIds": [
+        "ent_ptb",
+        "ent_sui_token",
+        "ent_shared_obj"
+      ]
+    },
+    {
+      "id": "top_04",
+      "label": "Tokenomics & Staking",
+      "weight": 0.2,
+      "keywords": [
+        "SUI",
+        "staking",
+        "gas fees",
+        "storage fund",
+        "proof-of-stake",
+        "governance"
+      ],
+      "routePaths": [
+        "/concepts/tokenomics"
+      ],
+      "entityIds": [
+        "ent_sui_token",
+        "ent_validator",
+        "ent_storage_fund"
+      ]
+    },
+    {
+      "id": "top_05",
+      "label": "Network Architecture",
+      "weight": 0.1,
+      "keywords": [
+        "layer 1",
+        "consensus",
+        "checkpoints",
+        "epochs",
+        "validators",
+        "reconfiguration"
+      ],
+      "routePaths": [
+        "/concepts"
+      ],
+      "entityIds": [
+        "ent_sui",
+        "ent_epoch",
+        "ent_checkpoint",
+        "ent_validator"
+      ]
+    },
+    {
+      "id": "top_06",
+      "label": "Cryptography",
+      "weight": 0.05,
+      "keywords": [
+        "cryptographic agility",
+        "Ed25519",
+        "signature schemes",
+        "hashing"
+      ],
+      "routePaths": [
+        "/concepts/cryptography"
+      ],
+      "entityIds": [
+        "ent_crypto"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_01",
+      "sourceEntityId": "ent_sui_token",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "native token of",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "the native SUI token as the currency of the network and to pay for the network's gas fees."
+        }
+      ]
+    },
+    {
+      "id": "rel_02",
+      "sourceEntityId": "ent_ptb",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "defines transactions on",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_f6a7b8c9",
+          "routePath": "/concepts/transactions/prog-txn-blocks",
+          "url": "https://docs.sui.io/concepts/transactions/prog-txn-blocks",
+          "quote": "Programmable transaction blocks (PTBs) are groups of commands that define all user transactions on Sui."
+        }
+      ]
+    },
+    {
+      "id": "rel_03",
+      "sourceEntityId": "ent_sui",
+      "targetEntityId": "ent_move",
+      "kind": "built_with",
+      "label": "smart contracts written in",
+      "confidence": 0.84,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui contains some important differences from Move on other blockchains."
+        }
+      ]
+    },
+    {
+      "id": "rel_04",
+      "sourceEntityId": "ent_object",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "everything on Sui is an",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "Everything on the Sui blockchain is an object that has metadata, a type of ownership, and a referencing scheme."
+        }
+      ]
+    },
+    {
+      "id": "rel_05",
+      "sourceEntityId": "ent_shared_obj",
+      "targetEntityId": "ent_object",
+      "kind": "part_of",
+      "label": "ownership category of",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_f6a7b8c9",
+          "routePath": "/concepts/transactions/prog-txn-blocks",
+          "url": "https://docs.sui.io/concepts/transactions/prog-txn-blocks",
+          "quote": "the objects are either owned by the sender or are shared or immutable objects"
+        }
+      ]
+    },
+    {
+      "id": "rel_06",
+      "sourceEntityId": "ent_validator",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "verify activity on",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "the validator entities that verify this activity."
+        }
+      ]
+    },
+    {
+      "id": "rel_07",
+      "sourceEntityId": "ent_epoch",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "time periods on",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "Epochs define time periods on Sui where the validator set remains unchanged."
+        }
+      ]
+    },
+    {
+      "id": "rel_08",
+      "sourceEntityId": "ent_checkpoint",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "define history of",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "define the history of the blockchain"
+        }
+      ]
+    },
+    {
+      "id": "rel_09",
+      "sourceEntityId": "ent_sui_token",
+      "targetEntityId": "ent_validator",
+      "kind": "used_by",
+      "label": "locked as collateral by",
+      "confidence": 0.83,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "lock a certain amount of SUI as collateral for the duration of an epoch."
+        }
+      ]
+    },
+    {
+      "id": "rel_10",
+      "sourceEntityId": "ent_storage_fund",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "funded by storage fees on",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "Each onchain transaction that adds data to the chain includes a fee for storage, which the protocol adds to the storage fund."
+        }
+      ]
+    },
+    {
+      "id": "rel_11",
+      "sourceEntityId": "ent_object",
+      "targetEntityId": "ent_move",
+      "kind": "built_with",
+      "label": "defined and managed in",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "define, create, and manage programmable Sui objects representing assets and smart contracts."
+        }
+      ]
+    },
+    {
+      "id": "rel_12",
+      "sourceEntityId": "ent_crypto",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "core to",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_e5f6a7b8",
+          "routePath": "/concepts/cryptography",
+          "url": "https://docs.sui.io/concepts/cryptography",
+          "quote": "Cryptographic agility is core to Sui."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_01",
+      "question": "What is Sui?",
+      "answer": "Sui is a layer 1 blockchain that performs its own consensus and validation of transaction blocks, using the native SUI token as the currency of the network and to pay gas fees.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "ent_sui",
+        "ent_sui_token"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "Sui is a layer 1 blockchain that performs its own consensus and validation of transaction blocks."
+        }
+      ]
+    },
+    {
+      "id": "q_02",
+      "question": "How does Sui store data with its object model?",
+      "answer": "An object is the fundamental unit of storage on the network; every resource, asset, or piece of data onchain is an object, and everything on Sui is an object with metadata, ownership, and a referencing scheme.",
+      "category": "how_it_works",
+      "importance": 0.9,
+      "entityIds": [
+        "ent_object"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "An object is a fundamental unit of storage on the network. Every resource, asset, or piece of data onchain is an object."
+        }
+      ]
+    },
+    {
+      "id": "q_03",
+      "question": "What are Programmable Transaction Blocks (PTBs) on Sui?",
+      "answer": "PTBs are groups of commands that define all user transactions on Sui; a single PTB can perform up to 1,024 unique operations, executes commands in order, and applies all effects atomically.",
+      "category": "how_it_works",
+      "importance": 0.82,
+      "entityIds": [
+        "ent_ptb"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_f6a7b8c9",
+          "routePath": "/concepts/transactions/prog-txn-blocks",
+          "url": "https://docs.sui.io/concepts/transactions/prog-txn-blocks",
+          "quote": "up to 1,024 unique operations in a single execution"
+        }
+      ]
+    },
+    {
+      "id": "q_04",
+      "question": "How is Move on Sui different from Move on other blockchains?",
+      "answer": "Move on Sui addresses the scaling issue by not having global storage or its related operations, and it repurposes the address type as a 32 byte identifier used for both objects and accounts.",
+      "category": "differentiators",
+      "importance": 0.75,
+      "entityIds": [
+        "ent_move"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui addresses the scaling issue by not having global storage or its related operations."
+        }
+      ]
+    },
+    {
+      "id": "q_05",
+      "question": "How are gas fees paid on Sui?",
+      "answer": "SUI is the asset denomination needed to pay the gas fees required to execute transactions on the network.",
+      "category": "pricing",
+      "importance": 0.78,
+      "entityIds": [
+        "ent_sui_token"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "SUI is the asset denomination needed to pay the gas fees required to execute transactions."
+        }
+      ]
+    },
+    {
+      "id": "q_06",
+      "question": "What cryptography does Sui support?",
+      "answer": "Cryptographic agility is core to Sui; the system supports multiple cryptography algorithms and primitives and can switch between them rapidly, including verification within Move smart contracts through several signature schemes.",
+      "category": "trust_security",
+      "importance": 0.65,
+      "entityIds": [
+        "ent_crypto"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_e5f6a7b8",
+          "routePath": "/concepts/cryptography",
+          "url": "https://docs.sui.io/concepts/cryptography",
+          "quote": "Sui supports verification within Move smart contracts through several signature schemes."
+        }
+      ]
+    },
+    {
+      "id": "q_07",
+      "question": "What is the difference between owned, shared, and immutable objects?",
+      "answer": "An address-owned object is owned by a specific 32-byte address, an immutable object is not owned by anyone (anyone can use it but it cannot be mutated, transferred, or deleted), and a party/consensus object is owned by a single address but sequenced through consensus.",
+      "category": "how_it_works",
+      "importance": 0.72,
+      "entityIds": [
+        "ent_shared_obj",
+        "ent_object"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "Not owned by anyone, so anyone can use it. It cannot be mutated, transferred, or deleted"
+        },
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "Owned by a single address but sequenced through consensus"
+        }
+      ]
+    },
+    {
+      "id": "q_08",
+      "question": "What is the total supply of SUI and how does staking work?",
+      "answer": "The total SUI supply is capped at 10,000,000,000 SUI on Mainnet; SUI can be staked in the proof-of-stake mechanism, and validators lock SUI as collateral for the duration of an epoch and reward users based on the amount of SUI they delegate.",
+      "category": "how_it_works",
+      "importance": 0.68,
+      "entityIds": [
+        "ent_sui_token",
+        "ent_validator"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "Provides the opportunity to stake SUI to participate in the proof-of-stake mechanism."
+        },
+        {
+          "chunkId": "c_d4e5f6a7",
+          "routePath": "/concepts/tokenomics",
+          "url": "https://docs.sui.io/concepts/tokenomics",
+          "quote": "reward users based on the amount of SUI they delegate."
+        }
+      ]
+    },
+    {
+      "id": "q_09",
+      "question": "What are epochs and checkpoints on Sui?",
+      "answer": "Epochs define time periods on Sui where the validator set remains unchanged, with reconfiguration adjusting network parameters at epoch boundaries, while checkpoints define the history of the blockchain.",
+      "category": "how_it_works",
+      "importance": 0.6,
+      "entityIds": [
+        "ent_epoch",
+        "ent_checkpoint"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/concepts",
+          "url": "https://docs.sui.io/concepts",
+          "quote": "Epochs define time periods on Sui where the validator set remains unchanged."
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 6,
+    "chunksAnalyzed": 18,
+    "entitiesWithSources": 11,
+    "ungroundedDropped": 4
+  }
+}

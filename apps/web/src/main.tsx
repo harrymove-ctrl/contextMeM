@@ -676,6 +676,62 @@ type MemWalNotice = {
 };
 
 const API_BASE = import.meta.env.VITE_CONTEXTMEM_API_BASE ?? "http://localhost:8791";
+
+// localStorage throws (SecurityError) in Safari "block all cookies", private mode,
+// and sandboxed iframes — guard every access so it can never crash the app.
+function safeLocalGet(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function safeLocalSet(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+function safeLocalRemove(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+
+// Catches any render throw so one bad manifest/facts payload degrades to a
+// recoverable card instead of white-screening the whole SPA.
+class AppErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error) {
+    console.error("[ContextMeM] render error:", error);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="appErrorBoundary">
+          <div className="appErrorCard">
+            <strong>Something went wrong rendering this view.</strong>
+            <p>{this.state.error.message}</p>
+            <div className="appErrorActions">
+              <button type="button" onClick={() => this.setState({ error: null })}>Try again</button>
+              <a href="/app">Back to Build</a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 const showDevMemWalAuth = import.meta.env.DEV && !import.meta.env.PROD && (import.meta.env.VITE_CONTEXTMEM_DEV_AUTH === "true" || new URLSearchParams(window.location.search).get("devAuth") === "1");
 const buildProfileDefaults: Record<BuildProfile, string[]> = {
   fast: ["markdown", "sitemap"],
@@ -779,7 +835,7 @@ function ContextMemExperience() {
   const [memwalNotice, setMemwalNotice] = useState<MemWalNotice | null>(null);
   const [demoPreview, setDemoPreview] = useState<DemoPreviewState | null>(null);
   const [me, setMe] = useState<AccountMe>(anonymousMe);
-  const [sessionToken, setSessionToken] = useState(() => window.localStorage.getItem("contextmem.session") ?? "");
+  const [sessionToken, setSessionToken] = useState(() => safeLocalGet("contextmem.session") ?? "");
   const [delegateAccountId, setDelegateAccountId] = useState("");
   const [delegateKey, setDelegateKey] = useState("");
   useEffect(() => {
@@ -810,8 +866,8 @@ function ContextMemExperience() {
 
   const stats = useMemo(() => {
     return [
-      { label: "Pages", value: artifact?.pages.length ?? run?.pages ?? run?.walrus?.pages ?? 0, icon: FileText },
-      { label: "Images", value: artifact?.images.length ?? 0, icon: Image },
+      { label: "Pages", value: artifact?.pages?.length ?? run?.pages ?? run?.walrus?.pages ?? 0, icon: FileText },
+      { label: "Images", value: artifact?.images?.length ?? 0, icon: Image },
       { label: "Resources", value: artifact?.walrus?.resources.length ?? run?.walrus?.resources ?? 0, icon: Boxes },
       ...(artifact?.discovery ? [{ label: "Discovery", value: `${artifact.discovery.pagesEmitted}/${artifact.discovery.totalCandidates}`, icon: Search }] : []),
       { label: "Namespace", value: run?.manifest.namespace ?? "not synced", icon: Database }
@@ -831,7 +887,7 @@ function ContextMemExperience() {
     const callbackSession = params.get("contextmem_session");
     const memwalStatus = params.get("memwal");
     if (callbackSession) {
-      window.localStorage.setItem("contextmem.session", callbackSession);
+      safeLocalSet("contextmem.session", callbackSession);
       setSessionToken(callbackSession);
       setAuthHint("Walrus Memory connected. ContextMeM session restored.");
       setMemwalNotice({ tone: "success", message: "Walrus Memory connected. SDK delegate is ready for ContextMeM." });
@@ -921,19 +977,19 @@ function ContextMemExperience() {
       const nextMe = (await response.json()) as AccountMe;
       setMe(nextMe);
       if (!nextMe.authenticated) {
-        window.localStorage.removeItem("contextmem.session");
+        safeLocalRemove("contextmem.session");
         setSessionToken("");
       }
     } catch {
       setMe(anonymousMe);
-      window.localStorage.removeItem("contextmem.session");
+      safeLocalRemove("contextmem.session");
       if (token) setSessionToken("");
     }
   }
 
   function logout() {
-    window.localStorage.removeItem("contextmem.session");
-    window.localStorage.removeItem("contextmem.hostedDelegate");
+    safeLocalRemove("contextmem.session");
+    safeLocalRemove("contextmem.hostedDelegate");
     setSessionToken("");
     setMe(anonymousMe);
     setRun(null);
@@ -981,17 +1037,25 @@ function ContextMemExperience() {
 
   async function importDelegate() {
     const accountId = delegateAccountId.trim();
-    const key = delegateKey.trim();
-    if (!accountId || key.length < 12) {
-      const message = "Paste both your Walrus Memory account ID and a delegate private key (12+ chars).";
+    // Normalize: strip a Bearer prefix, an 0x prefix, and whitespace, then require
+    // a real 64-char hex Ed25519 seed — otherwise a masked/wrong value gets stored
+    // and only fails much later with a raw "hexToBytes" error at recall time.
+    const key = delegateKey.trim().replace(/^bearer\s+/i, "").replace(/^0x/i, "").trim();
+    if (!accountId) {
+      const message = "Paste your Walrus Memory account ID.";
+      setError(message);
+      setMemwalNotice({ tone: "warning", message });
+      return;
+    }
+    if (!/^[0-9a-fA-F]{64}$/.test(key)) {
+      const message = "Delegate private key must be a 64-character hex Ed25519 seed (no 0x, no spaces). The value pasted isn't valid hex — re-copy it from your Walrus Memory dashboard.";
       setError(message);
       setMemwalNotice({ tone: "warning", message });
       return;
     }
     if (isHostedApiBase) {
       try {
-        window.localStorage.setItem(
-          "contextmem.hostedDelegate",
+        safeLocalSet("contextmem.hostedDelegate",
           JSON.stringify({ memwalAccountId: accountId, delegateKey: key })
         );
       } catch (err) {
@@ -1022,7 +1086,7 @@ function ContextMemExperience() {
       const result = (await response.json()) as DelegateImportResponse;
       const nextMe = "me" in result ? result.me : result;
       if ("token" in result) {
-        window.localStorage.setItem("contextmem.session", result.token);
+        safeLocalSet("contextmem.session", result.token);
         setSessionToken(result.token);
       }
       setMe(nextMe);
@@ -1221,7 +1285,8 @@ function ContextMemExperience() {
     } catch {
       // Older dev servers may not expose SSE yet; polling keeps the build usable.
     }
-    for (;;) {
+    // Bounded poll (~4 min) so a stuck job can't hang the Build button forever.
+    for (let attempt = 0; attempt < 360; attempt += 1) {
       await delay(650);
       const response = await fetch(`${API_BASE}/api/runs/${runId}`, { headers: authHeaders(sessionToken) });
       if (!response.ok) throw new Error(await readResponseError(response));
@@ -1230,6 +1295,7 @@ function ContextMemExperience() {
       if (manifest.status === "completed") return manifest;
       if (manifest.status === "failed") throw new Error(manifest.errors?.[0] ?? "Context build failed.");
     }
+    throw new Error("Build is taking longer than expected — it may still finish; check Runs in a moment.");
   }
 
   async function remember() {
@@ -1416,7 +1482,7 @@ function ContextMemExperience() {
         hasMemWalDelegate={hasMemWalDelegate}
         run={run}
       >
-        {hasMemWalDelegate ? child : lockedContent}
+        {hasMemWalDelegate ? <AppErrorBoundary>{child}</AppErrorBoundary> : lockedContent}
       </AppShell>
     );
   }
@@ -1481,7 +1547,7 @@ function ContextMemExperience() {
       />
       <Route path="/app/compare" element={renderShell("Compare", "Pick two runs and review brand, design tokens, and key facts side-by-side.", <CompareAppPage history={history} authToken={sessionToken} />)} />
       <Route path="/app/publish" element={renderShell("Publish", "Check readiness and copy the commands needed to publish the context package.", <PublishPanel run={run} authToken={sessionToken} />)} />
-      <Route path="/app/namespaces" element={renderShell("Namespaces", "Build hosted AI namespaces from multiple sites, manage tokens, schedules, and public directory entries.", <NamespacesAppPage authToken={sessionToken} />)} />
+      <Route path="/app/namespaces" element={renderShell("Namespaces", "Verified context namespaces — open one to browse its knowledge graph.", <NamespacesSimplePage />)} />
       <Route
         path="/app/settings"
         element={renderShell(
@@ -1524,8 +1590,6 @@ const appNavItems = [
   { to: "/app/artifacts", label: "Artifacts", icon: FolderOpen },
   { to: "/app/runs", label: "Runs", icon: History },
   { to: "/app/memory", label: "Memory", icon: Brain },
-  { to: "/app/compare", label: "Compare", icon: GitCompare },
-  { to: "/app/publish", label: "Publish", icon: LayoutGrid },
   { to: "/app/namespaces", label: "Namespaces", icon: Database },
   { to: "/app/settings", label: "Settings", icon: Settings }
 ];
@@ -1742,7 +1806,7 @@ function ShareStructureNodes({ nodes, depth }: { nodes: SiteStructureNode[]; dep
 }
 
 function ShareImagesGrid({ manifest }: { manifest: ArtifactManifest }) {
-  if (!manifest.images.length) return <div className="panel subEmpty">No images extracted.</div>;
+  if (!manifest.images?.length) return <div className="panel subEmpty">No images extracted.</div>;
   return (
     <div className="grid">
       {manifest.images.map((image, index) => {
@@ -2628,6 +2692,56 @@ function LandingPage({
   );
 }
 
+const NEXT_STEPS: Array<{ order: number; route: string; icon: React.ComponentType<{ size?: number }>; line: string; highlight: string }> = [
+  { order: 1, route: "/app/artifacts", icon: FolderOpen, line: "Open Artifacts to read the markdown, manifests, and screenshots you just built.", highlight: "Artifacts" },
+  { order: 2, route: "/app/runs", icon: History, line: "Open Runs to scan your history by namespace and reopen any package in one click.", highlight: "Runs" },
+  { order: 3, route: "/app/memory", icon: Brain, line: "Open Memory to browse the knowledge graph and recall stored context.", highlight: "Memory" },
+  { order: 4, route: "/app/namespaces", icon: Database, line: "Open Namespaces to browse every verified context namespace.", highlight: "Namespaces" }
+];
+
+// Post-build guide: instead of leaving the user to hunt the nav, walk them
+// through the product surface (Artifacts -> Runs -> Memory -> Compare ->
+// Publish -> Namespaces) with a blur-in reveal that highlights each function.
+function NextStepsGuide({ intro }: { intro?: string }) {
+  return (
+    <section className="nextSteps" aria-label="Next steps">
+      <header className="nextStepsHead">
+        <span className="nextStepsEyebrow">Next steps</span>
+        <h3>{intro ?? "Your context package is built — here's how to explore it, share it, and keep it fresh."}</h3>
+      </header>
+      <ol className="nextStepsList">
+        {NEXT_STEPS.map((step, index) => {
+          const Icon = step.icon;
+          return (
+            <li className="nextStepsItem" key={step.route}>
+              <Link className="nextStepsLink" to={step.route}>
+                <span className="nextStepsNum">{step.order}</span>
+                <span className="nextStepsIcon"><Icon size={20} /></span>
+                <span className="nextStepsBody">
+                  <BlurHighlight
+                    highlightedBits={[step.highlight]}
+                    highlightColor="rgba(168, 217, 70, 0.5)"
+                    highlightClassName="nextStepsHi"
+                    blurAmount={6}
+                    blurDelay={index * 0.08}
+                    blurDuration={0.6}
+                    highlightDelay={0.3 + index * 0.08}
+                    highlightDuration={0.5}
+                    viewportOptions={{ once: true, amount: 0.3 }}
+                  >
+                    {step.line}
+                  </BlurHighlight>
+                </span>
+                <span className="nextStepsGo" aria-hidden="true">→</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
 function BuildConsolePage({
   target,
   setTarget,
@@ -2742,6 +2856,8 @@ function BuildConsolePage({
         <RecentRunsRow history={history} onOpenRun={onOpenRun} busy={busy} />
       ) : null}
 
+      {hasRunOrArtifact && !resultsExpanded ? <NextStepsGuide /> : null}
+
       <div className="tabs">
         {buildTabs.map(([label, Icon]) => (
           <button key={label} className={visibleTab === label ? "selected" : ""} onClick={() => setActiveTab(label)}>
@@ -2826,8 +2942,8 @@ function BuildConsolePage({
             </div>
 
             {isHostedApiBase ? (
-              <details className="field customNamespaceField">
-                <summary>Namespace · custom (optional)</summary>
+              <details className="field customNamespaceField" open>
+                <summary>Name this context <span className="customNamespaceHint">— set a namespace, or auto-generate</span></summary>
                 <div className="namespaceFields">
                   <label>
                     <span>Namespace slug</span>
@@ -2848,7 +2964,7 @@ function BuildConsolePage({
                       placeholder="Seal Docs (shown on share page)"
                     />
                   </label>
-                  <small>Leave blank to auto-generate <code>demo:&lt;hostname&gt;:&lt;random&gt;</code>.</small>
+                  <small>Leave blank to auto-generate <code>demo:&lt;hostname&gt;:&lt;random&gt;</code>. Manage all your namespaces in <strong>Runs</strong>.</small>
                 </div>
               </details>
             ) : null}
@@ -3030,6 +3146,179 @@ function RunsAppPage({ history, busy, currentRunId, onRefresh, onOpenRun }: { hi
   );
 }
 
+const MEMORY_EXPLORER_PROMPTS = [
+  "What is this project and who is it for?",
+  "How does it work technically?",
+  "What are the key facts, numbers, and costs?"
+];
+
+// Walrus Memory explorer — recall seeded namespaces directly, no open run
+// required. Backed by the public GET /api/memwal/namespaces + POST
+// /api/memwal/recall worker routes (server-side MEMWAL_* delegate).
+function MemoryExplorerPanel({ authToken }: { authToken: string }) {
+  const [namespaces, setNamespaces] = useState<Array<{ namespace: string; label: string }>>([]);
+  const [configured, setConfigured] = useState(true);
+  const [selected, setSelected] = useState<string>("");
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ text: string; raw: unknown; source?: string } | null>(null);
+  const [facts, setFacts] = useState<SiteFacts | null>(null);
+  const [factsBusy, setFactsBusy] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/memwal/namespaces`, { headers: authHeaders(authToken) });
+        if (!response.ok) {
+          setConfigured(false);
+          return;
+        }
+        const body = (await response.json()) as { namespaces?: Array<{ namespace: string; label: string }>; configured?: boolean };
+        setNamespaces(body.namespaces ?? []);
+        setConfigured(body.configured !== false);
+        const fromUrl = new URLSearchParams(window.location.search).get("ns") || "";
+        const preselect = body.namespaces?.some((entry) => entry.namespace === fromUrl) ? fromUrl : "";
+        setSelected((current) => current || preselect || body.namespaces?.[0]?.namespace || "");
+      } catch {
+        setConfigured(false);
+      }
+    })();
+  }, [authToken]);
+
+  useEffect(() => {
+    // Switching namespace must not leave the previous graph/answer on screen.
+    setFacts(null);
+    setResult(null);
+    setError(null);
+    if (!selected) {
+      return;
+    }
+    let cancelled = false;
+    setFactsBusy(true);
+    void (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/memwal/facts/${encodeURIComponent(selected)}`, { headers: authHeaders(authToken) });
+        if (!response.ok) {
+          if (!cancelled) setFacts(null);
+          return;
+        }
+        const body = (await response.json()) as { facts?: SiteFacts };
+        if (!cancelled) setFacts(body.facts ?? null);
+      } catch {
+        if (!cancelled) setFacts(null);
+      } finally {
+        if (!cancelled) setFactsBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, authToken]);
+
+  async function runRecall(prompt?: string) {
+    const question = (prompt ?? query).trim();
+    if (!selected || !question || busy) return;
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/memwal/recall`, {
+        method: "POST",
+        headers: authHeaders(authToken, { "content-type": "application/json" }),
+        body: JSON.stringify({ namespace: selected, query: question })
+      });
+      const text = await response.text();
+      let body: { result?: unknown; error?: string; source?: string } = {};
+      try {
+        body = text ? (JSON.parse(text) as typeof body) : {};
+      } catch {
+        /* non-JSON (e.g. a gateway HTML error page) — fall through to status-based error */
+      }
+      if (!response.ok) throw new Error(body.error ?? `Recall failed (${response.status}).`);
+      setResult({ text: memoryPayloadToText(body.result, "recall"), raw: body.result, source: body.source });
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      const friendly = /hexToBytes|non-hex|invalid.*key|Ed25519/i.test(raw)
+        ? "Your Walrus Memory delegate key looks malformed (not a 64-char hex seed). Re-import it in Settings, or set MEMWAL_PRIVATE_KEY on the Worker."
+        : raw;
+      setError(friendly);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="panel memoryExplorer">
+      <div className="memoryExplorerHead">
+        <span className="factsKicker">
+          <Brain size={14} /> Walrus Memory
+        </span>
+        <h2>Browse Knowledge + Memory</h2>
+        <p>Explore a namespace's verified knowledge graph and recall its stored context — no run required. Pick a namespace.</p>
+      </div>
+      {!configured ? <div className="notice">Recall uses your Walrus Memory delegate — import it in <strong>Settings</strong> (sent securely as a request header), or set <code>MEMWAL_*</code> on the Worker for anonymous recall.</div> : null}
+      {namespaces.length ? (
+        <div className="memoryExplorerNamespaces">
+          {namespaces.map((ns) => (
+            <button key={ns.namespace} type="button" className={`memoryNsChip ${selected === ns.namespace ? "selected" : ""}`} onClick={() => setSelected(ns.namespace)}>
+              <Database size={14} />
+              <span>{ns.label}</span>
+              <small>{ns.namespace}</small>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="memoryExplorerInput">
+        <textarea
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+              event.preventDefault();
+              void runRecall();
+            }
+          }}
+          placeholder={selected ? `Ask about ${selected}…  (⌘/Ctrl+Enter to recall)` : "Pick a namespace first…"}
+          rows={2}
+        />
+        <button className="primary" type="button" disabled={!selected || !query.trim() || busy} onClick={() => void runRecall()}>
+          {busy ? <LoaderCircle size={16} className="spin" /> : <Sparkles size={16} />}
+          Recall
+        </button>
+      </div>
+      <div className="memoryExplorerPrompts">
+        {MEMORY_EXPLORER_PROMPTS.map((prompt) => (
+          <button key={prompt} type="button" onClick={() => void runRecall(prompt)} disabled={busy || !selected}>
+            {prompt}
+          </button>
+        ))}
+      </div>
+      {error ? <div className="error">{error}</div> : null}
+      {result ? (
+        <div className="memoryExplorerResult">
+          {result.source === "facts" ? <span className="memoryResultSource">From the verified knowledge graph · connect a Walrus Memory delegate for full recall</span> : null}
+          <div className="memoryResultText">{result.text}</div>
+          <MemoryRawResult data={result.raw} empty="No memories matched." />
+        </div>
+      ) : null}
+
+      {factsBusy && !facts ? (
+        <div className="memoryKnowledgeLoading">Loading knowledge graph…</div>
+      ) : facts ? (
+        <div className="memoryKnowledge">
+          <div className="memoryKnowledgeHead">
+            <span className="factsKicker">
+              <Boxes size={14} /> Knowledge
+            </span>
+          </div>
+          <FactsPanel facts={facts} />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function MemoryAppPage({
   artifact,
   run,
@@ -3049,7 +3338,7 @@ function MemoryAppPage({
 }) {
   return (
     <section className="appPanelStack">
-      {artifact && run ? <MemWalPanel artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={authToken} onRemember={onRemember} rememberBusy={busy} /> : <div className="panel subEmpty">Build or reopen a run before using Walrus Memory tools.</div>}
+      {artifact && run ? <MemWalPanel artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={authToken} onRemember={onRemember} rememberBusy={busy} /> : <MemoryExplorerPanel authToken={authToken} />}
     </section>
   );
 }
@@ -3386,6 +3675,8 @@ function MarkdownPanel({ pages, namespace, onPageEdited }: { pages: MarkdownPage
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [savingPath, setSavingPath] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<{ tone: "success" | "warning"; message: string } | null>(null);
+  // Hook must run unconditionally — before the `!pages.length` early return.
+  const [selectedKey, setSelectedKey] = useState<string>(() => (pages[0] ? pageEditKey(pages[0]) : ""));
   const totalCharacters = useMemo(() => pages.reduce((sum, page) => sum + page.markdown.length, 0), [pages]);
   const canEdit = Boolean(namespace);
 
@@ -3437,7 +3728,6 @@ function MarkdownPanel({ pages, namespace, onPageEdited }: { pages: MarkdownPage
     }
   }
 
-  const [selectedKey, setSelectedKey] = useState<string>(() => pageEditKey(pages[0]!));
   const selectedPage = pages.find((page) => pageEditKey(page) === selectedKey) ?? pages[0]!;
   const selectedValue = draftFor(selectedPage);
   const selectedDirty = drafts[pageEditKey(selectedPage)] !== undefined && drafts[pageEditKey(selectedPage)] !== selectedPage.markdown;
@@ -4752,7 +5042,7 @@ function AiQueryPanel({
 }
 
 function AiResultData({ data }: { data: Record<string, unknown> }) {
-  const entries = Object.entries(data);
+  const entries = Object.entries(data ?? {});
   if (!entries.length) return <div className="subEmpty aiResultEmpty">No structured data returned.</div>;
 
   return (
@@ -5020,9 +5310,9 @@ function CompareColumn({ label, manifest }: { label: string; manifest: ArtifactM
   if (!manifest) {
     return <div className="compareColumn panel subEmpty">No run selected for {label.toLowerCase()}.</div>;
   }
-  const colors = manifest.brand?.colors?.slice(0, 8) ?? manifest.styleguide?.colors.palette.slice(0, 8) ?? [];
+  const colors = manifest.brand?.colors?.slice(0, 8) ?? manifest.styleguide?.colors?.palette?.slice(0, 8) ?? [];
   const fonts = manifest.brand?.fonts ?? manifest.styleguide?.typography.fontFamilies ?? [];
-  const pages = manifest.pages.slice(0, 6);
+  const pages = (manifest.pages ?? []).slice(0, 6);
   const designColors = manifest.designSystem?.tokens.colors.slice(0, 8) ?? [];
   return (
     <article className="compareColumn panel">
@@ -5061,7 +5351,7 @@ function CompareColumn({ label, manifest }: { label: string; manifest: ArtifactM
       </section>
 
       <section className="compareSection">
-        <h3>Pages ({manifest.pages.length})</h3>
+        <h3>Pages ({manifest.pages?.length ?? 0})</h3>
         <ul className="compareList">
           {pages.map((page) => (
             <li key={page.url}>
@@ -5103,6 +5393,10 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
 
   useEffect(() => {
     if (!run) return;
+    // Clear any prior error/readiness so a transient failure can't permanently
+    // stick the page (the `if (error) return` guard sits above the render).
+    setError(null);
+    setReadiness(null);
     setHostedError(null);
     setHostedResult(null);
     setHostedNamespace(run.manifest.namespace);
@@ -5163,7 +5457,12 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
     }
   }
 
-  if (!run) return <JsonPanel data={{ status: "No run selected" }} />;
+  if (!run)
+    return (
+      <div className="panel subEmpty">
+        No run selected. Build or open a run to check publish readiness. <Link to="/app">Open Build</Link>
+      </div>
+    );
   if (error) return <div className="panel"><div className="error">{error}</div></div>;
   if (!readiness) return <div className="empty">Loading publish package...</div>;
 
@@ -5338,6 +5637,57 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
         ) : null}
       </section>
     </div>
+  );
+}
+
+// Maximally simplified Namespaces view: a clean read-only list of verified context
+// namespaces (from the public facts catalog) that links straight into the Knowledge browser.
+function NamespacesSimplePage() {
+  const navigate = useNavigate();
+  const [namespaces, setNamespaces] = useState<Array<{ namespace: string; displayName: string; target: string; entities: number; relationships: number; topics: number; questions: number }>>([]);
+  const [busy, setBusy] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/memwal/facts`);
+        const body = (await response.json()) as { namespaces?: typeof namespaces };
+        if (!cancelled) setNamespaces(body.namespaces ?? []);
+      } catch {
+        /* leave empty */
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <section className="appPanelStack">
+      <div className="nsSimpleGrid">
+        {namespaces.map((ns) => (
+          <button key={ns.namespace} type="button" className="nsSimpleCard" onClick={() => navigate(`/app/memory?ns=${encodeURIComponent(ns.namespace)}`)}>
+            <div className="nsSimpleHead">
+              <Database size={16} />
+              <strong>{ns.displayName}</strong>
+            </div>
+            <code>{ns.namespace}</code>
+            <span className="nsSimpleTarget">{ns.target}</span>
+            <div className="nsSimpleCounts">
+              <span>{ns.entities} entities</span>
+              <span>{ns.relationships} links</span>
+              <span>{ns.topics} topics</span>
+              <span>{ns.questions} Q&amp;A</span>
+            </div>
+            <span className="nsSimpleBrowse">Browse knowledge →</span>
+          </button>
+        ))}
+      </div>
+      {busy ? <div className="panel subEmpty">Loading namespaces…</div> : !namespaces.length ? <div className="panel subEmpty">No namespaces yet. Build a context package to create one.</div> : null}
+    </section>
   );
 }
 
@@ -6164,9 +6514,28 @@ function memoryPayloadToText(payload: unknown, kind: "recall" | "query"): string
     if (resultText.trim()) return resultText;
   }
 
+  // Recall returns { results: [{ text, distance, blob_id }] } (also matches[]/memories[]).
+  // Surface the actual stored text, not a bare count — otherwise a successful recall
+  // looks empty.
+  for (const key of ["results", "matches", "memories"]) {
+    const arr = record[key];
+    if (Array.isArray(arr)) {
+      const texts = arr
+        .map((item) => (item && typeof item === "object" && typeof (item as Record<string, unknown>).text === "string" ? ((item as Record<string, unknown>).text as string) : ""))
+        .filter(Boolean);
+      if (texts.length) return texts.map((text, index) => `${index + 1}. ${text}`).join("\n\n");
+    }
+  }
+
   if (Array.isArray(record.matches) && record.matches.length) return `Found ${record.matches.length} matching memory item${record.matches.length === 1 ? "" : "s"}. Open Raw response for details.`;
   if (Array.isArray(record.memories) && record.memories.length) return `Found ${record.memories.length} remembered item${record.memories.length === 1 ? "" : "s"} for this namespace.`;
   if (Array.isArray(record.results) && record.results.length) return `Found ${record.results.length} result${record.results.length === 1 ? "" : "s"} from Walrus Memory.`;
+
+  // Recognized-but-empty result shapes (e.g. { results: [] }) should read cleanly,
+  // not dump raw JSON.
+  if (["results", "matches", "memories"].some((key) => Array.isArray(record[key]))) {
+    return kind === "recall" ? "No memories matched this query." : "No results.";
+  }
 
   const rendered = JSON.stringify(payload, null, 2);
   return rendered.length > 1200 ? `${rendered.slice(0, 1200)}\n...` : rendered;
@@ -6626,7 +6995,221 @@ function FactsSourceWhy({ sources, label = "why" }: { sources: FactSourceRef[]; 
   );
 }
 
+// Single-source entity-type -> color map (mirrors the .factsType-* legend in styles.css).
+const ENTITY_TYPE_COLORS: Record<EntityType, string> = {
+  organization: "#1d63ed",
+  product: "#a8d946",
+  platform: "#0f766e",
+  feature: "#7c3aed",
+  technology: "#0891b2",
+  integration: "#d97706",
+  pricing_plan: "#16a34a",
+  use_case: "#db2777",
+  person: "#e36d52",
+  customer: "#2563eb",
+  competitor: "#b91c1c",
+  metric: "#ca8a04",
+  location: "#4f46e5",
+  event: "#be185d",
+  concept: "#64748b",
+  other: "#94a3b8"
+};
+
+// Deterministic radial-by-salience entity/relationship graph. No d3, no
+// Math.random, no Date, no RAF — layout is a pure function of `entities` so
+// in-app and share/SSR renders are byte-identical.
+function FactsGraph({
+  entities,
+  relationships,
+  activeId,
+  onActivate
+}: {
+  entities: SiteEntity[];
+  relationships: SiteRelationship[];
+  activeId: string | null;
+  onActivate: (id: string | null) => void;
+}) {
+  const W = 760;
+  const H = 460;
+  const CX = W / 2;
+  const CY = H / 2;
+  // Hover is local + transient; the pin (activeId) is owned by FactsPanel and
+  // shared with the entity list. effectiveId = hover falls back to the pin, so
+  // leaving the svg clears only the hover and the pin survives.
+  const [hoverId, setHoverId] = useState<string | null>(null);
+
+  const layout = useMemo(() => {
+    const sal = (e: SiteEntity) => (Number.isFinite(e.salience) ? e.salience : 0);
+    const ranked = entities
+      .slice()
+      .sort((a, b) => sal(b) - sal(a) || a.id.localeCompare(b.id))
+      .slice(0, 24);
+    const pos = new Map<string, { x: number; y: number; r: number; e: SiteEntity }>();
+    if (!ranked.length) return { pos, nodes: [] as Array<{ id: string; x: number; y: number; r: number; e: SiteEntity }> };
+    const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+    const center = ranked[0]!;
+    pos.set(center.id, { x: CX, y: CY, r: 11 + sal(center) * 19, e: center });
+    const rest = ranked.slice(1);
+    const ring1Count = Math.ceil(rest.length / 2);
+    rest.forEach((e, i) => {
+      const ring = i < ring1Count ? 0 : 1;
+      const inRing = ring === 0 ? ring1Count : rest.length - ring1Count;
+      const idxInRing = ring === 0 ? i : i - ring1Count;
+      const radiusY = ring === 0 ? 125 : 200;
+      const phase = ring === 0 ? -Math.PI / 2 : -Math.PI / 2 + Math.PI / Math.max(1, inRing);
+      const angle = (idxInRing / Math.max(1, inRing)) * Math.PI * 2 + phase;
+      const x = CX + Math.cos(angle) * radiusY * 1.45;
+      const y = CY + Math.sin(angle) * radiusY;
+      pos.set(e.id, { x: clamp(x, 46, W - 46), y: clamp(y, 34, H - 34), r: 7 + sal(e) * 15, e });
+    });
+    const nodes = ranked.map((e) => ({ id: e.id, ...pos.get(e.id)! }));
+    return { pos, nodes };
+  }, [entities]);
+
+  const edges = useMemo(
+    () =>
+      relationships
+        .filter((r) => layout.pos.has(r.sourceEntityId) && layout.pos.has(r.targetEntityId) && r.sourceEntityId !== r.targetEntityId)
+        .map((r) => {
+          const a = layout.pos.get(r.sourceEntityId)!;
+          const b = layout.pos.get(r.targetEntityId)!;
+          const mx = (a.x + b.x) / 2;
+          const my = (a.y + b.y) / 2;
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const norm = Math.hypot(dx, dy) || 1;
+          const off = 16;
+          const cx = mx - (dy / norm) * off;
+          const cy = my + (dx / norm) * off;
+          return { r, a, b, d: `M ${a.x.toFixed(1)} ${a.y.toFixed(1)} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}` };
+        }),
+    [relationships, layout]
+  );
+
+  if (!layout.nodes.length) return null;
+
+  const effectiveId = hoverId ?? activeId;
+  const adjacent = new Set<string>();
+  if (effectiveId) {
+    adjacent.add(effectiveId);
+    edges.forEach((e) => {
+      if (e.r.sourceEntityId === effectiveId) adjacent.add(e.r.targetEntityId);
+      if (e.r.targetEntityId === effectiveId) adjacent.add(e.r.sourceEntityId);
+    });
+  }
+  const activeEntity = effectiveId ? entities.find((e) => e.id === effectiveId) ?? null : null;
+
+  return (
+    <section className="factsSection factsGraphSection">
+      <div className="sectionHead">
+        <h2>Knowledge graph</h2>
+        <span>
+          {layout.nodes.length} entit{layout.nodes.length === 1 ? "y" : "ies"} · {edges.length} relationship{edges.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="factsGraphWrap">
+        <svg className="factsGraph" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Entity relationship graph" onMouseLeave={() => setHoverId(null)}>
+          <g className="factsGraphEdges">
+            {edges.map((e, i) => {
+              const incident = e.r.sourceEntityId === effectiveId || e.r.targetEntityId === effectiveId;
+              const dim = effectiveId && !incident;
+              return (
+                <path
+                  key={`${e.r.id}-${i}`}
+                  className={`factsGraphEdge${e.r.kind === "mentions" ? " isMention" : ""}${dim ? " isDim" : ""}${incident ? " isHot" : ""}`}
+                  d={e.d}
+                  strokeWidth={1 + (e.r.confidence ?? 0.5) * 2.4}
+                />
+              );
+            })}
+          </g>
+          <g className="factsGraphNodes">
+            {layout.nodes.map((node) => {
+              const dim = effectiveId && !adjacent.has(node.id);
+              const showLabel = node.r >= 12 || effectiveId === node.id || adjacent.has(node.id);
+              const name = node.e.name.length > 22 ? `${node.e.name.slice(0, 21)}…` : node.e.name;
+              return (
+                <g
+                  key={node.id}
+                  className={`factsGraphNodeG${dim ? " isDim" : ""}${effectiveId === node.id ? " isActive" : ""}`}
+                  onMouseEnter={() => setHoverId(node.id)}
+                  onClick={() => onActivate(activeId === node.id ? null : node.id)}
+                >
+                  <circle className="factsGraphNode" cx={node.x} cy={node.y} r={node.r} style={{ fill: ENTITY_TYPE_COLORS[node.e.type] ?? "#94a3b8" }} />
+                  {showLabel ? (
+                    <text className="factsGraphLabel" x={node.x} y={node.y + node.r + 11} textAnchor="middle">
+                      {name}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+        {activeEntity ? (
+          <div className="factsGraphCard">
+            <span className="factsTypeDot" style={{ background: ENTITY_TYPE_COLORS[activeEntity.type] }} aria-hidden="true" />
+            <div>
+              <strong>{activeEntity.name}</strong>
+              <em>{ENTITY_TYPE_LABELS[activeEntity.type]} · {activeEntity.mentions} mention{activeEntity.mentions === 1 ? "" : "s"}</em>
+              {activeEntity.description ? <p>{activeEntity.description}</p> : null}
+            </div>
+          </div>
+        ) : (
+          <div className="factsGraphHint">Hover a node to trace its relationships · click to pin</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// Proportional topic band — facts.topics weights drive tile size; tinted by the
+// dominant entity's type color. (This data is otherwise never rendered.)
+function FactsTopics({ topics, colorForEntity }: { topics: SiteTopic[]; colorForEntity: (entityId?: string) => string }) {
+  const ranked = topics.slice().sort((a, b) => b.weight - a.weight);
+  const total = ranked.reduce((sum, topic) => sum + (topic.weight || 0), 0) || 1;
+  return (
+    <section className="factsSection">
+      <div className="sectionHead">
+        <h2>Topics</h2>
+        <span>
+          {topics.length} cluster{topics.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="factsTopicBand">
+        {ranked.map((topic) => {
+          const pct = Math.round((topic.weight / total) * 100);
+          return (
+            <div className="factsTopicTile" key={topic.id} style={{ flexGrow: Math.max(0.5, topic.weight * 10), borderTopColor: colorForEntity(topic.entityIds?.[0]) }} title={`${pct}% of content`}>
+              <div className="factsTopicTop">
+                <strong>{topic.label}</strong>
+                <span className="factsTopicPct">{pct}%</span>
+              </div>
+              {topic.keywords?.length ? (
+                <div className="factsTopicKeywords">
+                  {topic.keywords.slice(0, 4).map((keyword) => (
+                    <span key={keyword}>{keyword}</span>
+                  ))}
+                </div>
+              ) : null}
+              {topic.routePaths?.length ? (
+                <small>
+                  {topic.routePaths.length} page{topic.routePaths.length === 1 ? "" : "s"}
+                </small>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function FactsPanel({ facts }: { facts?: SiteFacts }) {
+  const [activeEntityId, setActiveEntityId] = useState<string | null>(null);
+  useEffect(() => {
+    setActiveEntityId(null);
+  }, [facts]);
   if (!facts) {
     return (
       <div className="panel factsPanel">
@@ -6641,11 +7224,14 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
     );
   }
 
-  const identity = facts.identity;
+  const identity = facts.identity ?? { name: "", oneLiner: "", category: "", audience: [] as string[], sources: [] };
   const stats = facts.stats ?? [];
-  const entities = (facts.entities ?? []).filter((entity) => entity.sources.length > 0);
+  const entities = (facts.entities ?? []).filter((entity) => (entity.sources?.length ?? 0) > 0);
   const claims = facts.claims ?? [];
   const questions = (facts.questions ?? []).slice().sort((a, b) => b.importance - a.importance);
+  const topics = facts.topics ?? [];
+  const entityTypeById = new Map(entities.map((entity) => [entity.id, entity.type] as const));
+  const colorForEntity = (entityId?: string) => ENTITY_TYPE_COLORS[(entityId ? entityTypeById.get(entityId) : undefined) ?? "concept"];
 
   const entitiesByType = groupBy(entities, (entity) => entity.type);
   const orderedEntityTypes = ENTITY_TYPE_ORDER.filter((type) => entitiesByType.has(type));
@@ -6665,7 +7251,7 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
           {identity.oneLiner ? <p className="factsOneLiner">{identity.oneLiner}</p> : null}
           <div className="factsChips">
             {identity.category ? <span className="factsChip factsChipAccent">{identity.category}</span> : null}
-            {identity.audience.map((audience) => (
+            {(identity.audience ?? []).map((audience) => (
               <span className="factsChip" key={audience}>
                 {audience}
               </span>
@@ -6692,6 +7278,9 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
         </div>
       </section>
 
+      {/* KNOWLEDGE GRAPH — entities + relationships */}
+      <FactsGraph entities={entities} relationships={facts.relationships ?? []} activeId={activeEntityId} onActivate={setActiveEntityId} />
+
       {/* FACTS AT A GLANCE — stat cards */}
       {stats.length ? (
         <section className="factsSection">
@@ -6714,6 +7303,9 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
         </section>
       ) : null}
 
+      {/* TOPICS — proportional cluster band */}
+      {topics.length ? <FactsTopics topics={topics} colorForEntity={colorForEntity} /> : null}
+
       {/* ENTITIES grouped by type with salience bars */}
       {orderedEntityTypes.length ? (
         <section className="factsSection">
@@ -6735,7 +7327,11 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
                   </h3>
                   <ul className="factsEntityList">
                     {group.map((entity) => (
-                      <li className="factsEntityRow" key={entity.id}>
+                      <li
+                        className={`factsEntityRow${activeEntityId === entity.id ? " isActive" : ""}`}
+                        key={entity.id}
+                        onClick={() => setActiveEntityId(activeEntityId === entity.id ? null : entity.id)}
+                      >
                         <div className="factsEntityHead">
                           <strong>
                             {entity.url ? (
@@ -7248,7 +7844,7 @@ function isLocalApiBase(value: string): boolean {
 function readHostedDelegate(): { memwalAccountId: string; delegateKey: string } | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem("contextmem.hostedDelegate");
+    const raw = safeLocalGet("contextmem.hostedDelegate");
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { memwalAccountId?: unknown; delegateKey?: unknown };
     const accountId = typeof parsed.memwalAccountId === "string" ? parsed.memwalAccountId : "";
@@ -7507,5 +8103,7 @@ type RootHost = HTMLElement & { __contextMemRoot?: ReturnType<typeof createRoot>
 const rootHost = document.getElementById("root")! as RootHost;
 rootHost.__contextMemRoot ??= createRoot(rootHost);
 rootHost.__contextMemRoot.render(
-  <App />
+  <AppErrorBoundary>
+    <App />
+  </AppErrorBoundary>
 );

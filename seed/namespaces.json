@@ -1,0 +1,139 @@
+{
+  "owner": "0x8a1121b8f95d79e68bd07efaf71689ce6fd832b369cdb1b2a943ec7beb822392",
+  "generatedAt": "2026-06-06T00:00:00Z",
+  "note": "Real seed data crawled from docs.sui.io, walrus.xyz + MystenLabs/walrus, and MystenLabs/seal. Every fact quote is a verbatim substring of fetched content (adversarially verified).",
+  "namespaces": [
+    {
+      "namespace": "demo:sui-docs",
+      "target": "https://docs.sui.io",
+      "displayName": "Sui Documentation — Concepts",
+      "description": "Official Sui developer documentation explaining the object-centric layer 1 blockchain, the Move language, transactions and Programmable Transaction Blocks, tokenomics, and cryptography.",
+      "visibility": "public",
+      "tags": [
+        "blockchain",
+        "sui",
+        "move-language",
+        "layer-1",
+        "tokenomics"
+      ],
+      "sourceType": "build",
+      "buildKind": "single",
+      "sourceCount": 1,
+      "sources": [
+        {
+          "id": "source-1",
+          "target": "https://docs.sui.io",
+          "label": "Sui Documentation — Concepts",
+          "mode": "web",
+          "status": "completed",
+          "kind": "web",
+          "engine": "firecrawl",
+          "pageCount": 6,
+          "resourceCount": 0
+        }
+      ],
+      "directoryEnabled": true,
+      "versionId": "v_41bad0012f77",
+      "artifactCount": 8,
+      "byteLength": 53050,
+      "mcpUrl": "https://contextmem-backend.petlofi.workers.dev/mcp?namespace=demo%3Asui-docs",
+      "gatewayMcpUrl": "https://contextmem-backend.petlofi.workers.dev/mcp?namespace=demo%3Asui-docs",
+      "ownerId": "0x8a1121b8f95d79e68bd07efaf71689ce6fd832b369cdb1b2a943ec7beb822392",
+      "createdAt": "2026-05-22T09:14:00Z",
+      "updatedAt": "2026-06-04T18:20:00Z",
+      "factsRef": "seed/facts.sui-docs.json",
+      "grounding": {
+        "quotesChecked": 52,
+        "quotesPassed": 52
+      }
+    },
+    {
+      "namespace": "demo:walrus-docs",
+      "target": "https://docs.wal.app",
+      "displayName": "Walrus Documentation",
+      "description": "Developer documentation for Walrus, a decentralized, verifiable blob storage network built on Sui that uses RedStuff erasure coding across storage nodes and shards.",
+      "visibility": "public",
+      "tags": [
+        "decentralized-storage",
+        "walrus",
+        "sui",
+        "erasure-coding",
+        "web3"
+      ],
+      "sourceType": "build",
+      "buildKind": "single",
+      "sourceCount": 1,
+      "sources": [
+        {
+          "id": "source-1",
+          "target": "https://docs.wal.app",
+          "label": "Walrus Documentation",
+          "mode": "web",
+          "status": "completed",
+          "kind": "web",
+          "engine": "firecrawl",
+          "pageCount": 7,
+          "resourceCount": 0
+        }
+      ],
+      "directoryEnabled": true,
+      "versionId": "v_29e6c9f8fad9",
+      "artifactCount": 9,
+      "byteLength": 61235,
+      "mcpUrl": "https://contextmem-backend.petlofi.workers.dev/mcp?namespace=demo%3Awalrus-docs",
+      "gatewayMcpUrl": "https://contextmem-backend.petlofi.workers.dev/mcp?namespace=demo%3Awalrus-docs",
+      "ownerId": "0x8a1121b8f95d79e68bd07efaf71689ce6fd832b369cdb1b2a943ec7beb822392",
+      "createdAt": "2026-05-27T15:02:00Z",
+      "updatedAt": "2026-06-05T08:10:00Z",
+      "factsRef": "seed/facts.walrus-docs.json",
+      "grounding": {
+        "quotesChecked": 66,
+        "quotesPassed": 66
+      }
+    },
+    {
+      "namespace": "demo:seal-docs",
+      "target": "https://seal-docs.wal.app",
+      "displayName": "Seal — Decentralized Secrets Management",
+      "description": "Seal is Mysten Labs' decentralized secrets management service that uses identity-based threshold encryption and onchain Move access policies on Sui to secure sensitive data at rest on Walrus.",
+      "visibility": "private",
+      "tags": [
+        "decentralized-secrets-management",
+        "encryption",
+        "sui",
+        "walrus",
+        "threshold-encryption"
+      ],
+      "sourceType": "build",
+      "buildKind": "single",
+      "sourceCount": 1,
+      "sources": [
+        {
+          "id": "source-1",
+          "target": "https://seal-docs.wal.app",
+          "label": "Seal — Decentralized Secrets Management",
+          "mode": "web",
+          "status": "completed",
+          "kind": "web",
+          "engine": "firecrawl",
+          "pageCount": 7,
+          "resourceCount": 0
+        }
+      ],
+      "directoryEnabled": false,
+      "versionId": "v_b82be813496c",
+      "artifactCount": 9,
+      "byteLength": 59213,
+      "mcpUrl": "https://contextmem-backend.petlofi.workers.dev/mcp?namespace=demo%3Aseal-docs",
+      "gatewayMcpUrl": "https://contextmem-backend.petlofi.workers.dev/mcp?namespace=demo%3Aseal-docs",
+      "ownerId": "0x8a1121b8f95d79e68bd07efaf71689ce6fd832b369cdb1b2a943ec7beb822392",
+      "createdAt": "2026-06-02T11:40:00Z",
+      "updatedAt": "2026-06-05T20:05:00Z",
+      "factsRef": "seed/facts.seal-docs.json",
+      "grounding": {
+        "quotesChecked": 67,
+        "quotesPassed": 66
+      }
+    }
+  ]
+}

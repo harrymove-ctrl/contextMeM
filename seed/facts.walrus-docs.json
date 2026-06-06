@@ -1,0 +1,1137 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T00:00:00Z",
+  "target": "https://docs.wal.app",
+  "usedProvider": "heuristic",
+  "confidence": 0.85,
+  "identity": {
+    "name": "Walrus",
+    "oneLiner": "Decentralized verifiable blob storage built on Sui, with RedStuff erasure coding.",
+    "category": "decentralized storage",
+    "audience": [
+      "developers",
+      "AI builders",
+      "onchain finance / DeFi builders"
+    ],
+    "primaryEntityId": "ent_walrus",
+    "sources": [
+      {
+        "chunkId": "c_b2c3d4e5",
+        "routePath": "/",
+        "url": "https://github.com/MystenLabs/walrus/blob/main/README.md",
+        "quote": "A decentralized blob store using Sui for coordination and governance."
+      },
+      {
+        "chunkId": "c_a1b2c3d4",
+        "routePath": "/",
+        "url": "https://walrus.xyz",
+        "quote": "Walrus is a Verifiable Data Platform for builders in AI and onchain finance."
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "ent_walrus",
+      "name": "Walrus",
+      "type": "product",
+      "aliases": [
+        "Walrus Protocol"
+      ],
+      "description": "Walrus is a decentralized, verifiable blob store built on Sui for builders in AI and onchain finance.",
+      "url": "https://walrus.xyz",
+      "salience": 1,
+      "mentions": 60,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/README.md",
+          "quote": "A decentralized blob store using Sui for coordination and governance."
+        },
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Walrus is a Verifiable Data Platform for builders in AI and onchain finance."
+        }
+      ]
+    },
+    {
+      "id": "ent_sui",
+      "name": "Sui",
+      "type": "platform",
+      "aliases": [
+        "Sui blockchain",
+        "Sui network"
+      ],
+      "description": "Sui is the blockchain Walrus uses for coordination and governance, managing payments, metadata, and shard assignment.",
+      "url": "https://docs.sui.io/",
+      "salience": 0.5,
+      "mentions": 30,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Blockchain coordination: The Sui blockchain manages payments, metadata, and system orchestration."
+        }
+      ]
+    },
+    {
+      "id": "ent_mysten",
+      "name": "Mysten Labs",
+      "type": "organization",
+      "aliases": [
+        "Mysten Labs"
+      ],
+      "description": "Mysten Labs is the team behind Sui that created Walrus.",
+      "url": "https://walrus.xyz",
+      "salience": 0.083,
+      "mentions": 5,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Created by Mysten Labs, the team behind Sui"
+        }
+      ]
+    },
+    {
+      "id": "ent_wal",
+      "name": "WAL token",
+      "type": "concept",
+      "aliases": [
+        "WAL token",
+        "WAL"
+      ],
+      "description": "WAL is the token used to pay for Walrus storage and to secure the network through staking.",
+      "salience": 0.267,
+      "mentions": 16,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "used to pay for storage and secure the network through staking."
+        },
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "Storage on Walrus is paid in WAL but priced at a fixed rate of"
+        }
+      ]
+    },
+    {
+      "id": "ent_redstuff",
+      "name": "RedStuff",
+      "type": "technology",
+      "aliases": [
+        "Red Stuff",
+        "RedStuff encoding"
+      ],
+      "description": "RedStuff is Walrus's erasure-coding algorithm, an adaptation of the Twin-Code framework based on the RaptorQ fountain code.",
+      "salience": 0.2,
+      "mentions": 12,
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/system-overview/red-stuff",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/red-stuff.mdx",
+          "quote": "The RedStuff encoding algorithm used in Walrus is an adaptation of the Twin-Code framework presented by Rashmi et al."
+        },
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/system-overview/red-stuff",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/red-stuff.mdx",
+          "quote": "RedStuff is based on the RaptorQ fountain code."
+        }
+      ]
+    },
+    {
+      "id": "ent_raptorq",
+      "name": "RaptorQ",
+      "type": "technology",
+      "aliases": [
+        "RaptorQ fountain code"
+      ],
+      "description": "RaptorQ is the fountain code that RedStuff is based on, described as one of the fastest and most efficient fountain codes.",
+      "salience": 0.133,
+      "mentions": 8,
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/system-overview/red-stuff",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/red-stuff.mdx",
+          "quote": "RaptorQ is one of the fastest and most efficient fountain codes"
+        }
+      ]
+    },
+    {
+      "id": "ent_storage_node",
+      "name": "Storage nodes",
+      "type": "concept",
+      "aliases": [
+        "storage nodes",
+        "nodes"
+      ],
+      "description": "Storage nodes are the distributed nodes that hold erasure-coded data, each holding one or more shards per storage epoch.",
+      "salience": 0.367,
+      "mentions": 22,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Distributed storage nodes that hold erasure-coded data."
+        },
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Each storage node holds 1 or more shards during a storage epoch."
+        }
+      ]
+    },
+    {
+      "id": "ent_blob",
+      "name": "Blob",
+      "type": "concept",
+      "aliases": [
+        "blobs"
+      ],
+      "description": "A blob is an immutable array of bytes stored on Walrus and bound to a Sui object of type Blob.",
+      "salience": 0.467,
+      "mentions": 28,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Data is stored on Walrus as blobs. Each blob is an immutable array of bytes."
+        },
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Walrus binds all blobs to objects on Sui."
+        }
+      ]
+    },
+    {
+      "id": "ent_sliver",
+      "name": "Sliver",
+      "type": "concept",
+      "aliases": [
+        "slivers",
+        "sliver pair"
+      ],
+      "description": "Slivers are the erasure-coded pieces a blob is split into and distributed across all shards.",
+      "salience": 0.3,
+      "mentions": 18,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "The slivers from each stored blob are distributed across all shards in the system."
+        }
+      ]
+    },
+    {
+      "id": "ent_walrus_memory",
+      "name": "Walrus Memory",
+      "type": "product",
+      "aliases": [
+        "Walrus Memory"
+      ],
+      "description": "Walrus Memory is a product offering portable memory for AI agents.",
+      "salience": 0.05,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Walrus Memory: portable memory for AI agents."
+        }
+      ]
+    },
+    {
+      "id": "ent_seal",
+      "name": "Seal",
+      "type": "integration",
+      "aliases": [
+        "Seal encryption"
+      ],
+      "description": "Seal is an encryption service recommended for securing data before storing it on Walrus, since all blobs are public.",
+      "url": "https://seal-docs.wal.app/",
+      "salience": 0.033,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "To secure data on Walrus, consider an encryption service like Seal."
+        }
+      ]
+    },
+    {
+      "id": "ent_quilt",
+      "name": "Walrus Quilt",
+      "type": "feature",
+      "aliases": [
+        "Walrus Quilt",
+        "Quilt"
+      ],
+      "description": "Walrus Quilt is a batch storage tool that amortizes per-blob metadata costs across many small blobs stored together.",
+      "salience": 0.083,
+      "mentions": 5,
+      "sources": [
+        {
+          "chunkId": "c_29304152",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "Walrus Quilt is a batch storage tool that amortizes metadata costs across multiple blobs stored together."
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "clm_01",
+      "text": "Walrus is a Verifiable Data Platform for builders in AI and onchain finance.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_walrus",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Walrus is a Verifiable Data Platform for builders in AI and onchain finance."
+        }
+      ]
+    },
+    {
+      "id": "clm_02",
+      "text": "Walrus is a decentralized blob store using Sui for coordination and governance.",
+      "kind": "fact",
+      "subjectEntityId": "ent_walrus",
+      "sentiment": "neutral",
+      "confidence": 0.92,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/README.md",
+          "quote": "A decentralized blob store using Sui for coordination and governance."
+        }
+      ]
+    },
+    {
+      "id": "clm_03",
+      "text": "The slivers from each stored blob are distributed across all shards in the system.",
+      "kind": "capability",
+      "subjectEntityId": "ent_sliver",
+      "sentiment": "neutral",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "The slivers from each stored blob are distributed across all shards in the system."
+        }
+      ]
+    },
+    {
+      "id": "clm_04",
+      "text": "Walrus data is content-addressed and cryptographically verifiable, so you can prove it has not been altered.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_walrus",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "Data is content-addressed and cryptographically verifiable, so you can prove it has not been altered."
+        }
+      ]
+    },
+    {
+      "id": "clm_05",
+      "text": "A certified blob is guaranteed to be available before its end epoch.",
+      "kind": "guarantee",
+      "subjectEntityId": "ent_blob",
+      "sentiment": "positive",
+      "confidence": 0.84,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Before that epoch, the blob is guaranteed to be available."
+        }
+      ]
+    },
+    {
+      "id": "clm_06",
+      "text": "With RedStuff a failed node can reconstruct its lost part by fetching only O(S/N) data instead of the whole blob.",
+      "kind": "capability",
+      "subjectEntityId": "ent_redstuff",
+      "sentiment": "positive",
+      "confidence": 0.86,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/system-overview/red-stuff",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/red-stuff.mdx",
+          "quote": "you can instead reconstruct the encoded part of a failed node by fetching only"
+        }
+      ]
+    },
+    {
+      "id": "clm_07",
+      "text": "Walrus assumes that more than 2/3 of shards are managed by honest storage nodes within each storage epoch.",
+      "kind": "fact",
+      "subjectEntityId": "ent_storage_node",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Walrus assumes that more than 2/3 of shards are managed by honest storage nodes within each storage epoch."
+        }
+      ]
+    },
+    {
+      "id": "clm_08",
+      "text": "Walrus Testnet does not guarantee data persistence and might wipe data at any time without warning.",
+      "kind": "limitation",
+      "subjectEntityId": "ent_walrus",
+      "sentiment": "negative",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_41526374",
+          "routePath": "/docs/getting-started",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/getting-started/index.mdx",
+          "quote": "Testnet does not guarantee data persistence and might wipe data at any time without warning."
+        }
+      ]
+    },
+    {
+      "id": "clm_09",
+      "text": "Walrus Memory provides portable memory for AI agents.",
+      "kind": "positioning",
+      "subjectEntityId": "ent_walrus_memory",
+      "sentiment": "positive",
+      "confidence": 0.78,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Walrus Memory: portable memory for AI agents."
+        }
+      ]
+    },
+    {
+      "id": "clm_10",
+      "text": "At $0.023 per GB per month, Walrus is in line with centralized storage providers but includes additional capabilities.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_walrus",
+      "sentiment": "positive",
+      "confidence": 0.83,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "At $0.023 per GB per month, Walrus is in line with centralized storage providers but includes additional capabilities and lower configuration requirements."
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "stat_01",
+      "label": "storage cost",
+      "valueRaw": "$0.023/GB/month",
+      "valueNumber": 0.023,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": false,
+      "subjectEntityId": "ent_walrus",
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "At $0.023 per GB per month, Walrus is in line with centralized storage providers but includes additional capabilities and lower configuration requirements."
+        }
+      ]
+    },
+    {
+      "id": "stat_02",
+      "label": "erasure-coding redundancy",
+      "valueRaw": "4.5x",
+      "valueNumber": 4.5,
+      "unit": "ratio",
+      "approximate": true,
+      "subjectEntityId": "ent_redstuff",
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "Data is encoded using erasure coding with approximately 4.5x redundancy across independent storage nodes."
+        }
+      ]
+    },
+    {
+      "id": "stat_03",
+      "label": "erasure-coding expansion",
+      "valueRaw": "5x",
+      "valueNumber": 5,
+      "unit": "ratio",
+      "approximate": true,
+      "subjectEntityId": "ent_walrus",
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "Walrus uses erasure coding with approximately 5x expansion."
+        }
+      ]
+    },
+    {
+      "id": "stat_04",
+      "label": "fault tolerance (faulty shards)",
+      "valueRaw": "1/3",
+      "valueNumber": 0.333,
+      "unit": "ratio",
+      "approximate": false,
+      "subjectEntityId": "ent_storage_node",
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "The system tolerates up to 1/3 of shards being controlled by malicious or faulty storage nodes."
+        }
+      ]
+    },
+    {
+      "id": "stat_05",
+      "label": "Mainnet storage epoch length",
+      "valueRaw": "2 weeks",
+      "valueNumber": 2,
+      "unit": "time",
+      "approximate": false,
+      "subjectEntityId": "ent_walrus",
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "These assignments occur within storage epochs, which last 2 weeks on Mainnet."
+        }
+      ]
+    },
+    {
+      "id": "stat_06",
+      "label": "fixed per-blob metadata",
+      "valueRaw": "~64 MB",
+      "valueNumber": 64,
+      "unit": "data_size",
+      "approximate": true,
+      "subjectEntityId": "ent_blob",
+      "sources": [
+        {
+          "chunkId": "c_29304152",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "plus fixed per-blob metadata of up to ~64 MB."
+        }
+      ]
+    },
+    {
+      "id": "stat_07",
+      "label": "max storage purchase duration",
+      "valueRaw": "~2 years",
+      "valueNumber": 2,
+      "unit": "time",
+      "approximate": true,
+      "subjectEntityId": "ent_walrus",
+      "sources": [
+        {
+          "chunkId": "c_29304152",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "The maximum duration you can purchase in advance is approximately 2 years."
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "top_01",
+      "label": "Architecture & core concepts",
+      "weight": 0.28,
+      "keywords": [
+        "blobs",
+        "storage nodes",
+        "shards",
+        "slivers",
+        "Sui"
+      ],
+      "routePaths": [
+        "/docs/system-overview/core-concepts"
+      ],
+      "entityIds": [
+        "ent_walrus",
+        "ent_blob",
+        "ent_storage_node",
+        "ent_sliver",
+        "ent_sui"
+      ]
+    },
+    {
+      "id": "top_02",
+      "label": "RedStuff erasure coding",
+      "weight": 0.27,
+      "keywords": [
+        "RedStuff",
+        "RaptorQ",
+        "erasure coding",
+        "fountain codes",
+        "recovery"
+      ],
+      "routePaths": [
+        "/docs/system-overview/red-stuff"
+      ],
+      "entityIds": [
+        "ent_redstuff",
+        "ent_raptorq",
+        "ent_sliver",
+        "ent_blob"
+      ]
+    },
+    {
+      "id": "top_03",
+      "label": "Storage costs & tokenomics",
+      "weight": 0.2,
+      "keywords": [
+        "WAL",
+        "SUI",
+        "storage cost",
+        "gas",
+        "storage fund"
+      ],
+      "routePaths": [
+        "/docs/system-overview/storage-costs"
+      ],
+      "entityIds": [
+        "ent_wal",
+        "ent_sui",
+        "ent_walrus",
+        "ent_quilt"
+      ]
+    },
+    {
+      "id": "top_04",
+      "label": "Getting started & CLI",
+      "weight": 0.15,
+      "keywords": [
+        "setup",
+        "walrus CLI",
+        "testnet",
+        "mainnet",
+        "store blob"
+      ],
+      "routePaths": [
+        "/docs/getting-started"
+      ],
+      "entityIds": [
+        "ent_walrus",
+        "ent_sui",
+        "ent_wal"
+      ]
+    },
+    {
+      "id": "top_05",
+      "label": "Platform & ecosystem",
+      "weight": 0.1,
+      "keywords": [
+        "Mysten Labs",
+        "Sui Stack",
+        "Walrus Memory",
+        "AI",
+        "onchain finance"
+      ],
+      "routePaths": [
+        "/"
+      ],
+      "entityIds": [
+        "ent_mysten",
+        "ent_walrus_memory",
+        "ent_walrus",
+        "ent_seal"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_01",
+      "sourceEntityId": "ent_walrus",
+      "targetEntityId": "ent_sui",
+      "kind": "built_with",
+      "label": "binds blobs to Sui objects",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Walrus binds all blobs to objects on Sui."
+        }
+      ]
+    },
+    {
+      "id": "rel_02",
+      "sourceEntityId": "ent_walrus",
+      "targetEntityId": "ent_mysten",
+      "kind": "owned_by",
+      "label": "created by",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Created by Mysten Labs, the team behind Sui"
+        }
+      ]
+    },
+    {
+      "id": "rel_03",
+      "sourceEntityId": "ent_walrus",
+      "targetEntityId": "ent_sui",
+      "kind": "depends_on",
+      "label": "depends on",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_30415263",
+          "routePath": "/docs/getting-started",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/getting-started/index.mdx",
+          "quote": "Walrus depends on Sui, as it leverages Sui to track blobs, their respective owners, and their lifetimes."
+        }
+      ]
+    },
+    {
+      "id": "rel_04",
+      "sourceEntityId": "ent_redstuff",
+      "targetEntityId": "ent_raptorq",
+      "kind": "built_with",
+      "label": "based on",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/system-overview/red-stuff",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/red-stuff.mdx",
+          "quote": "RedStuff is based on the RaptorQ fountain code."
+        }
+      ]
+    },
+    {
+      "id": "rel_05",
+      "sourceEntityId": "ent_walrus",
+      "targetEntityId": "ent_quilt",
+      "kind": "offers",
+      "label": "offers batch storage",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_29304152",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "Walrus Quilt is a batch storage tool that amortizes metadata costs across multiple blobs stored together."
+        }
+      ]
+    },
+    {
+      "id": "rel_06",
+      "sourceEntityId": "ent_storage_node",
+      "targetEntityId": "ent_walrus",
+      "kind": "part_of",
+      "label": "part of",
+      "confidence": 0.86,
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Storage nodes manage the actual data storage on Walrus."
+        }
+      ]
+    },
+    {
+      "id": "rel_07",
+      "sourceEntityId": "ent_sliver",
+      "targetEntityId": "ent_blob",
+      "kind": "part_of",
+      "label": "slivers of a blob",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "The slivers from each stored blob are distributed across all shards in the system."
+        }
+      ]
+    },
+    {
+      "id": "rel_08",
+      "sourceEntityId": "ent_blob",
+      "targetEntityId": "ent_redstuff",
+      "kind": "built_with",
+      "label": "encoded with",
+      "confidence": 0.86,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "The blob is encoded using the RedStuff erasure code, producing slivers and a blob ID."
+        }
+      ]
+    },
+    {
+      "id": "rel_09",
+      "sourceEntityId": "ent_sui",
+      "targetEntityId": "ent_mysten",
+      "kind": "owned_by",
+      "label": "built by",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Mysten Labs, the team behind Sui"
+        }
+      ]
+    },
+    {
+      "id": "rel_10",
+      "sourceEntityId": "ent_walrus_memory",
+      "targetEntityId": "ent_walrus",
+      "kind": "part_of",
+      "label": "offering of",
+      "confidence": 0.75,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Walrus Memory: portable memory for AI agents."
+        }
+      ]
+    },
+    {
+      "id": "rel_11",
+      "sourceEntityId": "ent_walrus",
+      "targetEntityId": "ent_seal",
+      "kind": "integrates_with",
+      "label": "encrypt with Seal",
+      "confidence": 0.78,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "To secure data on Walrus, consider an encryption service like Seal."
+        }
+      ]
+    },
+    {
+      "id": "rel_12",
+      "sourceEntityId": "ent_walrus",
+      "targetEntityId": "ent_wal",
+      "kind": "priced_at",
+      "label": "paid in WAL",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "Storage on Walrus is paid in WAL but priced at a fixed rate of"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_01",
+      "question": "What is Walrus?",
+      "answer": "Walrus is a decentralized, verifiable blob store built on Sui for builders in AI and onchain finance, storing data as immutable blobs that are erasure-coded across storage nodes.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "ent_walrus",
+        "ent_sui",
+        "ent_blob"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/README.md",
+          "quote": "A decentralized blob store using Sui for coordination and governance."
+        },
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Walrus is a Verifiable Data Platform for builders in AI and onchain finance."
+        }
+      ]
+    },
+    {
+      "id": "q_02",
+      "question": "How does Walrus store data?",
+      "answer": "Each blob is encoded with the RedStuff erasure code into many slivers distributed across all shards; once 2/3 of storage-node receipt signatures are aggregated into an availability certificate, the blob is certified as available.",
+      "category": "how_it_works",
+      "importance": 0.9,
+      "entityIds": [
+        "ent_blob",
+        "ent_redstuff",
+        "ent_sliver",
+        "ent_storage_node"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "The blob is encoded using the RedStuff erasure code, producing slivers and a blob ID."
+        },
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "2/3 of the receipt signatures are aggregated into an availability certificate."
+        }
+      ]
+    },
+    {
+      "id": "q_03",
+      "question": "What makes RedStuff efficient at node recovery?",
+      "answer": "RedStuff adapts the Twin-Code framework so a failed node can reconstruct its slivers by fetching only O(S/N) data instead of the whole blob, while keeping storage overhead around 4.5x rather than full replication.",
+      "category": "differentiators",
+      "importance": 0.8,
+      "entityIds": [
+        "ent_redstuff",
+        "ent_raptorq"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/docs/system-overview/red-stuff",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/red-stuff.mdx",
+          "quote": "you can instead reconstruct the encoded part of a failed node by fetching only"
+        },
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "Data is encoded using erasure coding with approximately 4.5x redundancy across independent storage nodes."
+        }
+      ]
+    },
+    {
+      "id": "q_04",
+      "question": "How much does Walrus storage cost?",
+      "answer": "Walrus offers a fixed, USD-denominated storage cost of $0.023/GB/month, paid in WAL whose required amount adjusts automatically as the WAL price changes; SUI gas is paid separately for onchain transactions.",
+      "category": "pricing",
+      "importance": 0.85,
+      "entityIds": [
+        "ent_walrus",
+        "ent_wal",
+        "ent_sui"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "At $0.023 per GB per month, Walrus is in line with centralized storage providers but includes additional capabilities and lower configuration requirements."
+        },
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "The amount of WAL required adjusts automatically as the WAL token price changes."
+        }
+      ]
+    },
+    {
+      "id": "q_05",
+      "question": "How does Walrus tolerate faulty or malicious nodes?",
+      "answer": "Walrus assumes more than 2/3 of shards are held by honest storage nodes and tolerates up to 1/3 of shards being controlled by malicious or faulty storage nodes within each storage epoch.",
+      "category": "trust_security",
+      "importance": 0.75,
+      "entityIds": [
+        "ent_storage_node",
+        "ent_walrus"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "Walrus assumes that more than 2/3 of shards are managed by honest storage nodes within each storage epoch."
+        },
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "The system tolerates up to 1/3 of shards being controlled by malicious or faulty storage nodes."
+        }
+      ]
+    },
+    {
+      "id": "q_06",
+      "question": "How do I get started with Walrus?",
+      "answer": "Install the Sui and Walrus CLIs with Mysten Labs' suiup tool, fund a Sui account and convert SUI to WAL, then run 'walrus store <file> --epochs N' to upload a blob.",
+      "category": "getting_started",
+      "importance": 0.7,
+      "entityIds": [
+        "ent_walrus",
+        "ent_sui",
+        "ent_wal"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_30415263",
+          "routePath": "/docs/getting-started",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/getting-started/index.mdx",
+          "quote": "To install Walrus and Sui, use the Mysten Labs suiup tool."
+        },
+        {
+          "chunkId": "c_41526374",
+          "routePath": "/docs/getting-started",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/getting-started/index.mdx",
+          "quote": "Before you can upload a file to Walrus and store it as a blob, you need SUI tokens to pay transaction fees and WAL tokens to pay for storage on the network."
+        }
+      ]
+    },
+    {
+      "id": "q_07",
+      "question": "Can I keep data private on Walrus?",
+      "answer": "All blobs uploaded to Walrus are publicly available, so to keep data private you should encrypt it first with an encryption service like Seal before storing it.",
+      "category": "integrations",
+      "importance": 0.6,
+      "entityIds": [
+        "ent_seal",
+        "ent_walrus",
+        "ent_blob"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "All blobs uploaded to Walrus are publicly available."
+        },
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/docs/system-overview/core-concepts",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/core-concepts.mdx",
+          "quote": "To secure data on Walrus, consider an encryption service like Seal."
+        }
+      ]
+    },
+    {
+      "id": "q_08",
+      "question": "Who is Walrus for?",
+      "answer": "Walrus targets builders in AI and onchain finance who need verifiable, always-available data, and it also offers Walrus Memory as portable memory for AI agents.",
+      "category": "who_is_it_for",
+      "importance": 0.65,
+      "entityIds": [
+        "ent_walrus",
+        "ent_walrus_memory"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Walrus is a Verifiable Data Platform for builders in AI and onchain finance."
+        },
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://walrus.xyz",
+          "quote": "Walrus Memory: portable memory for AI agents."
+        }
+      ]
+    },
+    {
+      "id": "q_09",
+      "question": "What are the limitations of Walrus storage?",
+      "answer": "All Walrus blobs are public, Testnet may wipe data without warning, and small blobs pay a fixed per-blob metadata overhead of up to ~64 MB that Walrus Quilt can amortize.",
+      "category": "limitations",
+      "importance": 0.6,
+      "entityIds": [
+        "ent_walrus",
+        "ent_quilt",
+        "ent_blob"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_41526374",
+          "routePath": "/docs/getting-started",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/getting-started/index.mdx",
+          "quote": "Testnet does not guarantee data persistence and might wipe data at any time without warning."
+        },
+        {
+          "chunkId": "c_29304152",
+          "routePath": "/docs/system-overview/storage-costs",
+          "url": "https://github.com/MystenLabs/walrus/blob/main/docs/content/system-overview/storage-costs.mdx",
+          "quote": "plus fixed per-blob metadata of up to ~64 MB."
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 7,
+    "chunksAnalyzed": 48,
+    "entitiesWithSources": 12,
+    "ungroundedDropped": 3
+  }
+}

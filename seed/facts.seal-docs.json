@@ -1,0 +1,1092 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T12:00:00.000Z",
+  "target": "https://seal-docs.wal.app",
+  "usedProvider": "heuristic",
+  "confidence": 0.85,
+  "identity": {
+    "name": "Seal",
+    "oneLiner": "Decentralized secrets management with identity-based, threshold encryption and onchain access policies on Sui.",
+    "category": "decentralized secrets management",
+    "audience": [
+      "application developers",
+      "Web3 users",
+      "dApp builders"
+    ],
+    "primaryEntityId": "ent_seal",
+    "sources": [
+      {
+        "routePath": "/README",
+        "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+        "chunkId": "c_a1f309b2",
+        "quote": "Seal enables identity-based encryption and decryption of sensitive data, with access controlled by onchain policies on Sui."
+      },
+      {
+        "routePath": "/",
+        "url": "https://seal-docs.wal.app/",
+        "chunkId": "c_b2e418c3",
+        "quote": "Seal is a decentralized secrets management (DSM) service that relies on access control policies defined and validated on [Sui](https://docs.sui.io/concepts/components)."
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "ent_seal",
+      "name": "Seal",
+      "type": "product",
+      "aliases": [
+        "Seal DSM",
+        "@mysten/seal"
+      ],
+      "description": "Decentralized secrets management product securing data at rest via identity-based encryption with onchain Sui access policies.",
+      "url": "https://seal.mystenlabs.com",
+      "salience": 1,
+      "mentions": 6,
+      "sources": [
+        {
+          "routePath": "/README",
+          "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+          "chunkId": "c_a1f309b2",
+          "quote": "Seal enables identity-based encryption and decryption of sensitive data, with access controlled by onchain policies on Sui."
+        },
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Seal is a decentralized secrets management (DSM) service that relies on access control policies defined and validated on [Sui](https://docs.sui.io/concepts/components)."
+        }
+      ]
+    },
+    {
+      "id": "ent_sui",
+      "name": "Sui",
+      "type": "platform",
+      "aliases": [
+        "Sui blockchain",
+        "Sui network"
+      ],
+      "description": "Layer-1 blockchain whose Move packages define and validate Seal's access control policies.",
+      "url": "https://docs.sui.io/concepts/components",
+      "salience": 0.83,
+      "mentions": 5,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Seal leverages [Sui](https://docs.sui.io/concepts/components) for controlling access to the decryption keys"
+        },
+        {
+          "routePath": "/README",
+          "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+          "chunkId": "c_a1f309b2",
+          "quote": "with access controlled by onchain policies on Sui"
+        }
+      ]
+    },
+    {
+      "id": "ent_walrus",
+      "name": "Walrus",
+      "type": "platform",
+      "aliases": [
+        "Walrus storage"
+      ],
+      "description": "Decentralized storage where Seal-encrypted data is stored at rest.",
+      "url": "https://docs.wal.app/",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "routePath": "/README",
+          "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+          "chunkId": "c_a1f309b2",
+          "quote": "Application developers and users can use Seal to secure sensitive data at rest on decentralized storage like [Walrus](https://docs.wal.app/) or any other onchain / offchain storage."
+        },
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Secure personal data on [Walrus](https://docs.wal.app/) or some other storage"
+        }
+      ]
+    },
+    {
+      "id": "ent_mysten",
+      "name": "Mysten Labs",
+      "type": "organization",
+      "aliases": [
+        "Mysten",
+        "MystenLabs"
+      ],
+      "description": "Organization behind Seal, publishing the @mysten/seal SDK and operating seal.mystenlabs.com.",
+      "url": "https://seal.mystenlabs.com",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "The [TypeScript SDK](https://www.npmjs.com/package/@mysten/seal) is available through npm."
+        },
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "such as `seal.mystenlabs.com`"
+        }
+      ]
+    },
+    {
+      "id": "ent_keyserver",
+      "name": "Key server",
+      "type": "feature",
+      "aliases": [
+        "Seal key server",
+        "KeyServer"
+      ],
+      "description": "Lightweight off-chain service that validates onchain access policies and returns identity-based derived decryption keys.",
+      "salience": 0.83,
+      "mentions": 5,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "A Seal key server is a simple and lightweight service that validates access control on Sui and generates identity-based private keys for authorized users to decrypt encrypted data."
+        },
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "Key servers are off-chain services that validate onchain access policies and return derived secret keys to authorized users."
+        },
+        {
+          "routePath": "/ServerOverview",
+          "url": "https://seal-docs.wal.app/ServerOverview",
+          "chunkId": "c_e5b745f6",
+          "quote": "Seal supports two server types for key management: **Decentralized** (committee mode) and **Independent**."
+        }
+      ]
+    },
+    {
+      "id": "ent_ibe",
+      "name": "Identity-Based Encryption (IBE)",
+      "type": "technology",
+      "aliases": [
+        "IBE",
+        "Boneh-Franklin IBE"
+      ],
+      "description": "Cryptographic primitive Seal uses to encrypt data, with Boneh-Franklin IBE on the BLS12-381 curve as the KEM.",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "Seal uses a cryptographic primitive called *Identity-Based Encryption (IBE)* to encrypt stored data."
+        },
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "**KEM**: Boneh-Franklin IBE with the BLS12-381 curve."
+        }
+      ]
+    },
+    {
+      "id": "ent_sdk",
+      "name": "@mysten/seal TypeScript SDK",
+      "type": "technology",
+      "aliases": [
+        "Seal SDK",
+        "SealClient"
+      ],
+      "description": "TypeScript SDK on npm for integrating Seal encryption and decryption into applications.",
+      "url": "https://www.npmjs.com/package/@mysten/seal",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "The [TypeScript SDK](https://www.npmjs.com/package/@mysten/seal) is available through npm."
+        },
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "The recommended way to encrypt and decrypt the data is to use the [Seal SDK](https://www.npmjs.com/package/@mysten/seal)."
+        }
+      ]
+    },
+    {
+      "id": "ent_move",
+      "name": "Move",
+      "type": "technology",
+      "aliases": [
+        "Sui Move"
+      ],
+      "description": "Smart contract language used to write application-specific Seal access policy packages on Sui.",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "A user can achieve this by implementing an application-specific Move package that must follow some Seal conventions."
+        }
+      ]
+    },
+    {
+      "id": "ent_threshold",
+      "name": "Threshold encryption",
+      "type": "concept",
+      "aliases": [
+        "t-out-of-n threshold encryption"
+      ],
+      "description": "A t-out-of-n scheme across multiple key servers providing Seal's privacy and liveness guarantees.",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "allowing users to realize `t-out-of-n` threshold encryption across `n` total key servers, where `t` is the minimum number required for decryption."
+        },
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "**Privacy** as long as fewer than `t` key servers are compromised."
+        }
+      ]
+    },
+    {
+      "id": "ent_sealapprove",
+      "name": "seal_approve",
+      "type": "feature",
+      "aliases": [
+        "seal_approve*"
+      ],
+      "description": "Move entry functions that define custom authorization logic the key server evaluates before releasing keys.",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "Packages should define `seal_approve*` functions in their modules to control access to the keys associated with their identity namespace."
+        },
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "The `seal_approve*` functions are evaluated on full nodes using the `dry_run_transaction_block` RPC call."
+        }
+      ]
+    },
+    {
+      "id": "ent_aws_kms",
+      "name": "AWS KMS",
+      "type": "competitor",
+      "aliases": [
+        "AWS Key Management Service"
+      ],
+      "description": "Web2 key management service that Seal explicitly contrasts itself against as a non-goal.",
+      "url": "https://aws.amazon.com/kms/",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Seal is not a key management service like [AWS KMS](https://aws.amazon.com/kms/) or any other such Web2 service"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "clm_01",
+      "text": "Application developers and users can use Seal to secure sensitive data at rest on decentralized storage like Walrus or any other onchain/offchain storage.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_seal",
+      "sentiment": "positive",
+      "confidence": 0.92,
+      "isMarketing": false,
+      "sources": [
+        {
+          "routePath": "/README",
+          "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+          "chunkId": "c_a1f309b2",
+          "quote": "Application developers and users can use Seal to secure sensitive data at rest on decentralized storage like [Walrus](https://docs.wal.app/) or any other onchain / offchain storage."
+        }
+      ]
+    },
+    {
+      "id": "clm_02",
+      "text": "Seal enables identity-based encryption and decryption of sensitive data, with access controlled by onchain policies on Sui.",
+      "kind": "capability",
+      "subjectEntityId": "ent_seal",
+      "sentiment": "positive",
+      "confidence": 0.92,
+      "isMarketing": false,
+      "sources": [
+        {
+          "routePath": "/README",
+          "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+          "chunkId": "c_a1f309b2",
+          "quote": "Seal enables identity-based encryption and decryption of sensitive data, with access controlled by onchain policies on Sui."
+        }
+      ]
+    },
+    {
+      "id": "clm_03",
+      "text": "Lightweight key servers enforce the onchain policies and provide threshold-based decryption keys.",
+      "kind": "capability",
+      "subjectEntityId": "ent_keyserver",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "routePath": "/README",
+          "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+          "chunkId": "c_a1f309b2",
+          "quote": "Lightweight key servers enforce these policies and provide threshold-based decryption keys"
+        }
+      ]
+    },
+    {
+      "id": "clm_04",
+      "text": "Seal's threshold encryption preserves privacy as long as fewer than t key servers are compromised.",
+      "kind": "guarantee",
+      "subjectEntityId": "ent_threshold",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "**Privacy** as long as fewer than `t` key servers are compromised."
+        }
+      ]
+    },
+    {
+      "id": "clm_05",
+      "text": "Seal uses client-side encryption where the application or user is responsible to encrypt and decrypt the data.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_seal",
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "To maximize privacy, Seal uses client-side encryption where the application or user is responsible to encrypt and decrypt the data."
+        }
+      ]
+    },
+    {
+      "id": "clm_06",
+      "text": "seal_approve* functions must be side-effect free and cannot modify onchain state.",
+      "kind": "limitation",
+      "subjectEntityId": "ent_sealapprove",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "`seal_approve*` functions must be side-effect free and cannot modify onchain state."
+        }
+      ]
+    },
+    {
+      "id": "clm_07",
+      "text": "Seal's decentralized committee mode is currently only available on Testnet.",
+      "kind": "limitation",
+      "subjectEntityId": "ent_keyserver",
+      "sentiment": "neutral",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "**Committee mode is currently only available on Testnet**."
+        }
+      ]
+    },
+    {
+      "id": "clm_08",
+      "text": "Seal is not a key management service like AWS KMS or any other such Web2 service.",
+      "kind": "positioning",
+      "subjectEntityId": "ent_seal",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Seal is not a key management service like [AWS KMS](https://aws.amazon.com/kms/) or any other such Web2 service"
+        }
+      ]
+    },
+    {
+      "id": "clm_09",
+      "text": "Seal's KEM is Boneh-Franklin IBE with the BLS12-381 curve, and its DEM is AES-256-GCM or HMAC-based CTR mode.",
+      "kind": "fact",
+      "subjectEntityId": "ent_ibe",
+      "sentiment": "neutral",
+      "confidence": 0.92,
+      "isMarketing": false,
+      "sources": [
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "**KEM**: Boneh-Franklin IBE with the BLS12-381 curve."
+        },
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "**DEM**: AES-256-GCM, HMAC based CTR mode."
+        }
+      ]
+    },
+    {
+      "id": "clm_10",
+      "text": "With decentralized committee key servers, distributed trust becomes infrastructure-native while integration remains unchanged.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_keyserver",
+      "sentiment": "positive",
+      "confidence": 0.75,
+      "isMarketing": true,
+      "sources": [
+        {
+          "routePath": "/ServerOverview",
+          "url": "https://seal-docs.wal.app/ServerOverview",
+          "chunkId": "c_e5b745f6",
+          "quote": "Distributed trust becomes infrastructure-native, while your integration remains unchanged."
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "stat_01",
+      "label": "AES symmetric encryption key size (DEM)",
+      "valueRaw": "AES-256-GCM",
+      "valueNumber": 256,
+      "unit": "other",
+      "approximate": false,
+      "subjectEntityId": "ent_ibe",
+      "sources": [
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "**DEM**: AES-256-GCM, HMAC based CTR mode."
+        }
+      ]
+    },
+    {
+      "id": "stat_02",
+      "label": "Key server API endpoints",
+      "valueRaw": "two APIs",
+      "valueNumber": 2,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_keyserver",
+      "sources": [
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "The server exposes only two APIs:"
+        }
+      ]
+    },
+    {
+      "id": "stat_03",
+      "label": "Seal server types",
+      "valueRaw": "two server types",
+      "valueNumber": 2,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_keyserver",
+      "sources": [
+        {
+          "routePath": "/ServerOverview",
+          "url": "https://seal-docs.wal.app/ServerOverview",
+          "chunkId": "c_e5b745f6",
+          "quote": "Seal supports two server types for key management: **Decentralized** (committee mode) and **Independent**."
+        }
+      ]
+    },
+    {
+      "id": "stat_04",
+      "label": "Independent server modes",
+      "valueRaw": "two modes",
+      "valueNumber": 2,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_keyserver",
+      "sources": [
+        {
+          "routePath": "/ServerOverview",
+          "url": "https://seal-docs.wal.app/ServerOverview",
+          "chunkId": "c_e5b745f6",
+          "quote": "They offer two modes: **Open**, which anyone can use for any package, and **Permissioned**"
+        }
+      ]
+    },
+    {
+      "id": "stat_05",
+      "label": "Example decryption threshold (fetchKeys)",
+      "valueRaw": "threshold: 2",
+      "valueNumber": 2,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_threshold",
+      "sources": [
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "threshold: 2,"
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "top_01",
+      "label": "Decentralized secrets management & client-side encryption",
+      "weight": 0.25,
+      "keywords": [
+        "DSM",
+        "encryption",
+        "decryption",
+        "secret sharing",
+        "client-side",
+        "data at rest"
+      ],
+      "routePaths": [
+        "/",
+        "/README"
+      ],
+      "entityIds": [
+        "ent_seal",
+        "ent_walrus",
+        "ent_ibe"
+      ]
+    },
+    {
+      "id": "top_02",
+      "label": "Identity-based encryption & cryptographic primitives",
+      "weight": 0.2,
+      "keywords": [
+        "IBE",
+        "Boneh-Franklin",
+        "BLS12-381",
+        "AES-256-GCM",
+        "HMAC-CTR",
+        "KEM",
+        "DEM"
+      ],
+      "routePaths": [
+        "/Design"
+      ],
+      "entityIds": [
+        "ent_ibe",
+        "ent_threshold",
+        "ent_seal"
+      ]
+    },
+    {
+      "id": "top_03",
+      "label": "Access control on Sui via seal_approve & Move",
+      "weight": 0.2,
+      "keywords": [
+        "seal_approve",
+        "Move package",
+        "PkgId",
+        "namespace",
+        "dry_run_transaction_block",
+        "access policy"
+      ],
+      "routePaths": [
+        "/UsingSeal",
+        "/Design"
+      ],
+      "entityIds": [
+        "ent_sealapprove",
+        "ent_move",
+        "ent_sui"
+      ]
+    },
+    {
+      "id": "top_04",
+      "label": "Key servers & threshold decryption",
+      "weight": 0.2,
+      "keywords": [
+        "key server",
+        "independent",
+        "decentralized",
+        "committee",
+        "MPC",
+        "DKG",
+        "aggregator"
+      ],
+      "routePaths": [
+        "/ServerOverview",
+        "/Design"
+      ],
+      "entityIds": [
+        "ent_keyserver",
+        "ent_threshold",
+        "ent_mysten"
+      ]
+    },
+    {
+      "id": "top_05",
+      "label": "TypeScript SDK integration (SealClient / SessionKey)",
+      "weight": 0.15,
+      "keywords": [
+        "SealClient",
+        "SessionKey",
+        "@mysten/seal",
+        "fetchKeys",
+        "decrypt",
+        "encrypt"
+      ],
+      "routePaths": [
+        "/UsingSeal"
+      ],
+      "entityIds": [
+        "ent_sdk",
+        "ent_seal",
+        "ent_sui"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_01",
+      "sourceEntityId": "ent_seal",
+      "targetEntityId": "ent_mysten",
+      "kind": "owned_by",
+      "label": "operated by",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "such as `seal.mystenlabs.com`"
+        }
+      ]
+    },
+    {
+      "id": "rel_02",
+      "sourceEntityId": "ent_seal",
+      "targetEntityId": "ent_walrus",
+      "kind": "integrates_with",
+      "label": "secures data on",
+      "confidence": 0.92,
+      "sources": [
+        {
+          "routePath": "/README",
+          "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+          "chunkId": "c_a1f309b2",
+          "quote": "secure sensitive data at rest on decentralized storage like [Walrus](https://docs.wal.app/)"
+        }
+      ]
+    },
+    {
+      "id": "rel_03",
+      "sourceEntityId": "ent_seal",
+      "targetEntityId": "ent_sui",
+      "kind": "depends_on",
+      "label": "access policies validated on",
+      "confidence": 0.92,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Seal is a decentralized secrets management (DSM) service that relies on access control policies defined and validated on [Sui](https://docs.sui.io/concepts/components)."
+        }
+      ]
+    },
+    {
+      "id": "rel_04",
+      "sourceEntityId": "ent_seal",
+      "targetEntityId": "ent_ibe",
+      "kind": "built_with",
+      "label": "encrypts using",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "Seal uses a cryptographic primitive called *Identity-Based Encryption (IBE)* to encrypt stored data."
+        }
+      ]
+    },
+    {
+      "id": "rel_05",
+      "sourceEntityId": "ent_seal",
+      "targetEntityId": "ent_keyserver",
+      "kind": "offers",
+      "label": "provides",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "A Seal key server is a simple and lightweight service that validates access control on Sui and generates identity-based private keys for authorized users to decrypt encrypted data."
+        }
+      ]
+    },
+    {
+      "id": "rel_06",
+      "sourceEntityId": "ent_seal",
+      "targetEntityId": "ent_move",
+      "kind": "built_with",
+      "label": "policies written in",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "A user can achieve this by implementing an application-specific Move package that must follow some Seal conventions."
+        }
+      ]
+    },
+    {
+      "id": "rel_07",
+      "sourceEntityId": "ent_sdk",
+      "targetEntityId": "ent_seal",
+      "kind": "part_of",
+      "label": "integration SDK for",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "The [TypeScript SDK](https://www.npmjs.com/package/@mysten/seal) is available through npm."
+        }
+      ]
+    },
+    {
+      "id": "rel_08",
+      "sourceEntityId": "ent_sealapprove",
+      "targetEntityId": "ent_sui",
+      "kind": "depends_on",
+      "label": "evaluated on full nodes",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "The `seal_approve*` functions are evaluated on full nodes using the `dry_run_transaction_block` RPC call."
+        }
+      ]
+    },
+    {
+      "id": "rel_09",
+      "sourceEntityId": "ent_seal",
+      "targetEntityId": "ent_aws_kms",
+      "kind": "competes_with",
+      "label": "contrasted with (non-goal)",
+      "confidence": 0.7,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Seal is not a key management service like [AWS KMS](https://aws.amazon.com/kms/) or any other such Web2 service"
+        }
+      ]
+    },
+    {
+      "id": "rel_10",
+      "sourceEntityId": "ent_keyserver",
+      "targetEntityId": "ent_sui",
+      "kind": "depends_on",
+      "label": "validates access control on",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "Key servers are off-chain services that validate onchain access policies and return derived secret keys to authorized users."
+        }
+      ]
+    },
+    {
+      "id": "rel_11",
+      "sourceEntityId": "ent_threshold",
+      "targetEntityId": "ent_keyserver",
+      "kind": "depends_on",
+      "label": "spread across",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "allowing users to realize `t-out-of-n` threshold encryption across `n` total key servers, where `t` is the minimum number required for decryption."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_01",
+      "question": "What is Seal?",
+      "answer": "Seal is a decentralized secrets management (DSM) service that secures sensitive data at rest on decentralized storage like Walrus, using identity-based encryption with access controlled by onchain policies validated on Sui.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "ent_seal",
+        "ent_sui",
+        "ent_walrus"
+      ],
+      "sources": [
+        {
+          "routePath": "/README",
+          "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+          "chunkId": "c_a1f309b2",
+          "quote": "Seal enables identity-based encryption and decryption of sensitive data, with access controlled by onchain policies on Sui."
+        },
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Seal is a decentralized secrets management (DSM) service that relies on access control policies defined and validated on [Sui](https://docs.sui.io/concepts/components)."
+        }
+      ]
+    },
+    {
+      "id": "q_02",
+      "question": "How does Seal control who can decrypt data?",
+      "answer": "Access is controlled by application-specific Move packages that define seal_approve* functions; off-chain key servers validate these onchain policies and return identity-based derived keys only to authorized users.",
+      "category": "how_it_works",
+      "importance": 0.9,
+      "entityIds": [
+        "ent_sealapprove",
+        "ent_keyserver",
+        "ent_move"
+      ],
+      "sources": [
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "Packages should define `seal_approve*` functions in their modules to control access to the keys associated with their identity namespace."
+        },
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "Key servers are off-chain services that validate onchain access policies and return derived secret keys to authorized users."
+        }
+      ]
+    },
+    {
+      "id": "q_03",
+      "question": "How does Seal avoid a single point of trust for decryption keys?",
+      "answer": "Seal supports t-out-of-n threshold encryption across multiple key servers, preserving privacy as long as fewer than t are compromised and liveness as long as at least t are available.",
+      "category": "trust_security",
+      "importance": 0.85,
+      "entityIds": [
+        "ent_threshold",
+        "ent_keyserver"
+      ],
+      "sources": [
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "**Privacy** as long as fewer than `t` key servers are compromised."
+        },
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "**Liveness** as long as at least `t` key servers are available."
+        }
+      ]
+    },
+    {
+      "id": "q_04",
+      "question": "What cryptography does Seal use?",
+      "answer": "Seal uses Boneh-Franklin IBE on the BLS12-381 curve as the KEM and AES-256-GCM or HMAC-based CTR mode as the DEM; AES-256-GCM is preferred for speed and HMAC-CTR is used when onchain decryption is required.",
+      "category": "how_it_works",
+      "importance": 0.8,
+      "entityIds": [
+        "ent_ibe",
+        "ent_seal"
+      ],
+      "sources": [
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "**KEM**: Boneh-Franklin IBE with the BLS12-381 curve."
+        },
+        {
+          "routePath": "/Design",
+          "url": "https://seal-docs.wal.app/Design",
+          "chunkId": "c_c3d527d4",
+          "quote": "Prefer `AES-256-GCM` for most use cases as it is faster. Use `HMAC-CTR` only when you require onchain decryption."
+        }
+      ]
+    },
+    {
+      "id": "q_05",
+      "question": "How do developers integrate Seal into an application?",
+      "answer": "Developers use the @mysten/seal TypeScript SDK from npm, the recommended way to encrypt and decrypt data, configuring a SealClient with key server object IDs.",
+      "category": "getting_started",
+      "importance": 0.75,
+      "entityIds": [
+        "ent_sdk",
+        "ent_keyserver"
+      ],
+      "sources": [
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "The recommended way to encrypt and decrypt the data is to use the [Seal SDK](https://www.npmjs.com/package/@mysten/seal)."
+        },
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "The [TypeScript SDK](https://www.npmjs.com/package/@mysten/seal) is available through npm."
+        }
+      ]
+    },
+    {
+      "id": "q_06",
+      "question": "What storage and blockchain does Seal work with?",
+      "answer": "Seal secures data at rest on Walrus or any other onchain/offchain storage and leverages Sui for controlling access to the decryption keys.",
+      "category": "integrations",
+      "importance": 0.7,
+      "entityIds": [
+        "ent_walrus",
+        "ent_sui",
+        "ent_seal"
+      ],
+      "sources": [
+        {
+          "routePath": "/README",
+          "url": "https://github.com/MystenLabs/seal/blob/main/README.md",
+          "chunkId": "c_a1f309b2",
+          "quote": "Application developers and users can use Seal to secure sensitive data at rest on decentralized storage like [Walrus](https://docs.wal.app/) or any other onchain / offchain storage."
+        },
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Seal leverages [Sui](https://docs.sui.io/concepts/components) for controlling access to the decryption keys"
+        }
+      ]
+    },
+    {
+      "id": "q_07",
+      "question": "What are the limitations of seal_approve functions?",
+      "answer": "seal_approve* functions are evaluated on full nodes via dry_run_transaction_block, must be side-effect free, and cannot modify onchain state, so they should not rely on frequently changing state or transaction ordering.",
+      "category": "limitations",
+      "importance": 0.65,
+      "entityIds": [
+        "ent_sealapprove"
+      ],
+      "sources": [
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "The `seal_approve*` functions are evaluated on full nodes using the `dry_run_transaction_block` RPC call."
+        },
+        {
+          "routePath": "/UsingSeal",
+          "url": "https://seal-docs.wal.app/UsingSeal",
+          "chunkId": "c_d4c636e5",
+          "quote": "`seal_approve*` functions must be side-effect free and cannot modify onchain state."
+        }
+      ]
+    },
+    {
+      "id": "q_08",
+      "question": "Is Seal a Web2 key management service like AWS KMS?",
+      "answer": "No. Seal is explicitly not a key management service like AWS KMS or any other Web2 service, and should not be used to store highly sensitive data such as wallet keys or regulated personal data.",
+      "category": "differentiators",
+      "importance": 0.6,
+      "entityIds": [
+        "ent_seal",
+        "ent_aws_kms"
+      ],
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Seal is not a key management service like [AWS KMS](https://aws.amazon.com/kms/) or any other such Web2 service"
+        }
+      ]
+    },
+    {
+      "id": "q_09",
+      "question": "Where can you find the list of available Seal key servers?",
+      "answer": "Seal's documentation points to verified key servers at the Pricing page for a list of available key servers in different environments.",
+      "category": "pricing",
+      "importance": 0.5,
+      "entityIds": [
+        "ent_keyserver"
+      ],
+      "sources": [
+        {
+          "routePath": "/",
+          "url": "https://seal-docs.wal.app/",
+          "chunkId": "c_b2e418c3",
+          "quote": "Refer to the [verified key servers](/Pricing#verified-key-servers) for a list of available key servers in different environments."
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 6,
+    "chunksAnalyzed": 30,
+    "entitiesWithSources": 11,
+    "ungroundedDropped": 3
+  }
+}

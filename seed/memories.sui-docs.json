@@ -1,0 +1,18 @@
+{
+  "namespace": "demo:sui-docs",
+  "target": "https://docs.sui.io",
+  "memories": [
+    "Sui is a layer 1 blockchain that performs its own consensus and validation of transaction blocks, and it uses the native SUI token as the currency of the network and to pay for the network's gas fees.",
+    "Sui uses an object-centric data model in which everything on the blockchain is an object that has metadata, a type of ownership, and a referencing scheme; every resource, asset, or piece of data onchain is an object, which is the fundamental unit of storage on the network.",
+    "Sui objects each carry a 32-byte globally unique ID, an 8-byte unsigned integer version that increases monotonically with each modification, a 32-byte transaction digest of the last transaction that produced them, and a 32-byte owner field.",
+    "Sui objects can be address-owned (owned by a specific 32-byte address), immutable (not owned by anyone, usable by all, but cannot be mutated, transferred, or deleted), shared, wrapped, or party/consensus-address (owned by a single address but sequenced through consensus).",
+    "Sui smart contracts are written in Move, an open source language for writing safe packages to manipulate onchain objects; Move on Sui addresses the scaling issue by not having global storage or its related operations.",
+    "Sui repurposes Move's address type as a 32 byte identifier used for both objects and accounts (versus 16-byte addresses on Diem), and its key ability marks a struct as an object type that requires its first field to have the signature id: UID.",
+    "Sui groups all user transactions into Programmable Transaction Blocks (PTBs), which can perform up to 1,024 unique operations in a single execution, run commands in order while passing results between them, and apply effects atomically so that if one command fails the entire block fails.",
+    "Sui caps the total SUI supply at 10,000,000,000 SUI on Mainnet, and the token is used for staking in the proof-of-stake mechanism, paying gas fees, as a liquid asset, and as a right to participate in onchain governance voting.",
+    "Sui uses a delegated proof-of-stake model in which validators lock SUI as collateral for the duration of an epoch and reward users based on the amount of SUI they delegate; under SIP-39 a candidate must accrue at least 3 voting power before requesting to join the validator set.",
+    "Sui maintains a storage fund funded by a storage fee included in each onchain transaction that adds data to the chain; the fund pays out only the returns on its capital and does not distribute its principal.",
+    "Sui defines time using epochs, which are periods where the validator set remains unchanged with reconfiguration adjusting network parameters at epoch boundaries, and uses checkpoints to define the history of the blockchain so full nodes and other clients can guarantee their state matches the Sui network.",
+    "Sui treats cryptographic agility as core, supporting multiple cryptography algorithms and primitives that it can switch between rapidly, including Ed25519, Secp256k1, Secp256r1, and BLS signature schemes plus hashing functions like SHA2-256, SHA3-256, Keccak256, and Blake2b-256."
+  ]
+}
