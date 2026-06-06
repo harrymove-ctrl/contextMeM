@@ -6,6 +6,12 @@ import remarkGfm from "remark-gfm";
 import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, ChevronDown, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, Hash, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, Maximize2, MessageSquare, Palette, Play, Plus, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, X, Zap } from "lucide-react";
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
+import { API_BASE } from "./lib/api-base.js";
+import { NamespaceMemoryConstellation } from "./components/namespace-memory/NamespaceMemoryConstellation.js";
+import { factsToMemoryGraph } from "./components/namespace-memory/facts-to-graph.js";
+import { buildEntityDetail } from "./components/namespace-memory/entity-detail.js";
+import { ENTITY_TYPE_COLORS, ENTITY_TYPE_LABELS, ENTITY_TYPE_ORDER } from "./lib/entity-colors.js";
+import type { EntityType } from "./lib/entity-colors.js";
 import StaggeredText from "./components/react-bits/staggered-text.js";
 import { BlurHighlight } from "./components/react-bits/blur-highlight.js";
 import DotShift from "./components/react-bits/dot-shift.js";
@@ -191,23 +197,8 @@ type FactSourceRef = {
   quote: string;
 };
 
-type EntityType =
-  | "organization"
-  | "product"
-  | "feature"
-  | "person"
-  | "technology"
-  | "integration"
-  | "platform"
-  | "pricing_plan"
-  | "use_case"
-  | "metric"
-  | "customer"
-  | "competitor"
-  | "location"
-  | "event"
-  | "concept"
-  | "other";
+// EntityType, ENTITY_TYPE_COLORS/LABELS/ORDER now live in ./lib/entity-colors.js
+// (single source shared with the constellation so graph + legend stay in sync).
 
 type SiteEntity = {
   id: string;
@@ -674,8 +665,6 @@ type MemWalNotice = {
   message: string;
   command?: string;
 };
-
-const API_BASE = import.meta.env.VITE_CONTEXTMEM_API_BASE ?? "http://localhost:8791";
 
 // localStorage throws (SecurityError) in Safari "block all cookies", private mode,
 // and sandboxed iframes — guard every access so it can never crash the app.
@@ -1584,6 +1573,7 @@ function ContextMemExperience() {
       <Route path="/app/compare" element={renderShell("Compare", "Pick two runs and review brand, design tokens, and key facts side-by-side.", <CompareAppPage history={history} authToken={sessionToken} />)} />
       <Route path="/app/publish" element={renderShell("Publish", "Check readiness and copy the commands needed to publish the context package.", <PublishPanel run={run} authToken={sessionToken} />)} />
       <Route path="/app/namespaces" element={renderShell("Namespaces", "Verified context namespaces — open one to browse its knowledge graph.", <NamespacesSimplePage />)} />
+
       <Route
         path="/app/settings"
         element={renderShell(
@@ -7175,44 +7165,6 @@ function TokenChips({ label, values }: { label: string; values: string[] }) {
   );
 }
 
-const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
-  organization: "Organizations",
-  product: "Products",
-  feature: "Features",
-  person: "People",
-  technology: "Technologies",
-  integration: "Integrations",
-  platform: "Platforms",
-  pricing_plan: "Pricing plans",
-  use_case: "Use cases",
-  metric: "Metrics",
-  customer: "Customers",
-  competitor: "Competitors",
-  location: "Locations",
-  event: "Events",
-  concept: "Concepts",
-  other: "Other"
-};
-
-const ENTITY_TYPE_ORDER: EntityType[] = [
-  "organization",
-  "product",
-  "platform",
-  "feature",
-  "technology",
-  "integration",
-  "pricing_plan",
-  "use_case",
-  "person",
-  "customer",
-  "competitor",
-  "metric",
-  "location",
-  "event",
-  "concept",
-  "other"
-];
-
 const CLAIM_KIND_LABELS: Record<ClaimKind, string> = {
   value_prop: "Value props",
   capability: "Capabilities",
@@ -7254,173 +7206,7 @@ function FactsSourceWhy({ sources, label = "why" }: { sources: FactSourceRef[]; 
   );
 }
 
-// Single-source entity-type -> color map (mirrors the .factsType-* legend in styles.css).
-const ENTITY_TYPE_COLORS: Record<EntityType, string> = {
-  organization: "#1d63ed",
-  product: "#a8d946",
-  platform: "#0f766e",
-  feature: "#7c3aed",
-  technology: "#0891b2",
-  integration: "#d97706",
-  pricing_plan: "#16a34a",
-  use_case: "#db2777",
-  person: "#e36d52",
-  customer: "#2563eb",
-  competitor: "#b91c1c",
-  metric: "#ca8a04",
-  location: "#4f46e5",
-  event: "#be185d",
-  concept: "#64748b",
-  other: "#94a3b8"
-};
 
-// Deterministic radial-by-salience entity/relationship graph. No d3, no
-// Math.random, no Date, no RAF — layout is a pure function of `entities` so
-// in-app and share/SSR renders are byte-identical.
-function FactsGraph({
-  entities,
-  relationships,
-  activeId,
-  onActivate
-}: {
-  entities: SiteEntity[];
-  relationships: SiteRelationship[];
-  activeId: string | null;
-  onActivate: (id: string | null) => void;
-}) {
-  const W = 760;
-  const H = 460;
-  const CX = W / 2;
-  const CY = H / 2;
-  // Hover is local + transient; the pin (activeId) is owned by FactsPanel and
-  // shared with the entity list. effectiveId = hover falls back to the pin, so
-  // leaving the svg clears only the hover and the pin survives.
-  const [hoverId, setHoverId] = useState<string | null>(null);
-
-  const layout = useMemo(() => {
-    const sal = (e: SiteEntity) => (Number.isFinite(e.salience) ? e.salience : 0);
-    const ranked = entities
-      .slice()
-      .sort((a, b) => sal(b) - sal(a) || a.id.localeCompare(b.id))
-      .slice(0, 24);
-    const pos = new Map<string, { x: number; y: number; r: number; e: SiteEntity }>();
-    if (!ranked.length) return { pos, nodes: [] as Array<{ id: string; x: number; y: number; r: number; e: SiteEntity }> };
-    const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-    const center = ranked[0]!;
-    pos.set(center.id, { x: CX, y: CY, r: 11 + sal(center) * 19, e: center });
-    const rest = ranked.slice(1);
-    const ring1Count = Math.ceil(rest.length / 2);
-    rest.forEach((e, i) => {
-      const ring = i < ring1Count ? 0 : 1;
-      const inRing = ring === 0 ? ring1Count : rest.length - ring1Count;
-      const idxInRing = ring === 0 ? i : i - ring1Count;
-      const radiusY = ring === 0 ? 125 : 200;
-      const phase = ring === 0 ? -Math.PI / 2 : -Math.PI / 2 + Math.PI / Math.max(1, inRing);
-      const angle = (idxInRing / Math.max(1, inRing)) * Math.PI * 2 + phase;
-      const x = CX + Math.cos(angle) * radiusY * 1.45;
-      const y = CY + Math.sin(angle) * radiusY;
-      pos.set(e.id, { x: clamp(x, 46, W - 46), y: clamp(y, 34, H - 34), r: 7 + sal(e) * 15, e });
-    });
-    const nodes = ranked.map((e) => ({ id: e.id, ...pos.get(e.id)! }));
-    return { pos, nodes };
-  }, [entities]);
-
-  const edges = useMemo(
-    () =>
-      relationships
-        .filter((r) => layout.pos.has(r.sourceEntityId) && layout.pos.has(r.targetEntityId) && r.sourceEntityId !== r.targetEntityId)
-        .map((r) => {
-          const a = layout.pos.get(r.sourceEntityId)!;
-          const b = layout.pos.get(r.targetEntityId)!;
-          const mx = (a.x + b.x) / 2;
-          const my = (a.y + b.y) / 2;
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const norm = Math.hypot(dx, dy) || 1;
-          const off = 16;
-          const cx = mx - (dy / norm) * off;
-          const cy = my + (dx / norm) * off;
-          return { r, a, b, d: `M ${a.x.toFixed(1)} ${a.y.toFixed(1)} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}` };
-        }),
-    [relationships, layout]
-  );
-
-  if (!layout.nodes.length) return null;
-
-  const effectiveId = hoverId ?? activeId;
-  const adjacent = new Set<string>();
-  if (effectiveId) {
-    adjacent.add(effectiveId);
-    edges.forEach((e) => {
-      if (e.r.sourceEntityId === effectiveId) adjacent.add(e.r.targetEntityId);
-      if (e.r.targetEntityId === effectiveId) adjacent.add(e.r.sourceEntityId);
-    });
-  }
-  const activeEntity = effectiveId ? entities.find((e) => e.id === effectiveId) ?? null : null;
-
-  return (
-    <section className="factsSection factsGraphSection">
-      <div className="sectionHead">
-        <h2>Knowledge graph</h2>
-        <span>
-          {layout.nodes.length} entit{layout.nodes.length === 1 ? "y" : "ies"} · {edges.length} relationship{edges.length === 1 ? "" : "s"}
-        </span>
-      </div>
-      <div className="factsGraphWrap">
-        <svg className="factsGraph" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Entity relationship graph" onMouseLeave={() => setHoverId(null)}>
-          <g className="factsGraphEdges">
-            {edges.map((e, i) => {
-              const incident = e.r.sourceEntityId === effectiveId || e.r.targetEntityId === effectiveId;
-              const dim = effectiveId && !incident;
-              return (
-                <path
-                  key={`${e.r.id}-${i}`}
-                  className={`factsGraphEdge${e.r.kind === "mentions" ? " isMention" : ""}${dim ? " isDim" : ""}${incident ? " isHot" : ""}`}
-                  d={e.d}
-                  strokeWidth={1 + (e.r.confidence ?? 0.5) * 2.4}
-                />
-              );
-            })}
-          </g>
-          <g className="factsGraphNodes">
-            {layout.nodes.map((node) => {
-              const dim = effectiveId && !adjacent.has(node.id);
-              const showLabel = node.r >= 12 || effectiveId === node.id || adjacent.has(node.id);
-              const name = node.e.name.length > 22 ? `${node.e.name.slice(0, 21)}…` : node.e.name;
-              return (
-                <g
-                  key={node.id}
-                  className={`factsGraphNodeG${dim ? " isDim" : ""}${effectiveId === node.id ? " isActive" : ""}`}
-                  onMouseEnter={() => setHoverId(node.id)}
-                  onClick={() => onActivate(activeId === node.id ? null : node.id)}
-                >
-                  <circle className="factsGraphNode" cx={node.x} cy={node.y} r={node.r} style={{ fill: ENTITY_TYPE_COLORS[node.e.type] ?? "#94a3b8" }} />
-                  {showLabel ? (
-                    <text className="factsGraphLabel" x={node.x} y={node.y + node.r + 11} textAnchor="middle">
-                      {name}
-                    </text>
-                  ) : null}
-                </g>
-              );
-            })}
-          </g>
-        </svg>
-        {activeEntity ? (
-          <div className="factsGraphCard">
-            <span className="factsTypeDot" style={{ background: ENTITY_TYPE_COLORS[activeEntity.type] }} aria-hidden="true" />
-            <div>
-              <strong>{activeEntity.name}</strong>
-              <em>{ENTITY_TYPE_LABELS[activeEntity.type]} · {activeEntity.mentions} mention{activeEntity.mentions === 1 ? "" : "s"}</em>
-              {activeEntity.description ? <p>{activeEntity.description}</p> : null}
-            </div>
-          </div>
-        ) : (
-          <div className="factsGraphHint">Hover a node to trace its relationships · click to pin</div>
-        )}
-      </div>
-    </section>
-  );
-}
 
 // Proportional topic band — facts.topics weights drive tile size; tinted by the
 // dominant entity's type color. (This data is otherwise never rendered.)
@@ -7469,6 +7255,29 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
   useEffect(() => {
     setActiveEntityId(null);
   }, [facts]);
+  // Stable graph reference (recompute only when facts change) so the WebGL
+  // constellation doesn't rebuild every render. Hook stays before the early return.
+  const constellationGraph = useMemo(
+    () =>
+      factsToMemoryGraph(
+        (facts?.entities ?? []).filter((entity) => (entity.sources?.length ?? 0) > 0),
+        facts?.relationships ?? [],
+        facts?.identity?.primaryEntityId
+      ),
+    [facts]
+  );
+  // Per-entity detail (aliases/topics/claims/stats) joined from the flat fact
+  // collections, looked up by entity id when a constellation node is selected.
+  const entityDetail = useMemo(
+    () =>
+      buildEntityDetail(
+        (facts?.entities ?? []).filter((entity) => (entity.sources?.length ?? 0) > 0),
+        facts?.claims ?? [],
+        facts?.stats ?? [],
+        facts?.topics ?? []
+      ),
+    [facts]
+  );
   if (!facts) {
     return (
       <div className="panel factsPanel">
@@ -7537,8 +7346,20 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
         </div>
       </section>
 
-      {/* KNOWLEDGE GRAPH — entities + relationships */}
-      <FactsGraph entities={entities} relationships={facts.relationships ?? []} activeId={activeEntityId} onActivate={setActiveEntityId} />
+      {/* KNOWLEDGE GRAPH — 3D constellation of entities + relationships */}
+      {entities.length ? (
+        <section className="factsSection factsGraphSection">
+          <div className="sectionHead">
+            <h2>Knowledge graph</h2>
+            <span>
+              {entities.length} entit{entities.length === 1 ? "y" : "ies"} · {facts.relationships?.length ?? 0} relationship{facts.relationships?.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="nmc-host">
+            <NamespaceMemoryConstellation graph={constellationGraph} entityDetail={entityDetail} />
+          </div>
+        </section>
+      ) : null}
 
       {/* FACTS AT A GLANCE — stat cards */}
       {stats.length ? (

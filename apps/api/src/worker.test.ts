@@ -124,6 +124,62 @@ describe("ContextMeM hosted namespace Worker", () => {
     expect(response.status).toBe(200);
   });
 
+  it("serves an artifact file over the public artifact-file route and 404s missing paths", async () => {
+    const env = createTestEnv();
+    const { handleWorkerRequest } = await worker();
+    const namespace = "web:chunks-public.com";
+    // The browser graph view fetches chunks.ndjson with no token, so this must
+    // work on a PUBLIC namespace and accept the leading-slash-less path the
+    // web hook sends (path=context/chunks.ndjson).
+    const chunkLine = JSON.stringify({ chunkId: "abc1234567890def", routePath: "/", url: "https://x/", headingPath: [], text: "hi", contentHash: "h", byteLength: 2, order: 0 });
+    const imported = await handleWorkerRequest(
+      new Request("https://contextmem.test/api/namespaces/import", {
+        method: "POST",
+        headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+        body: JSON.stringify({
+          namespace,
+          visibility: "public",
+          target: "https://demo-product.wal.app/",
+          sourceRunId: "run_fixture",
+          manifest: { target: "https://demo-product.wal.app/", pages: [] },
+          files: [
+            { path: "/llms.txt", contentType: "text/plain; charset=utf-8", encoding: "utf8", content: "ctx" },
+            { path: "/context/manifest.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify({ target: "x" }) },
+            { path: "/context/chunks.ndjson", contentType: "application/x-ndjson; charset=utf-8", encoding: "utf8", content: `${chunkLine}\n` }
+          ]
+        })
+      }),
+      env
+    );
+    expect(imported.status).toBe(201);
+
+    const ok = await handleWorkerRequest(
+      new Request(`https://contextmem.test/api/namespaces/${encodeURIComponent(namespace)}/artifact-file?path=${encodeURIComponent("context/chunks.ndjson")}`),
+      env
+    );
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get("content-type")).toContain("ndjson");
+    const firstLine = (await ok.text()).split("\n")[0]!;
+    expect((JSON.parse(firstLine) as { chunkId?: string }).chunkId).toBe("abc1234567890def");
+
+    const missing = await handleWorkerRequest(
+      new Request(`https://contextmem.test/api/namespaces/${encodeURIComponent(namespace)}/artifact-file?path=${encodeURIComponent("context/missing.json")}`),
+      env
+    );
+    expect(missing.status).toBe(404);
+  });
+
+  it("rejects artifact-file reads on a private namespace without a token", async () => {
+    const env = createTestEnv();
+    const imported = await importFixtureNamespace(env, "private");
+    const { handleWorkerRequest } = await worker();
+    const denied = await handleWorkerRequest(
+      new Request(`https://contextmem.test/api/namespaces/${encodeURIComponent(imported.namespace)}/artifact-file?path=${encodeURIComponent("context/manifest.json")}`),
+      env
+    );
+    expect(denied.status).toBe(401);
+  });
+
   it("serves namespace tools over Streamable HTTP JSON-RPC", async () => {
     const env = createTestEnv();
     const imported = await importFixtureNamespace(env, "private");
@@ -307,7 +363,7 @@ describe("ContextMeM hosted namespace Worker", () => {
       "https://demo-product.wal.app/sitemap.xml": "<urlset></urlset>"
     });
     try {
-      const { handleWorkerRequest } = await worker();
+      const { handleWorkerRequest, CloudflareNamespaceStore } = await worker();
       const response = await handleWorkerRequest(
         new Request("https://contextmem.test/api/extractions", {
           method: "POST",
@@ -320,6 +376,12 @@ describe("ContextMeM hosted namespace Worker", () => {
       const body = (await response.json()) as { job: { id: string; status: string; result?: { namespace: string } } };
       expect(body.job.status).toBe("completed");
       expect(body.job.result?.namespace).toBe("web:demo-product.wal.app");
+
+      // extractTargetContext must also emit chunks.ndjson for the graph view.
+      const chunks = await new CloudflareNamespaceStore(env).readArtifact("web:demo-product.wal.app", "/context/chunks.ndjson");
+      expect(chunks).toBeDefined();
+      const firstChunkLine = String(chunks?.content).split("\n")[0]!;
+      expect((JSON.parse(firstChunkLine) as { chunkId?: string }).chunkId).toBeTruthy();
     } finally {
       restoreFetch();
     }
@@ -366,6 +428,13 @@ describe("ContextMeM hosted namespace Worker", () => {
       const manifest = await store.readArtifact("ctx:multi-source", "/context/manifest.json");
       expect(manifest?.content).toContain("\"buildKind\": \"multi\"");
       expect(manifest?.content).toContain("\"kind\": \"walrus\"");
+
+      // The combined builder must emit chunks.ndjson so the browser graph view
+      // has per-chunk data without re-deriving it from raw markdown.
+      const chunks = await store.readArtifact("ctx:multi-source", "/context/chunks.ndjson");
+      expect(chunks).toBeDefined();
+      const firstChunkLine = String(chunks?.content).split("\n")[0]!;
+      expect((JSON.parse(firstChunkLine) as { chunkId?: string }).chunkId).toBeTruthy();
 
       const search = await mcpPost(env, `https://contextmem.test/mcp?namespace=${encodeURIComponent("ctx:multi-source")}`, body.job.result!.readToken, {
         jsonrpc: "2.0",

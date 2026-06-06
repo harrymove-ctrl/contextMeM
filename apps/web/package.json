@@ -14,7 +14,10 @@
     "lucide-react": "^0.561.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "three": "^0.184.0",
     "zod": "^4.3.6"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/three": "^0.184.1"
+  }
 }
