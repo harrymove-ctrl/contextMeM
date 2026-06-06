@@ -10168,6 +10168,65 @@ textarea:focus {
 .memoryExplorerPrompts button:hover:not(:disabled) { color: var(--cm-ink); border-color: rgba(168, 217, 70, 0.6); }
 .memoryExplorerPrompts button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Namespace chat (MemoryChatPanel) */
+.memoryChat { display: flex; flex-direction: column; gap: 12px; }
+.memoryChatStream {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 460px;
+  overflow-y: auto;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid var(--cm-border);
+  background: #fbfdf8;
+  scroll-behavior: smooth;
+}
+.memoryChatEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--cm-muted);
+}
+.memoryChatEmpty svg { color: var(--cm-accent); }
+.memoryChatEmpty strong { font-size: 15px; color: var(--cm-ink); }
+.memoryChatEmpty span { font-size: 13px; max-width: 460px; line-height: 1.5; }
+.memoryChatEmpty code { font-size: 12px; background: rgba(17, 20, 22, 0.05); padding: 1px 6px; border-radius: 6px; }
+.aiChatTyping { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--cm-muted); }
+.aiChatTyping svg { color: var(--cm-accent); }
+.memoryChatForm { display: flex; gap: 10px; align-items: stretch; }
+.memoryChatForm textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 46px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--cm-border);
+  background: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  color: var(--cm-ink);
+}
+.memoryChatForm textarea:focus { outline: none; border-color: rgba(168, 217, 70, 0.7); }
+.memoryChatForm textarea:disabled { opacity: 0.6; }
+.memoryChatForm .primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-end;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 12px;
+  background: var(--cm-ink);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.memoryChatForm .primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .memoryExplorerResult {
   display: flex;
   flex-direction: column;

@@ -5,7 +5,13 @@
   "preview_urls": false,
   "vars": {
     "CONTEXTMEM_WORKER_BASE_URL": "https://contextmem-backend.petlofi.workers.dev",
-    "CONTEXTMEM_DEMO_SAMPLE_TARGET": "https://seal-docs.wal.app/"
+    "CONTEXTMEM_DEMO_SAMPLE_TARGET": "https://seal-docs.wal.app/",
+    // Grounded-chat model (OpenAI-compatible). These two are NOT secrets (just a
+    // URL + a model name). Set the API key separately as a secret to switch chat
+    // from Workers AI (llama) to OpenRouter:
+    //   echo "<openrouter-key>" | npx wrangler@4.95.0 secret put OPENAI_API_KEY --config apps/api/cloudflare/wrangler.jsonc
+    "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
+    "OPENAI_MODEL": "openai/gpt-4o-mini"
   },
   "compatibility_date": "2026-05-21",
   "compatibility_flags": ["nodejs_compat"],
