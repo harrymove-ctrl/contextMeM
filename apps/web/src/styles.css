@@ -9985,86 +9985,6 @@ textarea:focus {
 /* ── Facts: knowledge graph + topics band ─────────────────────────────────── */
 .factsGraphSection { min-width: 0; }
 
-.factsGraphWrap {
-  position: relative;
-  border: 1px solid var(--cm-border);
-  border-radius: 16px;
-  background:
-    radial-gradient(120% 120% at 50% 0%, rgba(168, 217, 70, 0.06), transparent 60%),
-    #fbfdf8;
-  padding: 8px;
-  overflow: hidden;
-}
-
-.factsGraph {
-  display: block;
-  width: 100%;
-  height: auto;
-  touch-action: none;
-}
-
-.factsGraphEdge {
-  fill: none;
-  stroke: rgba(17, 20, 22, 0.22);
-  stroke-linecap: round;
-  transition: stroke 160ms ease, opacity 160ms ease;
-}
-.factsGraphEdge.isMention { stroke-dasharray: 3 5; stroke: rgba(17, 20, 22, 0.16); }
-.factsGraphEdge.isHot { stroke: var(--cm-blue); opacity: 0.95; }
-.factsGraphEdge.isDim { opacity: 0.12; }
-
-.factsGraphNodeG { cursor: pointer; }
-.factsGraphNode {
-  stroke: #ffffff;
-  stroke-width: 2;
-  transition: opacity 160ms ease, transform 160ms ease;
-  filter: drop-shadow(0 2px 5px rgba(22, 31, 45, 0.18));
-}
-.factsGraphNodeG.isDim { opacity: 0.28; }
-.factsGraphNodeG.isActive .factsGraphNode { stroke: var(--cm-ink); stroke-width: 2.5; }
-.factsGraphNodeG:hover .factsGraphNode { stroke: var(--cm-ink); }
-
-.factsGraphLabel {
-  font-size: 11px;
-  font-weight: 600;
-  fill: var(--cm-ink);
-  paint-order: stroke;
-  stroke: #fbfdf8;
-  stroke-width: 3px;
-  pointer-events: none;
-}
-.factsGraphNodeG.isDim .factsGraphLabel { opacity: 0.3; }
-
-.factsGraphHint {
-  position: absolute;
-  left: 14px;
-  bottom: 12px;
-  font-size: 12px;
-  color: var(--cm-muted);
-  pointer-events: none;
-}
-
-.factsGraphCard {
-  position: absolute;
-  left: 14px;
-  bottom: 12px;
-  right: 14px;
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  max-width: 460px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--cm-border);
-  box-shadow: 0 10px 26px rgba(22, 31, 45, 0.12);
-  backdrop-filter: blur(4px);
-}
-.factsGraphCard .factsTypeDot { margin-top: 5px; flex-shrink: 0; }
-.factsGraphCard strong { display: block; font-size: 14px; color: var(--cm-ink); }
-.factsGraphCard em { display: block; font-size: 11.5px; font-style: normal; color: var(--cm-muted); margin-top: 1px; }
-.factsGraphCard p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--cm-ink); }
-
 .factsEntityRow { cursor: pointer; border-radius: 10px; transition: background 160ms ease, box-shadow 160ms ease; }
 .factsEntityRow.isActive { background: rgba(168, 217, 70, 0.12); box-shadow: inset 0 0 0 1px rgba(168, 217, 70, 0.55); }
 
@@ -10096,10 +10016,6 @@ textarea:focus {
 }
 .factsTopicTile small { font-size: 11px; color: var(--cm-muted); }
 
-@media (max-width: 640px) {
-  .factsGraphHint { display: none; }
-  .factsGraphCard { left: 8px; right: 8px; bottom: 8px; }
-}
 
 
 /* ── Walrus Memory explorer (no-run recall) ───────────────────────────────── */

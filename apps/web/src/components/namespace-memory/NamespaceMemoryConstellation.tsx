@@ -24,6 +24,7 @@ const nodeThreeObject = (n: any) => createNodeObject(n, routePathColor(n.routePa
 export function NamespaceMemoryConstellation({ graph }: { graph: MemoryGraph }) {
   const fgRef = useRef<any>(null);
   const hostRef = useRef<HTMLDivElement>(null);
+  const fittedRef = useRef(false); // frame the graph once per dataset (re-armed on graph change)
   // Seed with non-zero dims, NOT {0,0}. The mount-frame canvas computes camera
   // aspect = width/height; 0/0 = NaN poisons the Three.js view matrix and the
   // scene can come up blank even after the observer corrects the size.
@@ -48,6 +49,10 @@ export function NamespaceMemoryConstellation({ graph }: { graph: MemoryGraph }) 
     [],
   );
   const routes = useMemo(() => [...new Set(graph.nodes.map((n) => n.routePath))], [graph]);
+
+  useEffect(() => {
+    fittedRef.current = false; // re-frame when the dataset changes (e.g. switching namespace)
+  }, [graph]);
 
   const neighbours = useMemo(() => {
     const m = new Map<string, Set<string>>();
@@ -124,6 +129,11 @@ export function NamespaceMemoryConstellation({ graph }: { graph: MemoryGraph }) 
           linkWidth={(l: any) => (l.kind === "spine" ? 0.8 : 0.4)}
           onNodeClick={(n: any) => focusNode(n)}
           enableNodeDrag={false}
+          onEngineStop={() => {
+            if (fittedRef.current) return;
+            fittedRef.current = true;
+            fgRef.current?.zoomToFit?.(600, 60);
+          }}
         />
       </div>
       <MemoryLegend routes={routes} nodeCount={graph.nodes.length} linkCount={graph.links.length} />
