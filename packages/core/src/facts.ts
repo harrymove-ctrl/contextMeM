@@ -15,7 +15,7 @@
 
 import type { ContextChunk, PageArtifact } from "./types.js";
 import { normalizeText } from "./chunks.js";
-import { firstReadableSentence, rankedContextSentences } from "./web.js";
+import { firstReadableSentence, rankedContextSentences } from "./text.js";
 import { sha256Hex } from "./utils.js";
 
 // ----------------------------------------------------------------------------

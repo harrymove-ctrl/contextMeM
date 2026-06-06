@@ -12,17 +12,19 @@ import {
   type HostedNamespaceVisibility
 } from "@contextmem/mcp/hosted";
 import { MemWalMcpClient } from "@contextmem/memwal";
-import {
-  buildChunks,
-  buildSiteFacts,
-  generateContextQuestions,
-  isUtilityPageRoute,
-  type BuildProfile,
-  type ContextChunk,
-  type DiscoveryStats,
-  type FactsModel,
-  type PageArtifact,
-  type SiteFacts
+// Runtime fns imported from leaf SUBPATHS (not the "@contextmem/core" barrel) so
+// esbuild does NOT bundle web.ts/html.ts -> cheerio + @mozilla/readability, whose
+// top-level `__dirname` reference is undefined in the Workers runtime.
+import { buildChunks } from "@contextmem/core/chunks";
+import { buildSiteFacts, generateContextQuestions } from "@contextmem/core/facts";
+import { isUtilityPageRoute } from "@contextmem/core/utils";
+import type {
+  BuildProfile,
+  ContextChunk,
+  DiscoveryStats,
+  FactsModel,
+  PageArtifact,
+  SiteFacts
 } from "@contextmem/core";
 
 export type WorkerEnv = {
