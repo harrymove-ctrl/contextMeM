@@ -7,7 +7,6 @@ import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCi
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
 import { API_BASE } from "./lib/api-base.js";
-import { MemoryConsolePage } from "./components/namespace-memory/MemoryConsolePage.js";
 import StaggeredText from "./components/react-bits/staggered-text.js";
 import { BlurHighlight } from "./components/react-bits/blur-highlight.js";
 import DotShift from "./components/react-bits/dot-shift.js";
@@ -1556,7 +1555,6 @@ function ContextMemExperience() {
       <Route path="/app/compare" element={renderShell("Compare", "Pick two runs and review brand, design tokens, and key facts side-by-side.", <CompareAppPage history={history} authToken={sessionToken} />)} />
       <Route path="/app/publish" element={renderShell("Publish", "Check readiness and copy the commands needed to publish the context package.", <PublishPanel run={run} authToken={sessionToken} />)} />
       <Route path="/app/namespaces" element={renderShell("Namespaces", "Verified context namespaces — open one to browse its knowledge graph.", <NamespacesSimplePage />)} />
-      <Route path="/app/visualizers" element={renderShell("Visualizers", "Explore a namespace's remembered context as a constellation.", <MemoryConsolePage />)} />
 
       <Route
         path="/app/settings"
@@ -1601,7 +1599,6 @@ const appNavItems = [
   { to: "/app/runs", label: "Runs", icon: History },
   { to: "/app/memory", label: "Memory", icon: Brain },
   { to: "/app/namespaces", label: "Namespaces", icon: Database },
-  { to: "/app/visualizers", label: "Visualizers", icon: Sparkles },
   { to: "/app/settings", label: "Settings", icon: Settings }
 ];
 
