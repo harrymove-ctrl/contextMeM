@@ -786,13 +786,21 @@ const builtForUseCards = [
     eyebrow: "Walrus Memory",
     heading: "Remember verified context so agents recall it later.",
     highlights: ["Remember", "recall"],
-    body: "Sync the certified context into Walrus Memory. Agents recall the pointer and re-fetch the real artifact, keyed by blobId."
+    body: "Sync the certified context into Walrus Memory. Agents recall the pointer and re-fetch the real artifact, keyed by blobId.",
+    image: {
+      src: "/illustrations/walrus-memory-recall-black-walrus.png",
+      alt: "A solid-black walrus worker stores only a blobId pointer in Walrus Memory so agents can recall and re-fetch the real artifact."
+    }
   },
   {
     eyebrow: "Onchain provenance",
     heading: "Artifacts can be sealed with onchain Walrus proof.",
     highlights: ["onchain", "certified", "Walrus"],
-    body: "Tar the bundle, store it on Walrus through Tatum, and keep a verifiable blobId and digest for every run."
+    body: "Tar the bundle, store it on Walrus through Tatum, and keep a verifiable blobId and digest for every run.",
+    image: {
+      src: "/illustrations/onchain-proof-black-walrus.png",
+      alt: "A solid-black walrus worker seals a tar bundle through Tatum and Walrus storage, producing a certified blobId and digest receipt."
+    }
   }
 ];
 const storageLayers = [
