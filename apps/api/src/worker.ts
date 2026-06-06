@@ -550,7 +550,16 @@ export async function handleWorkerRequest(request: Request, env: WorkerEnv, ctx:
 }
 
 async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext = {}): Promise<Response> {
-  const url = new URL(request.url);
+  let url = new URL(request.url);
+  // The hosted Settings/Workspace frontend calls /api/hosted/* paths that map 1:1 onto the
+  // worker's bare /api/* handlers. Normalize them up-front (including the underlying Request so
+  // downstream handlers that re-parse request.url also see the rewritten path) so the deployed
+  // worker answers the requests the production frontend actually issues.
+  if (url.pathname.startsWith("/api/hosted/")) {
+    url = new URL(request.url);
+    url.pathname = "/api/" + url.pathname.slice("/api/hosted/".length);
+    request = new Request(url.toString(), request);
+  }
   const store = new CloudflareNamespaceStore(env);
 
   if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
@@ -699,11 +708,12 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
         authorizeNamespace: (requestedNamespace, accessToken) => store.authorizeNamespace(requestedNamespace, accessToken ?? readAccessToken(request))
       });
     }
-    return createMcpHandler(server, {
+    const mcpResponse = await createMcpHandler(server, {
       route: url.pathname,
       enableJsonResponse: true,
       corsOptions: { origin: "*" }
     })(request, env, ctx as never);
+    return cors(mcpResponse);
   }
   return json({ error: "Not found" }, 404);
 }
@@ -1551,7 +1561,7 @@ async function getShareLinkFile(_request: Request, env: WorkerEnv, shareId: stri
 async function getShareLinkOgSvg(_request: Request, env: WorkerEnv, shareId: string): Promise<Response> {
   const share = await getShareLinkRow(env, shareId);
   if (!share) {
-    return new Response("<svg/>", { status: 404, headers: { "content-type": "image/svg+xml; charset=utf-8" } });
+    return cors(new Response("<svg/>", { status: 404, headers: { "content-type": "image/svg+xml; charset=utf-8" } }));
   }
   const title = svgEscape((share.title ?? share.target).slice(0, 64));
   const namespace = svgEscape(share.namespace.slice(0, 48));
