@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, Hash, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, Maximize2, MessageSquare, Palette, Play, Plus, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, X, Zap } from "lucide-react";
+import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, ChevronDown, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, Hash, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, Maximize2, MessageSquare, Palette, Play, Plus, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, X, Zap } from "lucide-react";
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
 import StaggeredText from "./components/react-bits/staggered-text.js";
@@ -3850,7 +3850,7 @@ function StatusPill({ statusLabel, statusTone, run, hasMemWalDelegate, sessionSl
       <summary aria-label={`${compactLabel}: ${statusLabel}`}>
         <span className={`statusDot statusDot-${dotTone}`} aria-hidden="true" />
         <span className="statusPillLabel">{compactLabel}</span>
-        <span className="statusPillCaret" aria-hidden="true">⌄</span>
+        <ChevronDown className="statusPillCaret" size={14} aria-hidden="true" />
       </summary>
       <div className="statusPanel" role="dialog">
         <div className="statusRow">
