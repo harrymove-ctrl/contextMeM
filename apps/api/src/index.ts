@@ -239,11 +239,14 @@ app.get("/api/memwal/facts/:namespace", async (request, reply) => {
 
 app.get("/api/memwal/namespaces", async () => {
   const raw = process.env.MEMWAL_NAMESPACES?.trim();
-  let namespaces = [
-    { namespace: "demo:sui-docs", label: "Sui Docs" },
-    { namespace: "demo:walrus-docs", label: "Walrus Docs" },
-    { namespace: "demo:seal-docs", label: "Seal Docs" }
-  ];
+  // List every seeded namespace (matches the Namespaces page), so opening any
+  // namespace card lands on a real chip instead of falling back to the first.
+  let namespaces: Array<{ namespace: string; label: string }> = (
+    SEED_FACTS_LIST as ReadonlyArray<{ namespace: string; displayName?: string }>
+  ).map((entry) => ({
+    namespace: entry.namespace,
+    label: entry.displayName || entry.namespace.replace(/^demo:/, "")
+  }));
   if (raw) {
     const parsed = raw
       .split(",")

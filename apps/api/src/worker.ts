@@ -3276,11 +3276,15 @@ function buildImportResponse(
   };
 }
 
-const DEFAULT_MEMWAL_NAMESPACES: Array<{ namespace: string; label: string }> = [
-  { namespace: "demo:sui-docs", label: "Sui Docs" },
-  { namespace: "demo:walrus-docs", label: "Walrus Docs" },
-  { namespace: "demo:seal-docs", label: "Seal Docs" }
-];
+// The Memory page namespace picker must list EVERY seeded namespace (same set the
+// Namespaces page shows), so opening any namespace card lands on a real chip and
+// not a fallback. Derived from SEED_FACTS_LIST so the two surfaces never drift.
+const DEFAULT_MEMWAL_NAMESPACES: Array<{ namespace: string; label: string }> = (
+  SEED_FACTS_LIST as ReadonlyArray<{ namespace: string; displayName?: string }>
+).map((entry) => ({
+  namespace: entry.namespace,
+  label: entry.displayName || prettyNamespaceLabel(entry.namespace)
+}));
 
 function prettyNamespaceLabel(namespace: string): string {
   return namespace
