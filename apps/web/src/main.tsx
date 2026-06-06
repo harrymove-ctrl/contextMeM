@@ -8,6 +8,7 @@ import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
 import StaggeredText from "./components/react-bits/staggered-text.js";
 import { BlurHighlight } from "./components/react-bits/blur-highlight.js";
+import DotShift from "./components/react-bits/dot-shift.js";
 import "./styles.css";
 
 type DesignSystem = {
@@ -566,13 +567,6 @@ const builtForUseCards = [
     highlights: ["onchain", "certified", "Walrus"],
     body: "Tar the bundle, store it on Walrus through Tatum, and keep a verifiable blobId and digest for every run."
   }
-];
-const pipelineSteps = [
-  { n: "01", title: "Resolve the target", detail: "Paste a .wal.app name, a Sui object ID, or any web URL. ContextMeM resolves it to the on-chain Walrus Site object and its full resource map.", icon: Globe2 },
-  { n: "02", title: "Verify on Sui + Walrus", detail: "Read dynamic resource fields from Sui, fetch blobs from a Walrus aggregator, and check every hash, route, and content type before trusting a byte.", icon: ShieldCheck },
-  { n: "03", title: "Package agent context", detail: "Emit markdown, llms.txt, design tokens, screenshots, and a resource manifest as static, agent-readable artifacts you can diff and download.", icon: Boxes },
-  { n: "04", title: "Store the proof on Walrus", detail: "Tar the context bundle and upload it to Walrus persistent storage through Tatum, then poll the job until the blob is CERTIFIED on the network.", icon: Database },
-  { n: "05", title: "Remember in Walrus Memory", detail: "Index the certified receipt — blobId, digest, what changed — into Walrus Memory so agents recall the pointer and re-fetch the real artifact.", icon: Brain }
 ];
 const storageLayers = [
   { tag: "Walrus Storage", title: "Real artifacts, kept on-chain", detail: "The tarred context bundle — manifest, llms.txt, markdown, proofs, screenshots — is uploaded via Tatum POST /v4/data/storage/upload and polled to CERTIFIED. Storage holds the bytes, keyed by blobId.", icon: Database, accent: "blue" },
@@ -2420,35 +2414,6 @@ function LandingPage({
         </div>
       </section>
 
-      <section className="lpHow" aria-label="How ContextMeM works">
-        <div className="lpHowGrid">
-          <aside className="lpHowAside">
-            <span className="lpEyebrow"><Sparkles size={14} /> How it works</span>
-            <h2>From an onchain URL to verified agent memory.</h2>
-            <p>Every run is reproducible — resolve, verify, package, store, remember. Each step writes an artifact you can inspect, diff, and download.</p>
-            <button className="lpHowCta" onClick={hasMemWalDelegate ? onOpenApp : onHeroAction} disabled={!hasMemWalDelegate && demoActive}>
-              {hasMemWalDelegate ? "Open app" : demoActive ? demoPreviewButtonLabel(demoPreview) : "Run public preview"}
-              <ArrowDownRight size={17} />
-            </button>
-          </aside>
-          <ol className="lpTimeline">
-            {pipelineSteps.map((step) => {
-              const Icon = step.icon;
-              return (
-                <li className="lpTimelineItem" key={step.n}>
-                  <div className="lpTimelineBadge"><Icon size={18} /></div>
-                  <div className="lpTimelineBody">
-                    <span className="lpTimelineNum">Step {step.n}</span>
-                    <h3>{step.title}</h3>
-                    <p>{step.detail}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      </section>
-
       <section className="lpStore" aria-label="Walrus storage and memory via Tatum">
         <header className="lpSectionHead">
           <span className="lpEyebrow"><Database size={14} /> Storage + Memory</span>
@@ -2473,15 +2438,22 @@ function LandingPage({
         </div>
       </section>
 
-      <section className="pageEnd" aria-label="ContextMeM page end">
-        <div>
-          <span>Account-gated Walrus context</span>
-          <h2>Homepage stays focused. The full console, artifacts, history, memory, and publish tools live inside the app.</h2>
+      <section className="lpCta" aria-label="Get started with ContextMeM">
+        <div className="lpCtaBg" aria-hidden="true">
+          <DotShift color="#a8d946" speed={0.5} scale={0.72} size={0.62} blur={0.4} className="lpCtaDots" />
         </div>
-        <button onClick={hasMemWalDelegate ? onOpenApp : onHeroAction} disabled={!hasMemWalDelegate && demoActive}>
-          <ArrowDownRight size={17} />
-          {hasMemWalDelegate ? "Open app" : demoActive ? demoPreviewButtonLabel(demoPreview) : "Run public preview"}
-        </button>
+        <div className="lpCtaInner">
+          <span className="lpCtaBrand">
+            <span className="lpCtaBrandMark"><Server size={20} /></span>
+            ContextMeM
+          </span>
+          <h2 className="lpCtaTitle">Decode any Walrus Site.<br />Remember it forever.</h2>
+          <p className="lpCtaSub">Resolve, verify, package, and store verified onchain context your agents can actually recall.</p>
+          <button className="lpCtaBtn" onClick={hasMemWalDelegate ? onOpenApp : onHeroAction} disabled={!hasMemWalDelegate && demoActive}>
+            {hasMemWalDelegate ? "Open app" : demoActive ? demoPreviewButtonLabel(demoPreview) : "Run public preview"}
+            <ArrowDownRight size={18} />
+          </button>
+        </div>
       </section>
     </main>
   );
