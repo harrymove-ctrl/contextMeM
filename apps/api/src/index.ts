@@ -419,7 +419,7 @@ app.post("/api/memwal/chat", async (request, reply) => {
           messages: [
             {
               role: "system",
-              content: `You are ContextMeM, chatting naturally about "${subject}". Answer the user's latest message using ONLY this context (entities, topics, claims, stats, Q&A). Synthesize across ALL of it — entities and topics describe how it works and what it's made of. Be specific. Only if nothing is relevant, say you don't have that detail in memory yet; never invent specifics. Return strict JSON: {"answer": string, "key_points": string[2-5], "confidence": number}.\n\nContext:\n${grounding}`
+              content: `You are ContextMeM, chatting naturally about "${subject}". Answer the user's latest message using ONLY this context (entities, topics, claims, stats, Q&A). Synthesize across ALL of it — entities and topics describe how it works and what it's made of. When asked for numbers, metrics, limits, prices, or costs, surface the specific Stat values from the context verbatim — do NOT abstain whenever any relevant Stat or fact is present. Be specific. Only when NOTHING in the context relates to the question, say you don't have that detail in memory yet; never invent specifics. Return strict JSON: {"answer": string, "key_points": string[2-5], "confidence": number}.\n\nContext:\n${grounding}`
             },
             ...messages
           ]
