@@ -15,7 +15,7 @@ import { MemWalMcpClient } from "@contextmem/memwal";
 // Runtime fns imported from leaf SUBPATHS (not the "@contextmem/core" barrel) so
 // esbuild does NOT bundle web.ts/html.ts -> cheerio + @mozilla/readability, whose
 // top-level `__dirname` reference is undefined in the Workers runtime.
-import { buildChunks } from "@contextmem/core/chunks";
+import { buildChunks, renderChunksNdjson } from "@contextmem/core/chunks";
 import { buildSiteFacts, generateContextQuestions } from "@contextmem/core/facts";
 import { SEED_FACTS, SEED_FACTS_LIST } from "./seed-facts.js";
 import { SEED_PROOFS } from "./seed-proofs.js";
@@ -744,6 +744,19 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     const auth = requireImportAuthorization(request, env);
     if (!auth.ok) return json({ error: auth.message }, auth.status);
     return listAlerts(request, env);
+  }
+  if (request.method === "GET" && url.pathname.startsWith("/api/namespaces/") && url.pathname.endsWith("/artifact-file")) {
+    const namespace = decodeURIComponent(url.pathname.slice("/api/namespaces/".length, -"/artifact-file".length));
+    const auth = await store.authorizeNamespace(namespace, readAccessToken(request));
+    if (!auth.ok) return json({ error: auth.message }, auth.status);
+    // Stored paths are absolute (/context/...); the web hook sends them without
+    // the leading slash, and normalizeHostedArtifactPath throws otherwise.
+    const raw = url.searchParams.get("path") ?? "";
+    const artifactPath = raw.startsWith("/") ? raw : `/${raw}`;
+    const readStore = auth.versionId !== auth.summary.versionId ? store.pinnedTo(namespace, auth.versionId) : store;
+    const artifact = await readStore.readArtifact(namespace, artifactPath);
+    if (!artifact) return cors(new Response("Artifact not found", { status: 404 }));
+    return cors(new Response(artifact.content, { status: 200, headers: { "content-type": artifact.contentType } }));
   }
   if (request.method === "GET" && url.pathname.startsWith("/api/namespaces/")) {
     const namespace = decodeURIComponent(url.pathname.slice("/api/namespaces/".length));
@@ -2169,7 +2182,8 @@ function buildCombinedNamespaceBundle(job: ExtractionJobRow, sources: ExtractedN
     { path: "/context/sources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(sourceSummaries, null, 2) },
     { path: "/context/source-index.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(sourceIndex, null, 2) },
     { path: "/context/site-structure.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest.siteStructure, null, 2) },
-    { path: "/context/resources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(resources, null, 2) }
+    { path: "/context/resources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(resources, null, 2) },
+    { path: "/context/chunks.ndjson", contentType: "application/x-ndjson; charset=utf-8", encoding: "utf8", content: renderChunksNdjson(buildChunks(pages as unknown as PageArtifact[])) }
   ];
   if (manifest.brand) files.push({ path: "/context/brand.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest.brand, null, 2) });
   if (manifest.designSystem) files.push({ path: "/context/design-system.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(manifest.designSystem, null, 2) });
@@ -2773,6 +2787,7 @@ async function extractTargetContext(job: ExtractionJobRow, env: WorkerEnv): Prom
     { path: "/context/toc.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(tocFlat.slice(0, 500), null, 2) },
     { path: "/context/code-blocks.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(codeBlocks.slice(0, 300), null, 2) },
     { path: "/context/resources.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(resources.map((resource) => ({ url: resource.url.toString(), label: resource.label, kind: resource.kind })), null, 2) },
+    { path: "/context/chunks.ndjson", contentType: "application/x-ndjson; charset=utf-8", encoding: "utf8", content: renderChunksNdjson(buildChunks(manifestPages as unknown as PageArtifact[])) },
     { path: "/context/discovery.json", contentType: "application/json; charset=utf-8", encoding: "utf8", content: JSON.stringify(discovery, null, 2) }
   ];
   if (facts) {
