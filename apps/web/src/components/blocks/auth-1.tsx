@@ -53,7 +53,7 @@ export function Auth1({
         },
     {
       icon: Database,
-      title: "MemWal recall",
+      title: "Walrus Memory recall",
       text: "Unlock verified context recall, memory sync, and namespace history."
     },
     {
@@ -84,14 +84,14 @@ export function Auth1({
 
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, delay: 0.14 }} className="rbAuth1Copy">
             <span>{authenticated ? "Delegate key required" : "SDK credentials required"}</span>
-            <h2>{compact ? "Import SDK credentials" : "Import MemWal SDK credentials"}</h2>
+            <h2>{compact ? "Import SDK credentials" : "Import Walrus Memory SDK credentials"}</h2>
             <p>
-              {description ?? "Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted and unlocks verified Walrus context."}
+              {description ?? "Paste your Walrus Memory account ID and delegate private key. ContextMeM stores the delegate encrypted and unlocks verified Walrus context."}
             </p>
           </motion.div>
 
           <motion.form initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.34, delay: 0.2 }} className="rbAuth1Form" onSubmit={handleSubmit}>
-            <label htmlFor={accountInputId}>MemWal account ID</label>
+            <label htmlFor={accountInputId}>Walrus Memory account ID</label>
             <input
               id={accountInputId}
               name="memwalAccountId"
@@ -138,7 +138,7 @@ export function Auth1({
             ) : null}
             <a href={dashboardUrl} target="_blank" rel="noreferrer">
               <ExternalLink size={14} />
-              Open MemWal dashboard
+              Open Walrus Memory dashboard
             </a>
           </motion.div>
         </motion.div>

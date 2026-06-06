@@ -1,0 +1,1070 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T12:00:00.000Z",
+  "target": "https://stripe.com",
+  "identity": {
+    "name": "Stripe",
+    "oneLiner": "Financial infrastructure to grow your revenue: payments, billing, marketplaces, and fraud prevention.",
+    "category": "payments infrastructure",
+    "audience": [
+      "developers",
+      "startups",
+      "enterprises",
+      "platforms and marketplaces"
+    ],
+    "primaryEntityId": "e_stripe",
+    "sources": [
+      {
+        "chunkId": "c_a1b2c3d4",
+        "routePath": "/",
+        "url": "https://stripe.com/",
+        "quote": "Financial infrastructure to grow your revenue. Accept payments, offer financial services, and implement custom revenue models—from your first transaction to your billionth."
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "e_stripe",
+      "name": "Stripe",
+      "type": "organization",
+      "aliases": [
+        "Stripe, Inc."
+      ],
+      "description": "Financial infrastructure to grow revenue: accept payments, offer financial services, and implement custom revenue models.",
+      "url": "https://stripe.com",
+      "salience": 1,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://stripe.com/",
+          "quote": "Financial infrastructure to grow your revenue. Accept payments, offer financial services, and implement custom revenue models—from your first transaction to your billionth."
+        },
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/",
+          "url": "https://stripe.com/",
+          "quote": "50% of Fortune 100 companies have used Stripe to grow their businesses"
+        }
+      ]
+    },
+    {
+      "id": "e_payments",
+      "name": "Stripe Payments",
+      "type": "product",
+      "aliases": [
+        "Payments"
+      ],
+      "description": "Integrate a Stripe product to accept payments online and in person, embed financial services, and power custom revenue models.",
+      "url": "https://docs.stripe.com/payments",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_f6a7b8c9",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Integrate a Stripe product to start accepting payments online and in person, embed financial services, power custom revenue models, and more."
+        }
+      ]
+    },
+    {
+      "id": "e_billing",
+      "name": "Stripe Billing",
+      "type": "product",
+      "aliases": [
+        "Billing"
+      ],
+      "description": "Modern monetization infrastructure and the only billing software with a built-in payment system.",
+      "url": "https://stripe.com/billing",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_d2e3f4a5",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "Stripe Billing is modern monetization infrastructure. It's the only billing software with a built-in payment system, and is used by fast-scaling businesses like OpenAI, Atlassian, and Figma."
+        },
+        {
+          "chunkId": "c_c1d2e3f4",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "Monetize faster with Stripe Billing. Manage pricing, reduce churn, and grow revenue—on one platform."
+        }
+      ]
+    },
+    {
+      "id": "e_connect",
+      "name": "Stripe Connect",
+      "type": "product",
+      "aliases": [
+        "Connect"
+      ],
+      "description": "The market leader for platform and marketplace payments, enabling platforms to onboard, verify, and pay out users at scale.",
+      "url": "https://stripe.com/connect",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_a3b4c5d6",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "The market leader for platform and marketplace payments"
+        },
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "Onboard, verify, and pay out your users at scale—whether you run an on-demand, retail, or crowdfunding marketplace."
+        }
+      ]
+    },
+    {
+      "id": "e_radar",
+      "name": "Stripe Radar",
+      "type": "product",
+      "aliases": [
+        "Radar"
+      ],
+      "description": "Fraud prevention that identifies and blocks fraud in real time with AI trained on over $1 trillion in annual payment volume.",
+      "url": "https://stripe.com/radar",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_e7f8a9b0",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "Fight fraud with the strength of the Stripe network"
+        },
+        {
+          "chunkId": "c_f8a9b0c1",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "Identify and prevent fraud in real time with AI trained on over $1 trillion in annual payment volume."
+        }
+      ]
+    },
+    {
+      "id": "e_api",
+      "name": "Stripe API",
+      "type": "technology",
+      "aliases": [
+        "API Reference",
+        "REST API"
+      ],
+      "description": "A REST API with predictable resource-oriented URLs that accepts form-encoded requests and returns JSON-encoded responses.",
+      "url": "https://docs.stripe.com/api",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_d0e1f2a3",
+          "routePath": "/api",
+          "url": "https://docs.stripe.com/api",
+          "quote": "The Stripe API is organized around REST. Our API has predictable resource-oriented URLs, accepts form-encoded request bodies, returns JSON-encoded responses"
+        }
+      ]
+    },
+    {
+      "id": "e_checkout",
+      "name": "Stripe Checkout",
+      "type": "feature",
+      "aliases": [
+        "Checkout"
+      ],
+      "description": "A Stripe-hosted payment page or embeddable payment form for accepting online payments.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_b8c9d0e1",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Use Checkout to set up a Stripe-hosted page, embed a payment form, or embed components."
+        }
+      ]
+    },
+    {
+      "id": "e_paylinks",
+      "name": "Payment Links",
+      "type": "feature",
+      "aliases": [
+        "Payment Links"
+      ],
+      "description": "Create a custom payment page to accept payments without writing code.",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_a7b8c9d0",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Use Payment Links to create a custom page without code."
+        }
+      ]
+    },
+    {
+      "id": "e_elements",
+      "name": "Stripe Elements",
+      "type": "integration",
+      "aliases": [
+        "Elements",
+        "Web Elements",
+        "In-app Elements"
+      ],
+      "description": "Embeddable web and in-app UI components for building custom payment forms.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_d0e1a2b3",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Web Elements"
+        },
+        {
+          "chunkId": "c_d0e1a2b3",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "In-app Elements"
+        }
+      ]
+    },
+    {
+      "id": "e_methods",
+      "name": "Payment methods",
+      "type": "concept",
+      "aliases": [
+        "payment methods",
+        "dynamic payment methods"
+      ],
+      "description": "The types of payment methods a Stripe integration can support, including dynamic ordering and display.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_c9d0e1f2",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Learn about the types of payment methods that your Stripe integration can support."
+        },
+        {
+          "chunkId": "c_c9d0e1f2",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Dynamically order and display payment methods."
+        }
+      ]
+    },
+    {
+      "id": "e_marketplace",
+      "name": "Platforms and marketplaces",
+      "type": "use_case",
+      "aliases": [
+        "marketplaces",
+        "platforms"
+      ],
+      "description": "On-demand, retail, and crowdfunding marketplaces that onboard, verify, and pay out users via Connect.",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "Onboard, verify, and pay out your users at scale—whether you run an on-demand, retail, or crowdfunding marketplace."
+        }
+      ]
+    },
+    {
+      "id": "e_subscriptions",
+      "name": "Subscriptions",
+      "type": "feature",
+      "aliases": [
+        "recurring revenue",
+        "subscriptions"
+      ],
+      "description": "Manage recurring revenue, reduce churn, and build the right pricing model within Stripe Billing.",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_e3f4a5b6",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "Manage recurring revenue, reduce churn, and build the right pricing model—however and wherever you do business."
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "cl_1",
+      "text": "Stripe is financial infrastructure to grow your revenue, from your first transaction to your billionth.",
+      "kind": "value_prop",
+      "subjectEntityId": "e_stripe",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://stripe.com/",
+          "quote": "Financial infrastructure to grow your revenue. Accept payments, offer financial services, and implement custom revenue models—from your first transaction to your billionth."
+        }
+      ]
+    },
+    {
+      "id": "cl_2",
+      "text": "Stripe Connect is the market leader for platform and marketplace payments.",
+      "kind": "positioning",
+      "subjectEntityId": "e_connect",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_a3b4c5d6",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "The market leader for platform and marketplace payments"
+        }
+      ]
+    },
+    {
+      "id": "cl_3",
+      "text": "Radar assigns risk scores to every payment and automatically blocks high-risk payments.",
+      "kind": "capability",
+      "subjectEntityId": "e_radar",
+      "sentiment": "neutral",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_a9b0c1d2",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "Radar assigns risk scores to every payment and automatically blocks high-risk payments."
+        }
+      ]
+    },
+    {
+      "id": "cl_4",
+      "text": "Stripe Billing is the only billing software with a built-in payment system.",
+      "kind": "differentiator",
+      "subjectEntityId": "e_billing",
+      "sentiment": "positive",
+      "confidence": 0.86,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_d2e3f4a5",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "It's the only billing software with a built-in payment system, and is used by fast-scaling businesses like OpenAI, Atlassian, and Figma."
+        }
+      ]
+    },
+    {
+      "id": "cl_5",
+      "text": "Checkout can set up a Stripe-hosted page, embed a payment form, or embed components.",
+      "kind": "capability",
+      "subjectEntityId": "e_checkout",
+      "sentiment": "neutral",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b8c9d0e1",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Use Checkout to set up a Stripe-hosted page, embed a payment form, or embed components."
+        }
+      ]
+    },
+    {
+      "id": "cl_6",
+      "text": "The Stripe API is organized around REST with resource-oriented URLs and JSON-encoded responses.",
+      "kind": "fact",
+      "subjectEntityId": "e_api",
+      "sentiment": "neutral",
+      "confidence": 0.92,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_d0e1f2a3",
+          "routePath": "/api",
+          "url": "https://docs.stripe.com/api",
+          "quote": "The Stripe API is organized around REST. Our API has predictable resource-oriented URLs, accepts form-encoded request bodies, returns JSON-encoded responses"
+        }
+      ]
+    },
+    {
+      "id": "cl_7",
+      "text": "The Stripe API does not support bulk updates and works on only one object per request.",
+      "kind": "limitation",
+      "subjectEntityId": "e_api",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_f2a3b4c5",
+          "routePath": "/api",
+          "url": "https://docs.stripe.com/api",
+          "quote": "The Stripe API doesn't support bulk updates. You can work on only one object per request."
+        }
+      ]
+    },
+    {
+      "id": "cl_8",
+      "text": "Connect lets platforms onboard, verify, and pay out users at scale across on-demand, retail, or crowdfunding marketplaces.",
+      "kind": "capability",
+      "subjectEntityId": "e_connect",
+      "sentiment": "neutral",
+      "confidence": 0.84,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "Onboard, verify, and pay out your users at scale—whether you run an on-demand, retail, or crowdfunding marketplace."
+        }
+      ]
+    },
+    {
+      "id": "cl_9",
+      "text": "Payment Links lets you accept payments by creating a custom page without code.",
+      "kind": "value_prop",
+      "subjectEntityId": "e_paylinks",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_a7b8c9d0",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Use Payment Links to create a custom page without code."
+        }
+      ]
+    },
+    {
+      "id": "cl_10",
+      "text": "Stripe Radar identifies and prevents fraud in real time with AI trained on over $1 trillion in annual payment volume.",
+      "kind": "capability",
+      "subjectEntityId": "e_radar",
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_f8a9b0c1",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "Identify and prevent fraud in real time with AI trained on over $1 trillion in annual payment volume."
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "s_volume",
+      "label": "annual payments volume",
+      "valueRaw": "$1.9 trillion",
+      "valueNumber": 1900000000000,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": true,
+      "subjectEntityId": "e_stripe",
+      "sources": [
+        {
+          "chunkId": "c_c5e7f9a1",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "more than $1.9 trillion in payments each year"
+        }
+      ]
+    },
+    {
+      "id": "s_fortune100",
+      "label": "Fortune 100 adoption",
+      "valueRaw": "50%",
+      "valueNumber": 50,
+      "unit": "percent",
+      "approximate": false,
+      "subjectEntityId": "e_stripe",
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/",
+          "url": "https://stripe.com/",
+          "quote": "50% of Fortune 100 companies have used Stripe to grow their businesses"
+        }
+      ]
+    },
+    {
+      "id": "s_uptime",
+      "label": "uptime",
+      "valueRaw": "99.999%",
+      "valueNumber": 99.999,
+      "unit": "percent",
+      "approximate": false,
+      "subjectEntityId": "e_billing",
+      "sources": [
+        {
+          "chunkId": "c_a5b6c7d8",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "99.999% uptime in 2025"
+        }
+      ]
+    },
+    {
+      "id": "s_recovered",
+      "label": "failed payments recovered",
+      "valueRaw": "$8.2B",
+      "valueNumber": 8200000000,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": true,
+      "subjectEntityId": "e_billing",
+      "sources": [
+        {
+          "chunkId": "c_a5b6c7d8",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "$8.2B in failed payments recovered in 2025"
+        }
+      ]
+    },
+    {
+      "id": "s_connect_platforms",
+      "label": "platforms using Connect",
+      "valueRaw": "16,000+",
+      "valueNumber": 16000,
+      "unit": "count",
+      "approximate": true,
+      "subjectEntityId": "e_connect",
+      "sources": [
+        {
+          "chunkId": "c_d6e7f8a9",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "16,000+ Platforms and marketplaces actively using Connect"
+        }
+      ]
+    },
+    {
+      "id": "s_fraud_reduction",
+      "label": "average fraud reduction",
+      "valueRaw": "32%",
+      "valueNumber": 32,
+      "unit": "percent",
+      "approximate": true,
+      "subjectEntityId": "e_radar",
+      "sources": [
+        {
+          "chunkId": "c_b0c1d2e3",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "Radar's AI scans every payment and account using hundreds of signals from across the Stripe network to help detect and prevent fraud before it hits your business, reducing fraud by 32% on average."
+        }
+      ]
+    },
+    {
+      "id": "s_card_seen",
+      "label": "cards recognized on the Stripe network",
+      "valueRaw": "92%",
+      "valueNumber": 92,
+      "unit": "percent",
+      "approximate": false,
+      "subjectEntityId": "e_radar",
+      "sources": [
+        {
+          "chunkId": "c_c5e7f9a1",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "There's a 92% chance a card has been seen before on the Stripe network."
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "t_payments",
+      "label": "Online payments",
+      "weight": 0.3,
+      "keywords": [
+        "payments",
+        "checkout",
+        "payment links",
+        "payment methods",
+        "cards"
+      ],
+      "routePaths": [
+        "/",
+        "/payments"
+      ],
+      "entityIds": [
+        "e_payments",
+        "e_checkout",
+        "e_paylinks",
+        "e_methods",
+        "e_elements"
+      ]
+    },
+    {
+      "id": "t_api",
+      "label": "Developer platform and API",
+      "weight": 0.2,
+      "keywords": [
+        "API",
+        "REST",
+        "sandbox",
+        "integration",
+        "developers"
+      ],
+      "routePaths": [
+        "/api"
+      ],
+      "entityIds": [
+        "e_api",
+        "e_stripe"
+      ]
+    },
+    {
+      "id": "t_billing",
+      "label": "Billing and subscriptions",
+      "weight": 0.18,
+      "keywords": [
+        "billing",
+        "subscriptions",
+        "invoicing",
+        "recurring revenue",
+        "churn"
+      ],
+      "routePaths": [
+        "/billing"
+      ],
+      "entityIds": [
+        "e_billing",
+        "e_subscriptions"
+      ]
+    },
+    {
+      "id": "t_platforms",
+      "label": "Platforms and marketplaces",
+      "weight": 0.17,
+      "keywords": [
+        "connect",
+        "platforms",
+        "marketplaces",
+        "payouts",
+        "onboarding"
+      ],
+      "routePaths": [
+        "/connect"
+      ],
+      "entityIds": [
+        "e_connect",
+        "e_marketplace"
+      ]
+    },
+    {
+      "id": "t_fraud",
+      "label": "Fraud prevention",
+      "weight": 0.15,
+      "keywords": [
+        "radar",
+        "fraud",
+        "risk scores",
+        "AI",
+        "Stripe network"
+      ],
+      "routePaths": [
+        "/radar"
+      ],
+      "entityIds": [
+        "e_radar"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "r_1",
+      "sourceEntityId": "e_stripe",
+      "targetEntityId": "e_payments",
+      "kind": "offers",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_f6a7b8c9",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Integrate a Stripe product to start accepting payments online and in person, embed financial services, power custom revenue models, and more."
+        }
+      ]
+    },
+    {
+      "id": "r_2",
+      "sourceEntityId": "e_stripe",
+      "targetEntityId": "e_billing",
+      "kind": "offers",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_c1d2e3f4",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "Monetize faster with Stripe Billing. Manage pricing, reduce churn, and grow revenue—on one platform."
+        }
+      ]
+    },
+    {
+      "id": "r_3",
+      "sourceEntityId": "e_stripe",
+      "targetEntityId": "e_connect",
+      "kind": "offers",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_a3b4c5d6",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "The market leader for platform and marketplace payments"
+        }
+      ]
+    },
+    {
+      "id": "r_4",
+      "sourceEntityId": "e_stripe",
+      "targetEntityId": "e_radar",
+      "kind": "offers",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_e7f8a9b0",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "Fight fraud with the strength of the Stripe network"
+        }
+      ]
+    },
+    {
+      "id": "r_5",
+      "sourceEntityId": "e_stripe",
+      "targetEntityId": "e_api",
+      "kind": "offers",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_d0e1f2a3",
+          "routePath": "/api",
+          "url": "https://docs.stripe.com/api",
+          "quote": "The Stripe API is organized around REST. Our API has predictable resource-oriented URLs, accepts form-encoded request bodies, returns JSON-encoded responses"
+        }
+      ]
+    },
+    {
+      "id": "r_6",
+      "sourceEntityId": "e_checkout",
+      "targetEntityId": "e_payments",
+      "kind": "part_of",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_b8c9d0e1",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Use Checkout to set up a Stripe-hosted page, embed a payment form, or embed components."
+        }
+      ]
+    },
+    {
+      "id": "r_7",
+      "sourceEntityId": "e_paylinks",
+      "targetEntityId": "e_payments",
+      "kind": "part_of",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_a7b8c9d0",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Use Payment Links to create a custom page without code."
+        }
+      ]
+    },
+    {
+      "id": "r_8",
+      "sourceEntityId": "e_elements",
+      "targetEntityId": "e_payments",
+      "kind": "part_of",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_d0e1a2b3",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Web Elements"
+        }
+      ]
+    },
+    {
+      "id": "r_9",
+      "sourceEntityId": "e_methods",
+      "targetEntityId": "e_payments",
+      "kind": "part_of",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_c9d0e1f2",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Learn about the types of payment methods that your Stripe integration can support."
+        }
+      ]
+    },
+    {
+      "id": "r_10",
+      "sourceEntityId": "e_subscriptions",
+      "targetEntityId": "e_billing",
+      "kind": "part_of",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_e3f4a5b6",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "Manage recurring revenue, reduce churn, and build the right pricing model—however and wherever you do business."
+        }
+      ]
+    },
+    {
+      "id": "r_11",
+      "sourceEntityId": "e_connect",
+      "targetEntityId": "e_marketplace",
+      "kind": "used_by",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "Onboard, verify, and pay out your users at scale—whether you run an on-demand, retail, or crowdfunding marketplace."
+        }
+      ]
+    },
+    {
+      "id": "r_12",
+      "sourceEntityId": "e_radar",
+      "targetEntityId": "e_stripe",
+      "kind": "depends_on",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_e7f8a9b0",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "Fight fraud with the strength of the Stripe network"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_1",
+      "question": "What is Stripe?",
+      "answer": "Stripe is financial infrastructure to grow your revenue, letting businesses accept payments, offer financial services, and implement custom revenue models from their first transaction to their billionth.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "e_stripe"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://stripe.com/",
+          "quote": "Financial infrastructure to grow your revenue. Accept payments, offer financial services, and implement custom revenue models—from your first transaction to your billionth."
+        }
+      ]
+    },
+    {
+      "id": "q_2",
+      "question": "How does the Stripe API work?",
+      "answer": "The Stripe API is organized around REST with predictable resource-oriented URLs, accepts form-encoded request bodies, and returns JSON-encoded responses using standard HTTP verbs and codes.",
+      "category": "how_it_works",
+      "importance": 0.85,
+      "entityIds": [
+        "e_api"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_d0e1f2a3",
+          "routePath": "/api",
+          "url": "https://docs.stripe.com/api",
+          "quote": "The Stripe API is organized around REST. Our API has predictable resource-oriented URLs, accepts form-encoded request bodies, returns JSON-encoded responses"
+        }
+      ]
+    },
+    {
+      "id": "q_3",
+      "question": "How do I start accepting online payments with Stripe?",
+      "answer": "You can use Payment Links to create a custom page without code, or use Checkout to set up a Stripe-hosted page, embed a payment form, or embed components.",
+      "category": "getting_started",
+      "importance": 0.85,
+      "entityIds": [
+        "e_payments",
+        "e_checkout",
+        "e_paylinks"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b8c9d0e1",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Use Checkout to set up a Stripe-hosted page, embed a payment form, or embed components."
+        },
+        {
+          "chunkId": "c_a7b8c9d0",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Use Payment Links to create a custom page without code."
+        }
+      ]
+    },
+    {
+      "id": "q_4",
+      "question": "What makes Stripe Billing different?",
+      "answer": "Stripe Billing is the only billing software with a built-in payment system, and is used by fast-scaling businesses like OpenAI, Atlassian, and Figma.",
+      "category": "differentiators",
+      "importance": 0.75,
+      "entityIds": [
+        "e_billing"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_d2e3f4a5",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "It's the only billing software with a built-in payment system, and is used by fast-scaling businesses like OpenAI, Atlassian, and Figma."
+        }
+      ]
+    },
+    {
+      "id": "q_5",
+      "question": "How does Stripe prevent fraud?",
+      "answer": "Stripe Radar identifies and prevents fraud in real time with AI trained on over $1 trillion in annual payment volume, assigning risk scores to every payment and automatically blocking high-risk ones.",
+      "category": "trust_security",
+      "importance": 0.8,
+      "entityIds": [
+        "e_radar"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_f8a9b0c1",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "Identify and prevent fraud in real time with AI trained on over $1 trillion in annual payment volume."
+        },
+        {
+          "chunkId": "c_a9b0c1d2",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "Radar assigns risk scores to every payment and automatically blocks high-risk payments."
+        }
+      ]
+    },
+    {
+      "id": "q_6",
+      "question": "Who uses Stripe Connect?",
+      "answer": "Connect is the market leader for platform and marketplace payments, used by 16,000+ platforms and marketplaces to onboard, verify, and pay out users at scale.",
+      "category": "who_is_it_for",
+      "importance": 0.75,
+      "entityIds": [
+        "e_connect",
+        "e_marketplace"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a3b4c5d6",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "The market leader for platform and marketplace payments"
+        },
+        {
+          "chunkId": "c_d6e7f8a9",
+          "routePath": "/connect",
+          "url": "https://stripe.com/connect",
+          "quote": "16,000+ Platforms and marketplaces actively using Connect"
+        }
+      ]
+    },
+    {
+      "id": "q_7",
+      "question": "How reliable and large-scale is Stripe?",
+      "answer": "Stripe reports 99.999% uptime in 2025 and processes more than $1.9 trillion in payments each year.",
+      "category": "trust_security",
+      "importance": 0.7,
+      "entityIds": [
+        "e_stripe",
+        "e_billing"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a5b6c7d8",
+          "routePath": "/billing",
+          "url": "https://stripe.com/billing",
+          "quote": "99.999% uptime in 2025"
+        },
+        {
+          "chunkId": "c_c5e7f9a1",
+          "routePath": "/radar",
+          "url": "https://stripe.com/radar",
+          "quote": "more than $1.9 trillion in payments each year"
+        }
+      ]
+    },
+    {
+      "id": "q_8",
+      "question": "What tools does Stripe offer to build payment forms?",
+      "answer": "Stripe provides Web Elements and in-app Elements as embeddable UI components, plus Checkout for hosted or embedded payment pages.",
+      "category": "integrations",
+      "importance": 0.65,
+      "entityIds": [
+        "e_elements",
+        "e_checkout",
+        "e_paylinks"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_d0e1a2b3",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "In-app Elements"
+        },
+        {
+          "chunkId": "c_b8c9d0e1",
+          "routePath": "/payments",
+          "url": "https://docs.stripe.com/payments",
+          "quote": "Use Checkout to set up a Stripe-hosted page, embed a payment form, or embed components."
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 6,
+    "chunksAnalyzed": 25,
+    "entitiesWithSources": 12,
+    "ungroundedDropped": 4
+  },
+  "usedProvider": "heuristic",
+  "confidence": 0.82
+}

@@ -1,0 +1,1007 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T12:00:00.000Z",
+  "target": "https://suins.io",
+  "identity": {
+    "name": "SuiNS (Sui Name Service)",
+    "oneLiner": "The naming service for Sui: register human-readable .sui names that map to addresses and are owned as NFTs.",
+    "category": "decentralized naming service",
+    "audience": [
+      "Sui users",
+      "web3 developers"
+    ],
+    "primaryEntityId": "ent_01",
+    "sources": [
+      {
+        "chunkId": "c_1b2c3d4e",
+        "routePath": "/llms.txt",
+        "url": "https://docs.suins.io/llms.txt",
+        "quote": "Sui Name Service (SuiNS) is a decentralized naming service on the Sui blockchain that enables users to replace complex wallet addresses with human-readable names."
+      },
+      {
+        "chunkId": "c_60718293",
+        "routePath": "/suins-name-service-explained/",
+        "url": "https://blog.sui.io/suins-name-service-explained/",
+        "quote": "Represented as NFTs, SuiNS identifiers are stored in the user's wallet, ensuring that ownership benefits, granted to Sui objects, also apply to SuiNS identifiers."
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "ent_01",
+      "name": "SuiNS (Sui Name Service)",
+      "type": "product",
+      "aliases": [
+        "SuiNS",
+        "Sui Name Service"
+      ],
+      "description": "A decentralized naming service on Sui for registering human-readable names.",
+      "url": "https://suins.io",
+      "salience": 1,
+      "mentions": 9,
+      "sources": [
+        {
+          "chunkId": "c_1b2c3d4e",
+          "routePath": "/llms.txt",
+          "url": "https://docs.suins.io/llms.txt",
+          "quote": "Sui Name Service (SuiNS) is a decentralized naming service on the Sui blockchain that enables users to replace complex wallet addresses with human-readable names."
+        }
+      ]
+    },
+    {
+      "id": "ent_02",
+      "name": "Sui blockchain",
+      "type": "platform",
+      "aliases": [
+        "Sui"
+      ],
+      "description": "The blockchain that SuiNS issues identifiers on.",
+      "salience": 0.6,
+      "mentions": 5,
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "The SuiNS name service lets Sui users own a human-readable identifier and associate it with a Sui account."
+        }
+      ]
+    },
+    {
+      "id": "ent_03",
+      "name": ".sui identifier (e.g. alice.sui)",
+      "type": "concept",
+      "aliases": [
+        "SuiNS identifier",
+        ".sui name",
+        "alice.sui"
+      ],
+      "description": "A human-readable identifier SuiNS issues on Sui, such as alice.sui.",
+      "salience": 0.8,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "As a name service platform, SuiNS issues identifiers on Sui, like alice.sui."
+        }
+      ]
+    },
+    {
+      "id": "ent_04",
+      "name": "NFT-based name ownership",
+      "type": "technology",
+      "aliases": [
+        "NFT",
+        "SuinsRegistration"
+      ],
+      "description": "SuiNS identifiers are represented as NFTs stored in the user's wallet.",
+      "salience": 0.6,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "Represented as NFTs, SuiNS identifiers are stored in the user's wallet, ensuring that ownership benefits, granted to Sui objects, also apply to SuiNS identifiers."
+        }
+      ]
+    },
+    {
+      "id": "ent_05",
+      "name": "Subnames",
+      "type": "feature",
+      "aliases": [
+        "subname"
+      ],
+      "description": "Nested names created under a parent name at no cost.",
+      "salience": 0.55,
+      "mentions": 5,
+      "sources": [
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "Subnames are nested names under a parent name."
+        }
+      ]
+    },
+    {
+      "id": "ent_06",
+      "name": "Node subnames",
+      "type": "feature",
+      "aliases": [
+        "node subname"
+      ],
+      "description": "Subnames with an associated NFT that unlocks extra features.",
+      "salience": 0.4,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "Node subnames: Similar to regular names, they have an NFT associated with them that gives access to all extra features (personalization, avatars, and so on)."
+        }
+      ]
+    },
+    {
+      "id": "ent_07",
+      "name": "Leaf subnames",
+      "type": "feature",
+      "aliases": [
+        "leaf subname"
+      ],
+      "description": "Subnames without an NFT, configured by the parent.",
+      "salience": 0.35,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "They do not have an NFT associated with them, so the parent controls their configuration."
+        }
+      ]
+    },
+    {
+      "id": "ent_08",
+      "name": "Avatars",
+      "type": "feature",
+      "aliases": [
+        "avatar"
+      ],
+      "description": "Personalization that associates an avatar with a name.",
+      "salience": 0.3,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_2c3d4e5f",
+          "routePath": "/user",
+          "url": "https://docs.suins.io/user",
+          "quote": "After you register a name, you can set the avatar to associate with that name."
+        }
+      ]
+    },
+    {
+      "id": "ent_09",
+      "name": "IPFS integration (sui.id)",
+      "type": "integration",
+      "aliases": [
+        "sui.id",
+        "IPFS"
+      ],
+      "description": "Connect a SuiNS name to an IPFS-hosted site via a sui.id address.",
+      "salience": 0.35,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_2c3d4e5f",
+          "routePath": "/user",
+          "url": "https://docs.suins.io/user",
+          "quote": "Using IPFS, you can create a `sui.id` address connected to your SuiNS name to claim a spot on the decentralized web."
+        }
+      ]
+    },
+    {
+      "id": "ent_11",
+      "name": "SuiNS smart contracts",
+      "type": "technology",
+      "aliases": [
+        "suins-contracts",
+        "SuiNS Contracts"
+      ],
+      "description": "The repository holding the SuiNS core and system contract packages.",
+      "url": "https://github.com/MystenLabs/suins-contracts",
+      "salience": 0.35,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_8293a4b5",
+          "routePath": "/MystenLabs/suins-contracts/main/README.md",
+          "url": "https://raw.githubusercontent.com/MystenLabs/suins-contracts/main/README.md",
+          "quote": "This repository holds the SuiNS contracts (both the core and all system packages)."
+        }
+      ]
+    },
+    {
+      "id": "ent_12",
+      "name": "Move Registry (MVR)",
+      "type": "product",
+      "aliases": [
+        "MVR",
+        "mover"
+      ],
+      "description": "A uniform naming service for packages in the Sui ecosystem.",
+      "salience": 0.4,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_5f607182",
+          "routePath": "/move-registry",
+          "url": "https://docs.suins.io/move-registry",
+          "quote": "Move Registry (MVR, pronounced mover) provides a uniform naming service for interacting and building with packages from the Sui ecosystem."
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "clm_01",
+      "text": "Build your onchain identity in Web3 with Sui Name Service (SuiNS).",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_01",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_2c3d4e5f",
+          "routePath": "/user",
+          "url": "https://docs.suins.io/user",
+          "quote": "Build your onchain identity in Web3 with Sui Name Service (SuiNS)."
+        }
+      ]
+    },
+    {
+      "id": "clm_02",
+      "text": "SuiNS is a decentralized naming service on Sui that replaces complex wallet addresses with human-readable names.",
+      "kind": "capability",
+      "subjectEntityId": "ent_01",
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_1b2c3d4e",
+          "routePath": "/llms.txt",
+          "url": "https://docs.suins.io/llms.txt",
+          "quote": "Sui Name Service (SuiNS) is a decentralized naming service on the Sui blockchain that enables users to replace complex wallet addresses with human-readable names."
+        }
+      ]
+    },
+    {
+      "id": "clm_03",
+      "text": "SuiNS issues identifiers on Sui, like alice.sui.",
+      "kind": "fact",
+      "subjectEntityId": "ent_03",
+      "sentiment": "neutral",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "As a name service platform, SuiNS issues identifiers on Sui, like alice.sui."
+        }
+      ]
+    },
+    {
+      "id": "clm_04",
+      "text": "SuiNS identifiers are represented as NFTs stored in the user's wallet.",
+      "kind": "capability",
+      "subjectEntityId": "ent_04",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "Represented as NFTs, SuiNS identifiers are stored in the user's wallet, ensuring that ownership benefits, granted to Sui objects, also apply to SuiNS identifiers."
+        }
+      ]
+    },
+    {
+      "id": "clm_05",
+      "text": "Identifiers link to a Sui account, directing transactions with alice.sui to that account.",
+      "kind": "fact",
+      "subjectEntityId": "ent_03",
+      "sentiment": "neutral",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "These identifiers can link to a Sui account, directing transactions with alice.sui as the recipient to the associated Sui account."
+        }
+      ]
+    },
+    {
+      "id": "clm_06",
+      "text": "Registering an available name grants its rights for one year.",
+      "kind": "fact",
+      "subjectEntityId": "ent_01",
+      "sentiment": "neutral",
+      "confidence": 0.86,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_3d4e5f60",
+          "routePath": "/user/registration",
+          "url": "https://docs.suins.io/user/registration",
+          "quote": "When you register available names, you purchase the rights to those names for one year."
+        }
+      ]
+    },
+    {
+      "id": "clm_08",
+      "text": "Node subnames have an NFT that grants access to extra features, unlike leaf subnames.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_06",
+      "sentiment": "neutral",
+      "confidence": 0.82,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "Node subnames: Similar to regular names, they have an NFT associated with them that gives access to all extra features (personalization, avatars, and so on)."
+        }
+      ]
+    },
+    {
+      "id": "clm_09",
+      "text": "Using IPFS, you can create a sui.id address connected to your SuiNS name.",
+      "kind": "capability",
+      "subjectEntityId": "ent_09",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_2c3d4e5f",
+          "routePath": "/user",
+          "url": "https://docs.suins.io/user",
+          "quote": "Using IPFS, you can create a `sui.id` address connected to your SuiNS name to claim a spot on the decentralized web."
+        }
+      ]
+    },
+    {
+      "id": "clm_10",
+      "text": "MVR provides a uniform naming service for packages in the Sui ecosystem.",
+      "kind": "capability",
+      "subjectEntityId": "ent_12",
+      "sentiment": "positive",
+      "confidence": 0.83,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_5f607182",
+          "routePath": "/move-registry",
+          "url": "https://docs.suins.io/move-registry",
+          "quote": "Move Registry (MVR, pronounced mover) provides a uniform naming service for interacting and building with packages from the Sui ecosystem."
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "stat_01",
+      "label": "name registration period",
+      "valueRaw": "1 year",
+      "valueNumber": 1,
+      "unit": "time",
+      "approximate": false,
+      "subjectEntityId": "ent_01",
+      "sources": [
+        {
+          "chunkId": "c_3d4e5f60",
+          "routePath": "/user/registration",
+          "url": "https://docs.suins.io/user/registration",
+          "quote": "When you register available names, you purchase the rights to those names for one year."
+        }
+      ]
+    },
+    {
+      "id": "stat_02",
+      "label": "price: names with five or more characters",
+      "valueRaw": "20 SUI",
+      "valueNumber": 20,
+      "unit": "other",
+      "approximate": false,
+      "subjectEntityId": "ent_03",
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "Unclaimed SuiNS identifiers are priced based on the number of characters: those with five characters or more cost 20 SUI, those with four characters cost 100 SUI"
+        }
+      ]
+    },
+    {
+      "id": "stat_03",
+      "label": "price: four-character names",
+      "valueRaw": "100 SUI",
+      "valueNumber": 100,
+      "unit": "other",
+      "approximate": false,
+      "subjectEntityId": "ent_03",
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "Unclaimed SuiNS identifiers are priced based on the number of characters: those with five characters or more cost 20 SUI, those with four characters cost 100 SUI"
+        }
+      ]
+    },
+    {
+      "id": "stat_04",
+      "label": "price: three-character names",
+      "valueRaw": "500 SUI",
+      "valueNumber": 500,
+      "unit": "other",
+      "approximate": false,
+      "subjectEntityId": "ent_03",
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "the most limited group with only three characters are priced at 500 SUI."
+        }
+      ]
+    },
+    {
+      "id": "stat_05",
+      "label": "maximum subname nesting depth",
+      "valueRaw": "8 levels",
+      "valueNumber": 8,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_05",
+      "sources": [
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "The maximum nesting depth is 8 levels."
+        }
+      ]
+    },
+    {
+      "id": "stat_06",
+      "label": "renewal grace period",
+      "valueRaw": "30 days",
+      "valueNumber": 30,
+      "unit": "time",
+      "approximate": false,
+      "subjectEntityId": "ent_01",
+      "sources": [
+        {
+          "chunkId": "c_3d4e5f60",
+          "routePath": "/user/registration",
+          "url": "https://docs.suins.io/user/registration",
+          "quote": "You have a 30-day grace period within which you can renew the registration."
+        }
+      ]
+    },
+    {
+      "id": "stat_07",
+      "label": "Move share of the contracts codebase",
+      "valueRaw": "70.5%",
+      "valueNumber": 70.5,
+      "unit": "percent",
+      "approximate": false,
+      "subjectEntityId": "ent_11",
+      "sources": [
+        {
+          "chunkId": "c_718293a4",
+          "routePath": "/MystenLabs/suins-contracts",
+          "url": "https://github.com/MystenLabs/suins-contracts",
+          "quote": "Move 70.5%"
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "top_01",
+      "label": "Name registration & renewal",
+      "weight": 0.3,
+      "keywords": [
+        "register",
+        "renewal",
+        "expiration",
+        "grace period",
+        "pricing"
+      ],
+      "routePaths": [
+        "/user",
+        "/user/registration"
+      ],
+      "entityIds": [
+        "ent_01",
+        "ent_03"
+      ]
+    },
+    {
+      "id": "top_02",
+      "label": "Onchain identity & NFT ownership",
+      "weight": 0.26,
+      "keywords": [
+        "identifier",
+        "NFT",
+        "wallet",
+        "avatar",
+        "onchain identity"
+      ],
+      "routePaths": [
+        "/user",
+        "/suins-name-service-explained/"
+      ],
+      "entityIds": [
+        "ent_01",
+        "ent_03",
+        "ent_04",
+        "ent_08"
+      ]
+    },
+    {
+      "id": "top_03",
+      "label": "Subnames",
+      "weight": 0.18,
+      "keywords": [
+        "subnames",
+        "node subname",
+        "leaf subname",
+        "nesting"
+      ],
+      "routePaths": [
+        "/developer/subnames"
+      ],
+      "entityIds": [
+        "ent_05",
+        "ent_06",
+        "ent_07"
+      ]
+    },
+    {
+      "id": "top_04",
+      "label": "Developer & smart contracts",
+      "weight": 0.14,
+      "keywords": [
+        "contracts",
+        "Move",
+        "packages",
+        "multi-sig"
+      ],
+      "routePaths": [
+        "/",
+        "/MystenLabs/suins-contracts/main/README.md"
+      ],
+      "entityIds": [
+        "ent_11",
+        "ent_01"
+      ]
+    },
+    {
+      "id": "top_05",
+      "label": "Move Registry (MVR)",
+      "weight": 0.12,
+      "keywords": [
+        "MVR",
+        "package naming",
+        "mover",
+        "Sui ecosystem"
+      ],
+      "routePaths": [
+        "/move-registry"
+      ],
+      "entityIds": [
+        "ent_12"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_01",
+      "sourceEntityId": "ent_01",
+      "targetEntityId": "ent_02",
+      "kind": "part_of",
+      "label": "runs on",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_1b2c3d4e",
+          "routePath": "/llms.txt",
+          "url": "https://docs.suins.io/llms.txt",
+          "quote": "Sui Name Service (SuiNS) is a decentralized naming service on the Sui blockchain that enables users to replace complex wallet addresses with human-readable names."
+        }
+      ]
+    },
+    {
+      "id": "rel_02",
+      "sourceEntityId": "ent_01",
+      "targetEntityId": "ent_03",
+      "kind": "offers",
+      "label": "issues",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "As a name service platform, SuiNS issues identifiers on Sui, like alice.sui."
+        }
+      ]
+    },
+    {
+      "id": "rel_03",
+      "sourceEntityId": "ent_03",
+      "targetEntityId": "ent_04",
+      "kind": "built_with",
+      "label": "represented as",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "Represented as NFTs, SuiNS identifiers are stored in the user's wallet, ensuring that ownership benefits, granted to Sui objects, also apply to SuiNS identifiers."
+        }
+      ]
+    },
+    {
+      "id": "rel_04",
+      "sourceEntityId": "ent_01",
+      "targetEntityId": "ent_05",
+      "kind": "offers",
+      "confidence": 0.83,
+      "sources": [
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "Subnames are nested names under a parent name."
+        }
+      ]
+    },
+    {
+      "id": "rel_05",
+      "sourceEntityId": "ent_06",
+      "targetEntityId": "ent_05",
+      "kind": "part_of",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "Node subnames: Similar to regular names, they have an NFT associated with them that gives access to all extra features (personalization, avatars, and so on)."
+        }
+      ]
+    },
+    {
+      "id": "rel_06",
+      "sourceEntityId": "ent_07",
+      "targetEntityId": "ent_06",
+      "kind": "depends_on",
+      "label": "created under",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "Leaf subnames: These are subnames that are created under a node subname."
+        }
+      ]
+    },
+    {
+      "id": "rel_07",
+      "sourceEntityId": "ent_01",
+      "targetEntityId": "ent_08",
+      "kind": "offers",
+      "confidence": 0.78,
+      "sources": [
+        {
+          "chunkId": "c_2c3d4e5f",
+          "routePath": "/user",
+          "url": "https://docs.suins.io/user",
+          "quote": "After you register a name, you can set the avatar to associate with that name."
+        }
+      ]
+    },
+    {
+      "id": "rel_08",
+      "sourceEntityId": "ent_01",
+      "targetEntityId": "ent_09",
+      "kind": "integrates_with",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_2c3d4e5f",
+          "routePath": "/user",
+          "url": "https://docs.suins.io/user",
+          "quote": "Using IPFS, you can create a `sui.id` address connected to your SuiNS name to claim a spot on the decentralized web."
+        }
+      ]
+    },
+    {
+      "id": "rel_10",
+      "sourceEntityId": "ent_11",
+      "targetEntityId": "ent_01",
+      "kind": "part_of",
+      "label": "implements",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_8293a4b5",
+          "routePath": "/MystenLabs/suins-contracts/main/README.md",
+          "url": "https://raw.githubusercontent.com/MystenLabs/suins-contracts/main/README.md",
+          "quote": "This repository holds the SuiNS contracts (both the core and all system packages)."
+        }
+      ]
+    },
+    {
+      "id": "rel_11",
+      "sourceEntityId": "ent_12",
+      "targetEntityId": "ent_01",
+      "kind": "depends_on",
+      "label": "name includes a SuiNS name",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_5f607182",
+          "routePath": "/move-registry",
+          "url": "https://docs.suins.io/move-registry",
+          "quote": "A MVR name consists of a SuiNS name and a package name, in the format `<suins_name>/<pkg_name>`."
+        }
+      ]
+    },
+    {
+      "id": "rel_12",
+      "sourceEntityId": "ent_12",
+      "targetEntityId": "ent_02",
+      "kind": "part_of",
+      "label": "for the Sui ecosystem",
+      "confidence": 0.78,
+      "sources": [
+        {
+          "chunkId": "c_5f607182",
+          "routePath": "/move-registry",
+          "url": "https://docs.suins.io/move-registry",
+          "quote": "provides a uniform naming service for interacting and building with packages from the Sui ecosystem."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_01",
+      "question": "What is SuiNS?",
+      "answer": "SuiNS (Sui Name Service) is a decentralized naming service on the Sui blockchain that lets users replace complex wallet addresses with human-readable names.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "ent_01",
+        "ent_02"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_1b2c3d4e",
+          "routePath": "/llms.txt",
+          "url": "https://docs.suins.io/llms.txt",
+          "quote": "Sui Name Service (SuiNS) is a decentralized naming service on the Sui blockchain that enables users to replace complex wallet addresses with human-readable names."
+        }
+      ]
+    },
+    {
+      "id": "q_02",
+      "question": "How do SuiNS names work and who owns them?",
+      "answer": "SuiNS issues identifiers like alice.sui that link to a Sui account; they are represented as NFTs stored in the user's wallet.",
+      "category": "how_it_works",
+      "importance": 0.9,
+      "entityIds": [
+        "ent_03",
+        "ent_04"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "Represented as NFTs, SuiNS identifiers are stored in the user's wallet, ensuring that ownership benefits, granted to Sui objects, also apply to SuiNS identifiers."
+        }
+      ]
+    },
+    {
+      "id": "q_03",
+      "question": "How much does it cost to register a SuiNS name?",
+      "answer": "Names are priced by character count for one year of registration: 20 SUI for five or more characters, 100 SUI for four characters, and 500 SUI for three characters.",
+      "category": "pricing",
+      "importance": 0.88,
+      "entityIds": [
+        "ent_01",
+        "ent_03"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_60718293",
+          "routePath": "/suins-name-service-explained/",
+          "url": "https://blog.sui.io/suins-name-service-explained/",
+          "quote": "Unclaimed SuiNS identifiers are priced based on the number of characters: those with five characters or more cost 20 SUI, those with four characters cost 100 SUI"
+        }
+      ]
+    },
+    {
+      "id": "q_04",
+      "question": "How do I register a SuiNS name?",
+      "answer": "Use the SuiNS Dashboard link in the top nav to go to SuiNS, then search for a name between 3 and 63 characters and register it.",
+      "category": "getting_started",
+      "importance": 0.85,
+      "entityIds": [
+        "ent_01"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_3d4e5f60",
+          "routePath": "/user/registration",
+          "url": "https://docs.suins.io/user/registration",
+          "quote": "Type a name of interest in the search field between 3 and 63 characters, inclusive."
+        }
+      ]
+    },
+    {
+      "id": "q_05",
+      "question": "What are subnames, and how do node and leaf subnames differ?",
+      "answer": "Subnames are nested names created under a parent at no cost; node subnames have an NFT that unlocks extra features, while leaf subnames have no NFT and are configured by the parent.",
+      "category": "how_it_works",
+      "importance": 0.8,
+      "entityIds": [
+        "ent_05",
+        "ent_06",
+        "ent_07"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "Subnames are nested names under a parent name."
+        },
+        {
+          "chunkId": "c_4e5f6071",
+          "routePath": "/developer/subnames",
+          "url": "https://docs.suins.io/developer/subnames",
+          "quote": "They do not have an NFT associated with them, so the parent controls their configuration."
+        }
+      ]
+    },
+    {
+      "id": "q_06",
+      "question": "How long can I keep a SuiNS name and what happens when it expires?",
+      "answer": "Registration is for one year, with a 30-day grace period to renew, and names can be renewed for up to 5 years.",
+      "category": "how_it_works",
+      "importance": 0.75,
+      "entityIds": [
+        "ent_01"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_3d4e5f60",
+          "routePath": "/user/registration",
+          "url": "https://docs.suins.io/user/registration",
+          "quote": "You have a 30-day grace period within which you can renew the registration."
+        },
+        {
+          "chunkId": "c_3d4e5f60",
+          "routePath": "/user/registration",
+          "url": "https://docs.suins.io/user/registration",
+          "quote": "You can renew, or extend the expiration date, for any of your registered names for up to 5 years."
+        }
+      ]
+    },
+    {
+      "id": "q_07",
+      "question": "Can I connect my SuiNS name to a decentralized website?",
+      "answer": "Yes. Using IPFS you can create a sui.id address connected to your SuiNS name to claim a spot on the decentralized web, mapped via a content identifier (CID).",
+      "category": "integrations",
+      "importance": 0.72,
+      "entityIds": [
+        "ent_09",
+        "ent_01"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_2c3d4e5f",
+          "routePath": "/user",
+          "url": "https://docs.suins.io/user",
+          "quote": "Using IPFS, you can create a `sui.id` address connected to your SuiNS name to claim a spot on the decentralized web."
+        },
+        {
+          "chunkId": "c_2c3d4e5f",
+          "routePath": "/user",
+          "url": "https://docs.suins.io/user",
+          "quote": "You need a content identifier (CID) to map your SuiNS name to your IPFS asset."
+        }
+      ]
+    },
+    {
+      "id": "q_08",
+      "question": "What is Move Registry (MVR) and how does it relate to SuiNS?",
+      "answer": "MVR is a uniform naming service for Sui packages; an MVR name consists of a SuiNS name and a package name in the format <suins_name>/<pkg_name>.",
+      "category": "how_it_works",
+      "importance": 0.68,
+      "entityIds": [
+        "ent_12",
+        "ent_01"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_5f607182",
+          "routePath": "/move-registry",
+          "url": "https://docs.suins.io/move-registry",
+          "quote": "Move Registry (MVR, pronounced mover) provides a uniform naming service for interacting and building with packages from the Sui ecosystem."
+        },
+        {
+          "chunkId": "c_5f607182",
+          "routePath": "/move-registry",
+          "url": "https://docs.suins.io/move-registry",
+          "quote": "A MVR name consists of a SuiNS name and a package name, in the format `<suins_name>/<pkg_name>`."
+        }
+      ]
+    },
+    {
+      "id": "q_09",
+      "question": "Where is the SuiNS code and how are admin operations handled?",
+      "answer": "The suins-contracts repository holds the SuiNS core and system packages, with admin actions built as multi-sig operations.",
+      "category": "trust_security",
+      "importance": 0.65,
+      "entityIds": [
+        "ent_11"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_8293a4b5",
+          "routePath": "/MystenLabs/suins-contracts/main/README.md",
+          "url": "https://raw.githubusercontent.com/MystenLabs/suins-contracts/main/README.md",
+          "quote": "This repository holds the SuiNS contracts (both the core and all system packages)."
+        },
+        {
+          "chunkId": "c_8293a4b5",
+          "routePath": "/MystenLabs/suins-contracts/main/README.md",
+          "url": "https://raw.githubusercontent.com/MystenLabs/suins-contracts/main/README.md",
+          "quote": "different actions we want to build for various multi-sig operations"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 10,
+    "chunksAnalyzed": 26,
+    "entitiesWithSources": 11,
+    "ungroundedDropped": 4
+  },
+  "usedProvider": "heuristic",
+  "confidence": 0.84
+}

@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./chunks": "./src/chunks.ts"
+    "./chunks": "./src/chunks.ts",
+    "./facts": "./src/facts.ts",
+    "./utils": "./src/utils.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

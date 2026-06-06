@@ -1,0 +1,1003 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T12:00:00Z",
+  "target": "https://vercel.com",
+  "identity": {
+    "name": "Vercel",
+    "oneLiner": "The AI Cloud to build, deploy, and scale AI-powered web apps — Git-push deploys on a global edge network.",
+    "category": "frontend cloud / deployment platform",
+    "audience": [
+      "developers",
+      "frontend teams",
+      "enterprises"
+    ],
+    "primaryEntityId": "e_vercel",
+    "sources": [
+      {
+        "chunkId": "c_d2c8b4a2",
+        "routePath": "/docs",
+        "url": "https://vercel.com/docs",
+        "quote": "Vercel is the AI Cloud, a unified platform for building, deploying, and scaling AI-powered applications."
+      },
+      {
+        "chunkId": "c_c1934e66",
+        "routePath": "/docs/getting-started-with-vercel",
+        "url": "https://vercel.com/docs/getting-started-with-vercel",
+        "quote": "Every push to your connected branch triggers a new deployment automatically."
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "e_vercel",
+      "name": "Vercel",
+      "type": "organization",
+      "aliases": [
+        "the AI Cloud"
+      ],
+      "description": "The AI Cloud — a unified platform for building, deploying, and scaling AI-powered web applications.",
+      "url": "https://vercel.com",
+      "salience": 1,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_d21a4c8e",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "Vercel is the AI Cloud, a unified platform for building, deploying, and scaling AI-powered applications."
+        }
+      ]
+    },
+    {
+      "id": "e_nextjs",
+      "name": "Next.js",
+      "type": "technology",
+      "aliases": [
+        "NextJS"
+      ],
+      "description": "A fullstack React framework for the web, maintained by Vercel.",
+      "url": "https://nextjs.org",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_0b7e44a2",
+          "routePath": "/docs/frameworks/nextjs",
+          "url": "https://vercel.com/docs/frameworks/nextjs",
+          "quote": "is a fullstack React framework for the web, maintained by Vercel."
+        }
+      ]
+    },
+    {
+      "id": "e_functions",
+      "name": "Vercel Functions",
+      "type": "product",
+      "aliases": [
+        "Functions"
+      ],
+      "description": "Server-side code that runs on Vercel without managing a server, scaling automatically with demand.",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_4e2a73c9",
+          "routePath": "/docs/functions",
+          "url": "https://vercel.com/docs/functions",
+          "quote": "Vercel Functions let you run server-side code without managing servers."
+        }
+      ]
+    },
+    {
+      "id": "e_fluid",
+      "name": "Fluid compute",
+      "type": "technology",
+      "aliases": [
+        "fluid compute"
+      ],
+      "description": "A compute model that reduces cold starts, lowers latency, and saves on compute costs via optimized concurrency.",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_5f8b16d0",
+          "routePath": "/docs/functions",
+          "url": "https://vercel.com/docs/functions",
+          "quote": "fluid compute reduces cold starts, lowers latency, and saves on compute costs."
+        }
+      ]
+    },
+    {
+      "id": "e_cdn",
+      "name": "Vercel CDN",
+      "type": "product",
+      "aliases": [
+        "Vercel Delivery Network",
+        "Edge Network"
+      ],
+      "description": "A globally distributed, framework-aware network that caches content near visitors and runs compute close to your data.",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_7b3d41a8",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "Vercel's CDN is a globally distributed network that caches content near your visitors, routes requests, and runs compute close to your data."
+        }
+      ]
+    },
+    {
+      "id": "e_isr",
+      "name": "Incremental Static Regeneration",
+      "type": "feature",
+      "aliases": [
+        "ISR"
+      ],
+      "description": "Lets you create or update content without redeploying your site.",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_19d8c5f3",
+          "routePath": "/docs/frameworks/nextjs",
+          "url": "https://vercel.com/docs/frameworks/nextjs",
+          "quote": "allows you to create or update content"
+        }
+      ]
+    },
+    {
+      "id": "e_git",
+      "name": "Git-push deployments",
+      "type": "feature",
+      "aliases": [
+        "Git integration",
+        "Git deployments"
+      ],
+      "description": "Connect a Git repository so every push to a connected branch triggers a new deployment automatically.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_bf812d44",
+          "routePath": "/docs/getting-started-with-vercel",
+          "url": "https://vercel.com/docs/getting-started-with-vercel",
+          "quote": "Every push to your connected branch triggers a new deployment automatically."
+        }
+      ]
+    },
+    {
+      "id": "e_image_opt",
+      "name": "Image Optimization",
+      "type": "feature",
+      "aliases": [],
+      "description": "Automatically optimizes images on demand for faster page loads and modern formats.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_2a6f81b0",
+          "routePath": "/docs/frameworks/nextjs",
+          "url": "https://vercel.com/docs/frameworks/nextjs",
+          "quote": "images are automatically optimized on demand"
+        }
+      ]
+    },
+    {
+      "id": "e_ai_gateway",
+      "name": "AI Gateway",
+      "type": "product",
+      "aliases": [],
+      "description": "Routes to any AI provider through one endpoint with automatic failover.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_e93f0712",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "Route to any AI provider with automatic failover"
+        }
+      ]
+    },
+    {
+      "id": "e_v0",
+      "name": "v0",
+      "type": "product",
+      "aliases": [],
+      "description": "Vercel's AI-powered development assistant for iterating on ideas and building applications.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_f1a6c3d8",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "Iterate on ideas with Vercel's AI-powered development assistant"
+        }
+      ]
+    },
+    {
+      "id": "e_marketplace",
+      "name": "Vercel Marketplace",
+      "type": "integration",
+      "aliases": [],
+      "description": "Provides integrations for AI providers, databases, CMSs, analytics, and storage.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_fa12b6c7",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "provides integrations for AI providers, databases, CMSs, analytics, and storage."
+        }
+      ]
+    },
+    {
+      "id": "e_waf",
+      "name": "Configurable WAF",
+      "type": "feature",
+      "aliases": [
+        "Web Application Firewall"
+      ],
+      "description": "Customizable firewall rules to protect applications against attacks, scrapers, and unwanted traffic.",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_8c5e20f1",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "Customizable rules to protect against attacks, scrapers, and unwanted traffic"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "cl_valueprop",
+      "text": "Vercel provides the developer tools and cloud infrastructure to build, scale, and secure a faster, more personalized web.",
+      "kind": "value_prop",
+      "subjectEntityId": "e_vercel",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_a1f09c2e",
+          "routePath": "/",
+          "url": "https://vercel.com/",
+          "quote": "Vercel provides the developer tools and cloud infrastructure to build, scale, and secure a faster, more personalized web."
+        }
+      ]
+    },
+    {
+      "id": "cl_positioning",
+      "text": "Vercel is the AI Cloud, a unified platform for building, deploying, and scaling AI-powered applications.",
+      "kind": "positioning",
+      "subjectEntityId": "e_vercel",
+      "sentiment": "neutral",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_d2c8b4a1",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "Vercel is the AI Cloud, a unified platform for building, deploying, and scaling AI-powered applications."
+        }
+      ]
+    },
+    {
+      "id": "cl_gitpush",
+      "text": "Every push to your connected branch triggers a new deployment automatically.",
+      "kind": "capability",
+      "subjectEntityId": "e_git",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_c0934e55",
+          "routePath": "/docs/getting-started-with-vercel",
+          "url": "https://vercel.com/docs/getting-started-with-vercel",
+          "quote": "Every push to your connected branch triggers a new deployment automatically."
+        }
+      ]
+    },
+    {
+      "id": "cl_functions",
+      "text": "Vercel Functions let you run server-side code without managing servers.",
+      "kind": "capability",
+      "subjectEntityId": "e_functions",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_4f2a73d0",
+          "routePath": "/docs/functions",
+          "url": "https://vercel.com/docs/functions",
+          "quote": "Vercel Functions let you run server-side code without managing servers."
+        }
+      ]
+    },
+    {
+      "id": "cl_cdn_diff",
+      "text": "Unlike traditional CDNs that only cache static assets, Vercel's CDN is framework-aware.",
+      "kind": "differentiator",
+      "subjectEntityId": "e_cdn",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_7c3d41a9",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "Unlike traditional CDNs that only cache static assets, Vercel's CDN is framework-aware."
+        }
+      ]
+    },
+    {
+      "id": "cl_scale_zero",
+      "text": "Vercel scales your functions down to zero when there are no incoming requests.",
+      "kind": "capability",
+      "subjectEntityId": "e_functions",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_6a0c92e4",
+          "routePath": "/docs/functions",
+          "url": "https://vercel.com/docs/functions",
+          "quote": "Vercel scales your functions down to zero when there are no incoming requests."
+        }
+      ]
+    },
+    {
+      "id": "cl_nextjs_zeroconfig",
+      "text": "Deploying Next.js to Vercel is zero-configuration and provides additional enhancements.",
+      "kind": "value_prop",
+      "subjectEntityId": "e_nextjs",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_3c4d90e1",
+          "routePath": "/docs/frameworks/nextjs",
+          "url": "https://vercel.com/docs/frameworks/nextjs",
+          "quote": "deploying to Vercel is zero-configuration and provides additional enhancements"
+        }
+      ]
+    },
+    {
+      "id": "cl_nextjs_fact",
+      "text": "Next.js is a fullstack React framework for the web, maintained by Vercel.",
+      "kind": "fact",
+      "subjectEntityId": "e_nextjs",
+      "sentiment": "neutral",
+      "confidence": 0.92,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_0c7e44b3",
+          "routePath": "/docs/frameworks/nextjs",
+          "url": "https://vercel.com/docs/frameworks/nextjs",
+          "quote": "is a fullstack React framework for the web, maintained by Vercel."
+        }
+      ]
+    },
+    {
+      "id": "cl_isr_benefits",
+      "text": "ISR has three main benefits for developers: better performance, improved security, and faster build times.",
+      "kind": "capability",
+      "subjectEntityId": "e_isr",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_1ad8c5f4",
+          "routePath": "/docs/frameworks/nextjs",
+          "url": "https://vercel.com/docs/frameworks/nextjs",
+          "quote": "ISR has three main benefits for developers: better performance, improved security, and faster build times."
+        }
+      ]
+    },
+    {
+      "id": "cl_ddos_guarantee",
+      "text": "DDoS mitigation and network-level security are included on every deployment at no extra cost.",
+      "kind": "guarantee",
+      "subjectEntityId": "e_cdn",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_9d6f33b2",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "DDoS mitigation and network-level security"
+        },
+        {
+          "chunkId": "c_ae7041c3",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "on every deployment at no extra cost."
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "st_pops",
+      "label": "Points of Presence (PoPs)",
+      "valueRaw": "126",
+      "valueNumber": 126,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "e_cdn",
+      "sources": [
+        {
+          "chunkId": "c_7d3d41aa",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "Vercel operates 126 Points of Presence (PoPs) across 51 countries."
+        }
+      ]
+    },
+    {
+      "id": "st_countries",
+      "label": "countries with PoPs",
+      "valueRaw": "51",
+      "valueNumber": 51,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "e_cdn",
+      "sources": [
+        {
+          "chunkId": "c_7e3d41ab",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "126+ PoPs across 51 countries and 20+ Vercel regions"
+        }
+      ]
+    },
+    {
+      "id": "st_regions",
+      "label": "Vercel regions",
+      "valueRaw": "20+",
+      "valueNumber": 20,
+      "unit": "count",
+      "approximate": true,
+      "subjectEntityId": "e_cdn",
+      "sources": [
+        {
+          "chunkId": "c_7f3d41ac",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "126+ PoPs across 51 countries and 20+ Vercel regions"
+        }
+      ]
+    },
+    {
+      "id": "st_isr_300ms",
+      "label": "global content update time",
+      "valueRaw": "300ms",
+      "valueNumber": 300,
+      "unit": "time",
+      "approximate": false,
+      "subjectEntityId": "e_isr",
+      "sources": [
+        {
+          "chunkId": "c_3d4d90e2",
+          "routePath": "/docs/frameworks/nextjs",
+          "url": "https://vercel.com/docs/frameworks/nextjs",
+          "quote": "Framework-aware infrastructure enables global content updates in 300ms"
+        }
+      ]
+    },
+    {
+      "id": "st_runway",
+      "label": "Runway build time (after)",
+      "valueRaw": "40s",
+      "valueNumber": 40,
+      "unit": "time",
+      "approximate": false,
+      "subjectEntityId": "e_vercel",
+      "sources": [
+        {
+          "chunkId": "c_a2f09c2f",
+          "routePath": "/",
+          "url": "https://vercel.com/",
+          "quote": "build times went from 7m to 40s"
+        }
+      ]
+    },
+    {
+      "id": "st_leonardo",
+      "label": "LeonardoAi page load reduction",
+      "valueRaw": "95%",
+      "valueNumber": 95,
+      "unit": "percent",
+      "approximate": false,
+      "subjectEntityId": "e_vercel",
+      "sources": [
+        {
+          "chunkId": "c_a3f09c30",
+          "routePath": "/",
+          "url": "https://vercel.com/",
+          "quote": "95% reduction in page load times"
+        }
+      ]
+    },
+    {
+      "id": "st_zapier",
+      "label": "Zapier build speedup",
+      "valueRaw": "24x",
+      "valueNumber": 24,
+      "unit": "ratio",
+      "approximate": false,
+      "subjectEntityId": "e_vercel",
+      "sources": [
+        {
+          "chunkId": "c_a4f09c31",
+          "routePath": "/",
+          "url": "https://vercel.com/",
+          "quote": "24x faster builds"
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "t_deploy",
+      "label": "Deployments & Git workflow",
+      "weight": 0.2,
+      "keywords": [
+        "deploy",
+        "git",
+        "preview",
+        "push",
+        "CLI"
+      ],
+      "routePaths": [
+        "/docs/getting-started-with-vercel",
+        "/docs"
+      ],
+      "entityIds": [
+        "e_git",
+        "e_vercel"
+      ]
+    },
+    {
+      "id": "t_compute",
+      "label": "Serverless compute & Functions",
+      "weight": 0.22,
+      "keywords": [
+        "functions",
+        "fluid compute",
+        "serverless",
+        "scaling"
+      ],
+      "routePaths": [
+        "/docs/functions"
+      ],
+      "entityIds": [
+        "e_functions",
+        "e_fluid"
+      ]
+    },
+    {
+      "id": "t_cdn",
+      "label": "Edge network & caching",
+      "weight": 0.22,
+      "keywords": [
+        "CDN",
+        "PoP",
+        "cache",
+        "regions",
+        "ISR"
+      ],
+      "routePaths": [
+        "/docs/cdn"
+      ],
+      "entityIds": [
+        "e_cdn",
+        "e_isr"
+      ]
+    },
+    {
+      "id": "t_nextjs",
+      "label": "Next.js framework support",
+      "weight": 0.18,
+      "keywords": [
+        "Next.js",
+        "ISR",
+        "SSR",
+        "image optimization"
+      ],
+      "routePaths": [
+        "/docs/frameworks/nextjs"
+      ],
+      "entityIds": [
+        "e_nextjs",
+        "e_isr",
+        "e_image_opt"
+      ]
+    },
+    {
+      "id": "t_ai",
+      "label": "AI infrastructure",
+      "weight": 0.1,
+      "keywords": [
+        "AI Cloud",
+        "AI Gateway",
+        "v0",
+        "agents"
+      ],
+      "routePaths": [
+        "/docs",
+        "/"
+      ],
+      "entityIds": [
+        "e_ai_gateway",
+        "e_v0",
+        "e_vercel"
+      ]
+    },
+    {
+      "id": "t_security",
+      "label": "Security & protection",
+      "weight": 0.08,
+      "keywords": [
+        "WAF",
+        "DDoS",
+        "TLS",
+        "firewall"
+      ],
+      "routePaths": [
+        "/docs/cdn",
+        "/docs"
+      ],
+      "entityIds": [
+        "e_waf",
+        "e_cdn"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "r_vercel_functions",
+      "sourceEntityId": "e_vercel",
+      "targetEntityId": "e_functions",
+      "kind": "offers",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_b1010101",
+          "routePath": "/docs/functions",
+          "url": "https://vercel.com/docs/functions",
+          "quote": "Vercel Functions let you run server-side code without managing servers."
+        }
+      ]
+    },
+    {
+      "id": "r_vercel_cdn_offers",
+      "sourceEntityId": "e_vercel",
+      "targetEntityId": "e_cdn",
+      "kind": "offers",
+      "label": "Vercel Delivery Network",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_b2020202",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "Fast, globally distributed execution"
+        }
+      ]
+    },
+    {
+      "id": "r_vercel_v0",
+      "sourceEntityId": "e_vercel",
+      "targetEntityId": "e_v0",
+      "kind": "offers",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_b3030303",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "Iterate on ideas with Vercel's AI-powered development assistant"
+        }
+      ]
+    },
+    {
+      "id": "r_vercel_gateway",
+      "sourceEntityId": "e_vercel",
+      "targetEntityId": "e_ai_gateway",
+      "kind": "offers",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_b4040404",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "Route to any AI provider with automatic failover"
+        }
+      ]
+    },
+    {
+      "id": "r_functions_fluid",
+      "sourceEntityId": "e_functions",
+      "targetEntityId": "e_fluid",
+      "kind": "depends_on",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_b5050505",
+          "routePath": "/docs/functions",
+          "url": "https://vercel.com/docs/functions",
+          "quote": "offer enhanced concurrency through"
+        }
+      ]
+    },
+    {
+      "id": "r_nextjs_vercel",
+      "sourceEntityId": "e_nextjs",
+      "targetEntityId": "e_vercel",
+      "kind": "owned_by",
+      "label": "maintained by",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_b6060606",
+          "routePath": "/docs/frameworks/nextjs",
+          "url": "https://vercel.com/docs/frameworks/nextjs",
+          "quote": "maintained by Vercel."
+        }
+      ]
+    },
+    {
+      "id": "r_vercel_git",
+      "sourceEntityId": "e_vercel",
+      "targetEntityId": "e_git",
+      "kind": "offers",
+      "label": "Git-push deploys",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_b9090909",
+          "routePath": "/docs/getting-started-with-vercel",
+          "url": "https://vercel.com/docs/getting-started-with-vercel",
+          "quote": "Every push to your connected branch triggers a new deployment automatically."
+        }
+      ]
+    },
+    {
+      "id": "r_waf_cdn",
+      "sourceEntityId": "e_waf",
+      "targetEntityId": "e_cdn",
+      "kind": "part_of",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_ba0a0a0a",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "configure a Web Application Firewall (WAF) with custom rules"
+        }
+      ]
+    },
+    {
+      "id": "r_marketplace_vercel",
+      "sourceEntityId": "e_marketplace",
+      "targetEntityId": "e_vercel",
+      "kind": "part_of",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_bb0b0b0b",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "provides integrations for AI providers, databases, CMSs, analytics, and storage."
+        }
+      ]
+    },
+    {
+      "id": "r_cdn_vercel",
+      "sourceEntityId": "e_cdn",
+      "targetEntityId": "e_vercel",
+      "kind": "part_of",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_bc0c0c0c",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "Every deployment includes it automatically."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_what_is",
+      "question": "What is Vercel?",
+      "answer": "Vercel is the AI Cloud, a unified platform for building, deploying, and scaling AI-powered applications, providing developer tools and cloud infrastructure for a faster web.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "e_vercel"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_d2c8b4a1",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "Vercel is the AI Cloud, a unified platform for building, deploying, and scaling AI-powered applications."
+        }
+      ]
+    },
+    {
+      "id": "q_deploy",
+      "question": "How do deployments work on Vercel?",
+      "answer": "You connect a Git repository (GitHub, GitLab, or Bitbucket) and every push to your connected branch triggers a new deployment automatically.",
+      "category": "how_it_works",
+      "importance": 0.95,
+      "entityIds": [
+        "e_git",
+        "e_vercel"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_c0934e55",
+          "routePath": "/docs/getting-started-with-vercel",
+          "url": "https://vercel.com/docs/getting-started-with-vercel",
+          "quote": "Every push to your connected branch triggers a new deployment automatically."
+        }
+      ]
+    },
+    {
+      "id": "q_functions",
+      "question": "What are Vercel Functions?",
+      "answer": "Vercel Functions let you run server-side code without managing servers, scaling automatically and using fluid compute for efficient concurrency.",
+      "category": "how_it_works",
+      "importance": 0.85,
+      "entityIds": [
+        "e_functions",
+        "e_fluid"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_4f2a73d0",
+          "routePath": "/docs/functions",
+          "url": "https://vercel.com/docs/functions",
+          "quote": "Vercel Functions let you run server-side code without managing servers."
+        }
+      ]
+    },
+    {
+      "id": "q_integrations",
+      "question": "What does the Vercel Marketplace integrate with?",
+      "answer": "The Vercel Marketplace provides integrations for AI providers, databases, CMSs, analytics, and storage.",
+      "category": "integrations",
+      "importance": 0.7,
+      "entityIds": [
+        "e_marketplace"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_fa12b6c7",
+          "routePath": "/docs",
+          "url": "https://vercel.com/docs",
+          "quote": "provides integrations for AI providers, databases, CMSs, analytics, and storage."
+        }
+      ]
+    },
+    {
+      "id": "q_cdn_diff",
+      "question": "How is Vercel's CDN different from a traditional CDN?",
+      "answer": "Unlike traditional CDNs that only cache static assets, Vercel's CDN is framework-aware, reading your routing, caching, and rendering configuration at build time.",
+      "category": "differentiators",
+      "importance": 0.8,
+      "entityIds": [
+        "e_cdn"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_7c3d41a9",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "Unlike traditional CDNs that only cache static assets, Vercel's CDN is framework-aware."
+        }
+      ]
+    },
+    {
+      "id": "q_nextjs",
+      "question": "How does Vercel relate to Next.js?",
+      "answer": "Vercel is the native Next.js platform; Next.js is a fullstack React framework maintained by Vercel, and deploying it to Vercel is zero-configuration.",
+      "category": "how_it_works",
+      "importance": 0.85,
+      "entityIds": [
+        "e_nextjs",
+        "e_vercel"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b6060607",
+          "routePath": "/docs/frameworks/nextjs",
+          "url": "https://vercel.com/docs/frameworks/nextjs",
+          "quote": "Vercel is the native Next.js platform, designed to enhance the Next.js experience."
+        }
+      ]
+    },
+    {
+      "id": "q_getting_started",
+      "question": "How do I get started with Vercel?",
+      "answer": "Deploy your app on Vercel in three steps: install the CLI, add agent support if you use an AI coding agent, and deploy.",
+      "category": "getting_started",
+      "importance": 0.75,
+      "entityIds": [
+        "e_vercel"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_c1934e66",
+          "routePath": "/docs/getting-started-with-vercel",
+          "url": "https://vercel.com/docs/getting-started-with-vercel",
+          "quote": "Deploy your app on Vercel in three steps: install the CLI, add agent support if you use an AI coding agent, and deploy."
+        }
+      ]
+    },
+    {
+      "id": "q_security",
+      "question": "What security does Vercel provide by default?",
+      "answer": "Every deployment uses HTTPS with automatically provisioned SSL certificates and TLS 1.2/1.3 support, plus always-on DDoS mitigation and an optional configurable WAF.",
+      "category": "trust_security",
+      "importance": 0.7,
+      "entityIds": [
+        "e_cdn",
+        "e_waf"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_ad7041c4",
+          "routePath": "/docs/cdn",
+          "url": "https://vercel.com/docs/cdn",
+          "quote": "Every deployment uses HTTPS with automatically provisioned SSL certificates and TLS 1.2/1.3 support."
+        }
+      ]
+    },
+    {
+      "id": "q_pricing",
+      "question": "How is Vercel Functions pricing calculated?",
+      "answer": "Vercel Functions are priced based on active CPU, provisioned memory, and invocations.",
+      "category": "pricing",
+      "importance": 0.65,
+      "entityIds": [
+        "e_functions"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_6b0c92e5",
+          "routePath": "/docs/functions",
+          "url": "https://vercel.com/docs/functions",
+          "quote": "Vercel Functions are priced based on active CPU, provisioned memory, and invocations."
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 6,
+    "chunksAnalyzed": 18,
+    "entitiesWithSources": 12,
+    "ungroundedDropped": 2
+  },
+  "usedProvider": "heuristic",
+  "confidence": 0.82
+}

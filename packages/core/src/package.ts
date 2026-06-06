@@ -18,6 +18,7 @@ import type {
   ImageAsset,
   PageArtifact,
   ScreenshotArtifact,
+  SiteFacts,
   SiteStructure,
   SitemapResult,
   Styleguide,
@@ -45,6 +46,7 @@ export type AgentPackageInput = {
   styleguide?: Styleguide;
   designSystem?: DesignSystem;
   aiQuery?: AiQueryResult;
+  facts?: SiteFacts;
   screenshots?: ScreenshotArtifact[];
   componentPreviews?: ComponentPreviewArtifact[];
   walrus?: {
@@ -100,6 +102,7 @@ export async function buildAgentReadableSite(input: AgentPackageInput): Promise<
     styleguide: input.styleguide,
     designSystem: input.designSystem,
     aiQuery: input.aiQuery,
+    facts: input.facts,
     screenshots: input.screenshots,
     componentPreviews: input.componentPreviews,
     walrus: input.walrus
@@ -114,6 +117,7 @@ export async function buildAgentReadableSite(input: AgentPackageInput): Promise<
   if (input.styleguide) await writeJson(path.join(contextDir, "styleguide.json"), input.styleguide);
   if (input.designSystem) await writeDesignSystemArtifacts(contextDir, input.designSystem);
   if (input.aiQuery) await writeJson(path.join(contextDir, "ai-query.json"), input.aiQuery);
+  if (input.facts) await writeJson(path.join(contextDir, "facts.json"), input.facts);
   if (input.screenshots) await writeJson(path.join(contextDir, "screenshots.json"), input.screenshots);
   if (input.componentPreviews) await writeJson(path.join(contextDir, "component-previews.json"), input.componentPreviews);
   if (input.walrus) {
@@ -219,6 +223,7 @@ export function buildWsResources(root: string): Record<string, unknown> {
     "/context/screenshots.json",
     "/context/component-previews.json",
     "/context/ai-query.json",
+    "/context/facts.json",
     "/context/walrus-site.json",
     "/context/resources.json",
     "/context/blobs.json",
@@ -364,12 +369,54 @@ function renderLlmsTxt(manifest: WalrusPackageManifest): string {
     "- /context/web-brand-kit.json",
     "- /context/video-brand-kit.json",
     "- /context/resources.json",
+    ...(manifest.facts ? ["- /context/facts.json"] : []),
     ...(manifest.walrus ? ["- /context/proofs.json"] : []),
+    ...renderFactsLlmsSections(manifest.facts),
     "",
     "## Pages",
     ...manifest.pages.map((page, index) => `- ${page.title ?? page.routePath ?? page.url}: /context/pages/${String(index + 1).padStart(3, "0")}-${slug(page.routePath ?? page.url)}.md`)
   ];
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Self-describing, grounded sections for the most-consumed agent file. Defensive
+ * (optional chaining + empty-array guards) so old runs without facts.json — or
+ * facts with empty arrays — never inject broken sections.
+ */
+function renderFactsLlmsSections(facts?: SiteFacts): string[] {
+  if (!facts) return [];
+  const lines: string[] = [];
+  const identity = facts.identity;
+  if (identity && (identity.oneLiner || identity.category || identity.audience?.length)) {
+    lines.push("", "## What this site is");
+    if (identity.oneLiner) lines.push(identity.oneLiner);
+    if (identity.category) lines.push(`Category: ${identity.category}`);
+    if (identity.audience?.length) lines.push(`Audience: ${identity.audience.join(", ")}`);
+  }
+
+  const keyFacts: string[] = [];
+  for (const claim of (facts.claims ?? []).slice(0, 5)) {
+    const route = claim.sources?.[0]?.routePath;
+    keyFacts.push(`- ${claim.text}${route ? ` (${route})` : ""}`);
+  }
+  for (const stat of (facts.stats ?? []).slice(0, 5)) {
+    const route = stat.sources?.[0]?.routePath;
+    keyFacts.push(`- ${stat.label}: ${stat.valueRaw}${route ? ` (${route})` : ""}`);
+  }
+  if (keyFacts.length) lines.push("", "## Key Facts", ...keyFacts.slice(0, 8));
+
+  const questions = facts.questions ?? [];
+  if (questions.length) {
+    lines.push("", "## FAQ");
+    for (const question of questions) {
+      lines.push(`Q: ${question.question}`);
+      lines.push(`A: ${question.unanswerable ? "Not covered on this site." : question.answer || "Not covered on this site."}`);
+      lines.push("");
+    }
+    if (lines[lines.length - 1] === "") lines.pop();
+  }
+  return lines;
 }
 
 function slug(input: string): string {

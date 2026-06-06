@@ -557,7 +557,7 @@ function heuristicExtract(point: AiDatapoint, context: string): unknown {
   return sample.trim();
 }
 
-function rankedContextSentences(context: string, terms: string[]): string[] {
+export function rankedContextSentences(context: string, terms: string[]): string[] {
   const keywords = unique(terms.map((term) => term.trim().toLowerCase()).filter((term) => term.length >= 4));
   const seen = new Set<string>();
   const scored = context
@@ -581,7 +581,7 @@ function rankedContextSentences(context: string, terms: string[]): string[] {
   return (selected.length ? selected : scored.map((item) => item.sentence)).slice(0, 8);
 }
 
-function firstReadableSentence(markdown: string): string | undefined {
+export function firstReadableSentence(markdown: string): string | undefined {
   return rankedContextSentences(markdown, [])[0];
 }
 

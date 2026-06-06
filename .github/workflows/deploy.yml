@@ -1,7 +1,7 @@
 name: Deploy
 
 # Deploys both surfaces on push to main:
-#   - Worker  → contextmem-hosted-namespace-mcp (API/MCP + Tatum gateway)
+#   - Worker  → contextmem-backend (API/MCP backend)
 #   - Pages   → contextmem.pages.dev (web frontend)
 # Cloudflare Git auto-deploy for Pages should be DISABLED so this is the single
 # deploy path (avoids double-deploys).
@@ -9,8 +9,9 @@ name: Deploy
 # Required GitHub repo secrets:
 #   CLOUDFLARE_API_TOKEN              (Workers + Pages edit, D1, R2, Queues)
 #   CLOUDFLARE_ACCOUNT_ID
-#   TATUM_API_KEY                     (Tatum mainnet key — pushed as a Worker secret)
 #   CONTEXTMEM_NAMESPACE_IMPORT_TOKEN (pushed as a Worker secret)
+# Worker secrets managed in the Cloudflare dashboard (not pushed by CI):
+#   FIRECRAWL_API_KEY, MEMWAL_ACCOUNT_ID, MEMWAL_API_URL, MEMWAL_PRIVATE_KEY
 # Optional repo variable:
 #   CONTEXTMEM_API_BASE  (worker URL the web build points at; defaults below)
 
@@ -40,10 +41,8 @@ jobs:
           workingDirectory: apps/api/cloudflare
           command: deploy
           secrets: |
-            TATUM_API_KEY
             CONTEXTMEM_NAMESPACE_IMPORT_TOKEN
         env:
-          TATUM_API_KEY: ${{ secrets.TATUM_API_KEY }}
           CONTEXTMEM_NAMESPACE_IMPORT_TOKEN: ${{ secrets.CONTEXTMEM_NAMESPACE_IMPORT_TOKEN }}
 
   deploy-pages:
@@ -57,7 +56,7 @@ jobs:
       - name: Build web
         run: bun run --filter @contextmem/web build
         env:
-          VITE_CONTEXTMEM_API_BASE: ${{ vars.CONTEXTMEM_API_BASE || 'https://contextmem-hosted-namespace-mcp.petlofi.workers.dev' }}
+          VITE_CONTEXTMEM_API_BASE: ${{ vars.CONTEXTMEM_API_BASE || 'https://contextmem-backend.petlofi.workers.dev' }}
       - name: Deploy Pages
         uses: cloudflare/wrangler-action@v3
         with:

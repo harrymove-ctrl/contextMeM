@@ -47,6 +47,7 @@ import {
   type WalrusPackageManifest
 } from "@contextmem/core";
 import { MemWalMcpClient, summarizeSnapshot, type SiteSnapshot } from "@contextmem/memwal";
+import { SEED_FACTS, SEED_FACTS_LIST } from "./seed-facts.js";
 import { getWalrusSiteHistory, materializeWalrusSite, resolveWalrusTarget, startWalrusPreview } from "@contextmem/walrus";
 import { decryptSecret, encryptSecret, LocalAccountStore, publicAccount, type AccountRecord, type QuotaState } from "./account-store.js";
 
@@ -222,6 +223,79 @@ app.post("/api/memwal/import-delegate", async (request) => {
   const token = auth ? undefined : await accountStore.createSession(updated.id, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
   const me = serializeMe(updated, await accountStore.getQuota(updated.id));
   return token ? { token, me } : me;
+});
+
+app.get("/api/memwal/facts", async () => ({ namespaces: SEED_FACTS_LIST }));
+
+app.get("/api/memwal/facts/:namespace", async (request, reply) => {
+  const ns = decodeURIComponent((request.params as { namespace: string }).namespace);
+  const facts = SEED_FACTS[ns];
+  if (!facts) {
+    reply.code(404);
+    return { error: `No seeded facts for namespace "${ns}".` };
+  }
+  return { namespace: ns, facts };
+});
+
+app.get("/api/memwal/namespaces", async () => {
+  const raw = process.env.MEMWAL_NAMESPACES?.trim();
+  let namespaces = [
+    { namespace: "demo:sui-docs", label: "Sui Docs" },
+    { namespace: "demo:walrus-docs", label: "Walrus Docs" },
+    { namespace: "demo:seal-docs", label: "Seal Docs" }
+  ];
+  if (raw) {
+    const parsed = raw
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const eq = entry.indexOf("=");
+        const namespace = (eq === -1 ? entry : entry.slice(0, eq)).trim();
+        const label = (eq === -1 ? "" : entry.slice(eq + 1).trim()) || namespace.replace(/^demo:/, "");
+        return { namespace, label };
+      })
+      .filter((entry) => entry.namespace);
+    if (parsed.length) namespaces = parsed;
+  }
+  const configured = Boolean(process.env.MEMWAL_ACCOUNT_ID && (process.env.MEMWAL_PRIVATE_KEY || process.env.MEMWAL_AUTHORIZATION));
+  return { namespaces, configured };
+});
+
+app.post("/api/memwal/recall", async (request, reply) => {
+  const input = z.object({ namespace: z.string().min(1), query: z.string().min(1).max(500) }).parse(request.body ?? {});
+  // Prefer the signed-in account's imported delegate (the one the Settings UI
+  // saved + the existing run recall uses). Fall back to env for anonymous dev.
+  let memwal: MemWalMcpClient | null = null;
+  try {
+    const auth = await getOptionalAuth(request.headers.authorization);
+    if (auth?.account?.delegateKeyCiphertext) {
+      memwal = memwalClientForAccount(auth.account);
+    }
+  } catch {
+    /* not signed in — try env below */
+  }
+  if (!memwal) {
+    const privateKey = (process.env.MEMWAL_PRIVATE_KEY ?? process.env.MEMWAL_BEARER ?? "")
+      .trim()
+      .replace(/^bearer\s+/i, "")
+      .replace(/^0x/i, "")
+      .trim();
+    const accountId = process.env.MEMWAL_ACCOUNT_ID?.trim();
+    if (!privateKey || !accountId) {
+      reply.code(503);
+      return { error: "Walrus Memory recall needs an imported delegate (Settings) or MEMWAL_PRIVATE_KEY + MEMWAL_ACCOUNT_ID in the local environment." };
+    }
+    const url = process.env.MEMWAL_API_URL ?? process.env.MEMWAL_MCP_URL ?? "https://relayer.memwal.ai";
+    memwal = new MemWalMcpClient({ url, privateKey, accountId });
+  }
+  try {
+    const result = await memwal.recallSiteContext(input.namespace, input.query);
+    return { namespace: input.namespace, query: input.query, result };
+  } catch (error) {
+    reply.code(502);
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
 });
 
 app.get("/api/runs", async (request) => {

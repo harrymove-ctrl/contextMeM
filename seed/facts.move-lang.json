@@ -1,0 +1,1002 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T14:32:10.000Z",
+  "target": "https://move-book.com",
+  "usedProvider": "heuristic",
+  "confidence": 0.82,
+  "identity": {
+    "name": "The Move Book",
+    "oneLiner": "A comprehensive guide to the Move language and the Sui blockchain.",
+    "category": "smart-contract language documentation",
+    "audience": [
+      "developers",
+      "Sui builders"
+    ],
+    "primaryEntityId": "ent_movebook",
+    "sources": [
+      {
+        "chunkId": "c_a1b2c3d4",
+        "routePath": "/",
+        "url": "https://move-book.com/",
+        "quote": "This is The Move Book - a comprehensive guide to the Move programming language and the Sui blockchain."
+      },
+      {
+        "chunkId": "c_a1b2c3d4",
+        "routePath": "/",
+        "url": "https://move-book.com/",
+        "quote": "The book is intended for developers who are interested in learning about Move and building on Sui."
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "ent_move",
+      "name": "Move",
+      "type": "technology",
+      "aliases": [
+        "Move language",
+        "Move programming language"
+      ],
+      "description": "An open source language for writing safe packages to manipulate onchain objects, sometimes referred to as smart contracts.",
+      "url": "https://move-book.com/",
+      "salience": 1,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move is an open source language for writing safe packages to manipulate onchain objects (sometimes referred to as _smart contracts_)."
+        }
+      ]
+    },
+    {
+      "id": "ent_sui",
+      "name": "Sui",
+      "type": "platform",
+      "aliases": [
+        "Sui blockchain",
+        "Move on Sui"
+      ],
+      "description": "A blockchain whose Move implementation uses its own object-centric global storage and repurposes the address type as a 32-byte identifier.",
+      "url": "https://docs.sui.io/concepts/sui-move-concepts",
+      "salience": 1,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui contains some important differences from Move on other blockchains."
+        }
+      ]
+    },
+    {
+      "id": "ent_movebook",
+      "name": "The Move Book",
+      "type": "product",
+      "aliases": [
+        "Move Book"
+      ],
+      "description": "A comprehensive guide to the Move programming language and the Sui blockchain, intended for developers learning Move and building on Sui.",
+      "url": "https://move-book.com/",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://move-book.com/",
+          "quote": "This is The Move Book - a comprehensive guide to the Move programming language and the Sui blockchain."
+        }
+      ]
+    },
+    {
+      "id": "ent_object",
+      "name": "Object",
+      "type": "concept",
+      "aliases": [
+        "onchain object"
+      ],
+      "description": "A fundamental unit of storage on the network; every resource, asset, or piece of data onchain is an object with a globally unique ID.",
+      "salience": 0.67,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_07182930",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "An object is a fundamental unit of storage on the network."
+        },
+        {
+          "chunkId": "c_07182930",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "Every resource, asset, or piece of data onchain is an object."
+        }
+      ]
+    },
+    {
+      "id": "ent_abilities",
+      "name": "Abilities",
+      "type": "concept",
+      "aliases": [
+        "ability system"
+      ],
+      "description": "A way to allow certain behaviors for a type, set in the struct definition using the has keyword followed by a list of abilities.",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "Abilities are a way to allow certain behaviors for a type."
+        },
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "Abilities are set in the struct definition using the has keyword followed by a list of abilities."
+        }
+      ]
+    },
+    {
+      "id": "ent_key",
+      "name": "key ability",
+      "type": "feature",
+      "aliases": [
+        "key"
+      ],
+      "description": "On Sui the key ability indicates that a struct is an object type and requires the first field to have signature id: UID.",
+      "salience": 0.5,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "key - allows the struct to be used as a _key_ in a storage."
+        },
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "indicates that a struct is an object type and comes with an additional requirement that the first field of the struct has signature"
+        }
+      ]
+    },
+    {
+      "id": "ent_store",
+      "name": "store ability",
+      "type": "feature",
+      "aliases": [
+        "store"
+      ],
+      "description": "The store ability allows a struct to be stored in structs that have the key ability.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "store - allows the struct to be _stored_ in structs that have the _key_ ability."
+        }
+      ]
+    },
+    {
+      "id": "ent_drop",
+      "name": "drop ability",
+      "type": "feature",
+      "aliases": [
+        "drop"
+      ],
+      "description": "The drop ability allows a struct to be dropped or discarded.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "drop - allows the struct to be _dropped_ or _discarded_."
+        }
+      ]
+    },
+    {
+      "id": "ent_hotpotato",
+      "name": "Hot Potato pattern",
+      "type": "concept",
+      "aliases": [
+        "hot potato"
+      ],
+      "description": "A struct without any abilities that cannot be stored, copied, or discarded and must be gracefully unpacked before the transaction ends.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/programmability/hot-potato-pattern",
+          "url": "https://move-book.com/programmability/hot-potato-pattern",
+          "quote": "A case in the abilities system - a struct without any abilities - is called _hot potato_."
+        }
+      ]
+    },
+    {
+      "id": "ent_entry",
+      "name": "entry function",
+      "type": "feature",
+      "aliases": [
+        "entry"
+      ],
+      "description": "An entry function is usable by anyone on chain but cannot be wrapped around other Move logic.",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "when you want some functionality to be usable by anyone on chain, but not be wrapped around other Move logic"
+        }
+      ]
+    },
+    {
+      "id": "ent_globalstorage",
+      "name": "object-centric global storage",
+      "type": "concept",
+      "aliases": [
+        "global storage"
+      ],
+      "description": "Sui's own object-centric storage model, used instead of the global storage that is part of the programming model in Move on Diem.",
+      "salience": 0.33,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui addresses the scaling issue by not having global storage or its related operations."
+        },
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "In Move on Diem, global storage is part of the programming model."
+        }
+      ]
+    },
+    {
+      "id": "ent_smartcontracts",
+      "name": "smart contracts",
+      "type": "use_case",
+      "aliases": [
+        "smart contract"
+      ],
+      "description": "The onchain programs Move packages implement to manipulate onchain objects, sometimes referred to as smart contracts.",
+      "salience": 0.17,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move is an open source language for writing safe packages to manipulate onchain objects (sometimes referred to as _smart contracts_)."
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "clm_01",
+      "text": "Move is an open source language for writing safe packages to manipulate onchain objects.",
+      "kind": "value_prop",
+      "subjectEntityId": "ent_move",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move is an open source language for writing safe packages to manipulate onchain objects (sometimes referred to as _smart contracts_)."
+        }
+      ]
+    },
+    {
+      "id": "clm_02",
+      "text": "Move on Sui contains some important differences from Move on other blockchains.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_move",
+      "sentiment": "neutral",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui contains some important differences from Move on other blockchains."
+        }
+      ]
+    },
+    {
+      "id": "clm_03",
+      "text": "Move on Sui addresses the scaling issue by not having global storage or its related operations.",
+      "kind": "differentiator",
+      "subjectEntityId": "ent_globalstorage",
+      "sentiment": "positive",
+      "confidence": 0.83,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui addresses the scaling issue by not having global storage or its related operations."
+        }
+      ]
+    },
+    {
+      "id": "clm_04",
+      "text": "On Sui the key ability indicates that a struct is an object type and requires the first field to have signature id: UID.",
+      "kind": "fact",
+      "subjectEntityId": "ent_key",
+      "sentiment": "neutral",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "indicates that a struct is an object type and comes with an additional requirement that the first field of the struct has signature"
+        }
+      ]
+    },
+    {
+      "id": "clm_05",
+      "text": "Sui's bytecode verifier ensures that new objects are always assigned fresh UIDs.",
+      "kind": "guarantee",
+      "subjectEntityId": "ent_object",
+      "sentiment": "positive",
+      "confidence": 0.8,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Sui's bytecode verifier ensures that new objects are always assigned fresh"
+        }
+      ]
+    },
+    {
+      "id": "clm_06",
+      "text": "A struct without abilities cannot be discarded, copied, or stored in storage.",
+      "kind": "fact",
+      "subjectEntityId": "ent_hotpotato",
+      "sentiment": "neutral",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "A struct without abilities cannot be discarded, copied, or stored in storage."
+        }
+      ]
+    },
+    {
+      "id": "clm_07",
+      "text": "Hot potatoes are used to ensure that some action is taken before the transaction ends, similar to a callback.",
+      "kind": "capability",
+      "subjectEntityId": "ent_hotpotato",
+      "sentiment": "positive",
+      "confidence": 0.82,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/programmability/hot-potato-pattern",
+          "url": "https://move-book.com/programmability/hot-potato-pattern",
+          "quote": "Hot potatoes are used to ensure that some action is taken before the transaction ends, similar to a callback."
+        }
+      ]
+    },
+    {
+      "id": "clm_08",
+      "text": "Use entry when you want some functionality to be usable by anyone on chain, but not wrapped around other Move logic.",
+      "kind": "capability",
+      "subjectEntityId": "ent_entry",
+      "sentiment": "neutral",
+      "confidence": 0.83,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "when you want some functionality to be usable by anyone on chain, but not be wrapped around other Move logic"
+        }
+      ]
+    },
+    {
+      "id": "clm_09",
+      "text": "Move does not support overflow or underflow; an out-of-range operation raises a runtime error.",
+      "kind": "limitation",
+      "subjectEntityId": "ent_move",
+      "sentiment": "neutral",
+      "confidence": 0.84,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/move-basics/primitive-types",
+          "url": "https://move-book.com/move-basics/primitive-types",
+          "quote": "Move does not support overflow / underflow; an operation that results in a value outside the range of the type will raise a runtime error."
+        }
+      ]
+    },
+    {
+      "id": "clm_10",
+      "text": "The Move Book is in active development and a work in progress.",
+      "kind": "limitation",
+      "subjectEntityId": "ent_movebook",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://move-book.com/",
+          "quote": "The book is in active development and a work in progress."
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "stat_01",
+      "label": "Sui address size",
+      "valueRaw": "32-byte",
+      "valueNumber": 32,
+      "unit": "data_size",
+      "approximate": false,
+      "subjectEntityId": "ent_sui",
+      "sources": [
+        {
+          "chunkId": "c_29304152",
+          "routePath": "/move-basics/address",
+          "url": "https://move-book.com/move-basics/address",
+          "quote": "It is a 32-byte value that can represent any address on the blockchain."
+        }
+      ]
+    },
+    {
+      "id": "stat_02",
+      "label": "Largest unsigned integer width",
+      "valueRaw": "256-bit",
+      "valueNumber": 256,
+      "unit": "data_size",
+      "approximate": false,
+      "subjectEntityId": "ent_move",
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/move-basics/primitive-types",
+          "url": "https://move-book.com/move-basics/primitive-types",
+          "quote": "Move supports unsigned integers of various sizes, from 8-bit to 256-bit."
+        }
+      ]
+    },
+    {
+      "id": "stat_03",
+      "label": "Smallest unsigned integer width",
+      "valueRaw": "8-bit",
+      "valueNumber": 8,
+      "unit": "data_size",
+      "approximate": false,
+      "subjectEntityId": "ent_move",
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/move-basics/primitive-types",
+          "url": "https://move-book.com/move-basics/primitive-types",
+          "quote": "u8 - 8-bit"
+        }
+      ]
+    },
+    {
+      "id": "stat_04",
+      "label": "Standard integer width (u64)",
+      "valueRaw": "64-bit",
+      "valueNumber": 64,
+      "unit": "data_size",
+      "approximate": false,
+      "subjectEntityId": "ent_move",
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/move-basics/primitive-types",
+          "url": "https://move-book.com/move-basics/primitive-types",
+          "quote": "u64 - 64-bit"
+        }
+      ]
+    },
+    {
+      "id": "stat_05",
+      "label": "Move Basics chapter subsections",
+      "valueRaw": "26",
+      "valueNumber": 26,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "ent_movebook",
+      "sources": [
+        {
+          "chunkId": "c_d4e5f607",
+          "routePath": "/move-basics/",
+          "url": "https://move-book.com/move-basics/",
+          "quote": "5.26. Testing"
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "top_01",
+      "label": "Move language basics",
+      "weight": 0.3,
+      "keywords": [
+        "modules",
+        "types",
+        "structs",
+        "functions",
+        "control flow"
+      ],
+      "routePaths": [
+        "/move-basics/",
+        "/move-basics/primitive-types",
+        "/move-basics/address"
+      ],
+      "entityIds": [
+        "ent_move",
+        "ent_abilities",
+        "ent_smartcontracts"
+      ]
+    },
+    {
+      "id": "top_02",
+      "label": "Abilities system",
+      "weight": 0.25,
+      "keywords": [
+        "abilities",
+        "copy",
+        "drop",
+        "key",
+        "store"
+      ],
+      "routePaths": [
+        "/move-basics/abilities-introduction"
+      ],
+      "entityIds": [
+        "ent_abilities",
+        "ent_key",
+        "ent_store",
+        "ent_drop"
+      ]
+    },
+    {
+      "id": "top_03",
+      "label": "Sui object model",
+      "weight": 0.27,
+      "keywords": [
+        "object",
+        "UID",
+        "global storage",
+        "ownership"
+      ],
+      "routePaths": [
+        "/concepts/object-model",
+        "/concepts/sui-move-concepts"
+      ],
+      "entityIds": [
+        "ent_object",
+        "ent_globalstorage",
+        "ent_sui"
+      ]
+    },
+    {
+      "id": "top_04",
+      "label": "Programmability patterns",
+      "weight": 0.18,
+      "keywords": [
+        "hot potato",
+        "entry",
+        "callback"
+      ],
+      "routePaths": [
+        "/programmability/hot-potato-pattern",
+        "/concepts/sui-move-concepts"
+      ],
+      "entityIds": [
+        "ent_hotpotato",
+        "ent_entry"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_01",
+      "sourceEntityId": "ent_sui",
+      "targetEntityId": "ent_move",
+      "kind": "built_with",
+      "label": "Sui uses the Move language",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui contains some important differences from Move on other blockchains."
+        }
+      ]
+    },
+    {
+      "id": "rel_02",
+      "sourceEntityId": "ent_movebook",
+      "targetEntityId": "ent_move",
+      "kind": "mentions",
+      "label": "guide to Move",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://move-book.com/",
+          "quote": "a comprehensive guide to the Move programming language and the Sui blockchain."
+        }
+      ]
+    },
+    {
+      "id": "rel_03",
+      "sourceEntityId": "ent_movebook",
+      "targetEntityId": "ent_sui",
+      "kind": "mentions",
+      "label": "guide to Sui",
+      "confidence": 0.9,
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://move-book.com/",
+          "quote": "a comprehensive guide to the Move programming language and the Sui blockchain."
+        }
+      ]
+    },
+    {
+      "id": "rel_04",
+      "sourceEntityId": "ent_abilities",
+      "targetEntityId": "ent_move",
+      "kind": "part_of",
+      "label": "abilities are part of Move",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "Abilities are a way to allow certain behaviors for a type."
+        }
+      ]
+    },
+    {
+      "id": "rel_05",
+      "sourceEntityId": "ent_key",
+      "targetEntityId": "ent_abilities",
+      "kind": "part_of",
+      "label": "key is an ability",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "key - allows the struct to be used as a _key_ in a storage."
+        }
+      ]
+    },
+    {
+      "id": "rel_06",
+      "sourceEntityId": "ent_store",
+      "targetEntityId": "ent_abilities",
+      "kind": "part_of",
+      "label": "store is an ability",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "store - allows the struct to be _stored_ in structs that have the _key_ ability."
+        }
+      ]
+    },
+    {
+      "id": "rel_07",
+      "sourceEntityId": "ent_drop",
+      "targetEntityId": "ent_abilities",
+      "kind": "part_of",
+      "label": "drop is an ability",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "drop - allows the struct to be _dropped_ or _discarded_."
+        }
+      ]
+    },
+    {
+      "id": "rel_08",
+      "sourceEntityId": "ent_hotpotato",
+      "targetEntityId": "ent_abilities",
+      "kind": "depends_on",
+      "label": "a case in the abilities system",
+      "confidence": 0.83,
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/programmability/hot-potato-pattern",
+          "url": "https://move-book.com/programmability/hot-potato-pattern",
+          "quote": "A case in the abilities system - a struct without any abilities - is called _hot potato_."
+        }
+      ]
+    },
+    {
+      "id": "rel_09",
+      "sourceEntityId": "ent_object",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "objects are the unit of storage on Sui",
+      "confidence": 0.84,
+      "sources": [
+        {
+          "chunkId": "c_07182930",
+          "routePath": "/concepts/object-model",
+          "url": "https://docs.sui.io/concepts/object-model",
+          "quote": "An object is a fundamental unit of storage on the network."
+        }
+      ]
+    },
+    {
+      "id": "rel_10",
+      "sourceEntityId": "ent_object",
+      "targetEntityId": "ent_key",
+      "kind": "depends_on",
+      "label": "object type requires the key ability",
+      "confidence": 0.86,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "indicates that a struct is an object type and comes with an additional requirement that the first field of the struct has signature"
+        }
+      ]
+    },
+    {
+      "id": "rel_11",
+      "sourceEntityId": "ent_globalstorage",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "Sui's storage model",
+      "confidence": 0.82,
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui addresses the scaling issue by not having global storage or its related operations."
+        }
+      ]
+    },
+    {
+      "id": "rel_12",
+      "sourceEntityId": "ent_entry",
+      "targetEntityId": "ent_sui",
+      "kind": "part_of",
+      "label": "entry functions on Sui",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_c3d4e5f6",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "when you want some functionality to be usable by anyone on chain, but not be wrapped around other Move logic"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_01",
+      "question": "What is Move?",
+      "answer": "Move is an open source language for writing safe packages to manipulate onchain objects, sometimes referred to as smart contracts.",
+      "category": "what_is_it",
+      "importance": 0.95,
+      "entityIds": [
+        "ent_move",
+        "ent_smartcontracts"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move is an open source language for writing safe packages to manipulate onchain objects (sometimes referred to as _smart contracts_)."
+        }
+      ]
+    },
+    {
+      "id": "q_02",
+      "question": "What is The Move Book?",
+      "answer": "It is a comprehensive guide to the Move programming language and the Sui blockchain.",
+      "category": "what_is_it",
+      "importance": 0.85,
+      "entityIds": [
+        "ent_movebook"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://move-book.com/",
+          "quote": "This is The Move Book - a comprehensive guide to the Move programming language and the Sui blockchain."
+        }
+      ]
+    },
+    {
+      "id": "q_03",
+      "question": "What are abilities in Move?",
+      "answer": "Abilities are a way to allow certain behaviors for a type, set in the struct definition using the has keyword. They include copy, drop, key, and store.",
+      "category": "how_it_works",
+      "importance": 0.88,
+      "entityIds": [
+        "ent_abilities",
+        "ent_key",
+        "ent_store",
+        "ent_drop"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_e5f60718",
+          "routePath": "/move-basics/abilities-introduction",
+          "url": "https://move-book.com/move-basics/abilities-introduction",
+          "quote": "Abilities are a way to allow certain behaviors for a type."
+        }
+      ]
+    },
+    {
+      "id": "q_04",
+      "question": "How does Sui's storage model differ from other blockchains?",
+      "answer": "Move on Sui addresses the scaling issue by not having global storage or its related operations, using its own object-centric storage instead of the global storage found in Move on Diem.",
+      "category": "how_it_works",
+      "importance": 0.86,
+      "entityIds": [
+        "ent_sui",
+        "ent_globalstorage"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "Move on Sui addresses the scaling issue by not having global storage or its related operations."
+        }
+      ]
+    },
+    {
+      "id": "q_05",
+      "question": "What is the hot potato pattern?",
+      "answer": "A hot potato is a struct with no abilities used to ensure that some action is taken before the transaction ends, similar to a callback.",
+      "category": "how_it_works",
+      "importance": 0.8,
+      "entityIds": [
+        "ent_hotpotato"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_f6071829",
+          "routePath": "/programmability/hot-potato-pattern",
+          "url": "https://move-book.com/programmability/hot-potato-pattern",
+          "quote": "Hot potatoes are used to ensure that some action is taken before the transaction ends, similar to a callback."
+        }
+      ]
+    },
+    {
+      "id": "q_06",
+      "question": "What does the key ability do on Sui?",
+      "answer": "On Sui the key ability indicates that a struct is an object type and requires the first field of the struct to have signature id: UID.",
+      "category": "differentiators",
+      "importance": 0.82,
+      "entityIds": [
+        "ent_key",
+        "ent_object"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b2c3d4e5",
+          "routePath": "/concepts/sui-move-concepts",
+          "url": "https://docs.sui.io/concepts/sui-move-concepts",
+          "quote": "indicates that a struct is an object type and comes with an additional requirement that the first field of the struct has signature"
+        }
+      ]
+    },
+    {
+      "id": "q_07",
+      "question": "Who is The Move Book for?",
+      "answer": "It is intended for developers who are interested in learning about Move and building on Sui.",
+      "category": "who_is_it_for",
+      "importance": 0.78,
+      "entityIds": [
+        "ent_movebook"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://move-book.com/",
+          "quote": "The book is intended for developers who are interested in learning about Move and building on Sui."
+        }
+      ]
+    },
+    {
+      "id": "q_08",
+      "question": "What integer types does Move support?",
+      "answer": "Move supports unsigned integers of various sizes, from 8-bit to 256-bit (u8 through u256).",
+      "category": "how_it_works",
+      "importance": 0.74,
+      "entityIds": [
+        "ent_move"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_18293041",
+          "routePath": "/move-basics/primitive-types",
+          "url": "https://move-book.com/move-basics/primitive-types",
+          "quote": "Move supports unsigned integers of various sizes, from 8-bit to 256-bit."
+        }
+      ]
+    },
+    {
+      "id": "q_09",
+      "question": "Is The Move Book complete?",
+      "answer": "No. The book is in active development and a work in progress.",
+      "category": "limitations",
+      "importance": 0.7,
+      "entityIds": [
+        "ent_movebook"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_a1b2c3d4",
+          "routePath": "/",
+          "url": "https://move-book.com/",
+          "quote": "The book is in active development and a work in progress."
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 8,
+    "chunksAnalyzed": 9,
+    "entitiesWithSources": 12,
+    "ungroundedDropped": 2
+  }
+}

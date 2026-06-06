@@ -4,6 +4,7 @@ export * from "./html.js";
 export * from "./web.js";
 export * from "./design-system.js";
 export * from "./chunks.js";
+export * from "./facts.js";
 export * from "./snapshot.js";
 export * from "./package.js";
 export * from "./site-structure.js";

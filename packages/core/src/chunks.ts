@@ -114,7 +114,12 @@ function splitMarkdownByHeadings(markdown: string): Section[] {
   return markdown.trim() ? [{ headingPath: [], text: markdown.trim() }] : [];
 }
 
-function normalizeText(text: string): string {
+/**
+ * Whitespace-normalize text for stable hashing and substring grounding checks.
+ * Exported so facts.ts validateQuote() uses the IDENTICAL normalization as the
+ * chunker, guaranteeing the quote-substring check is consistent with chunk text.
+ */
+export function normalizeText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 

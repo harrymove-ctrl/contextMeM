@@ -1,0 +1,936 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T12:00:00Z",
+  "target": "https://www.anthropic.com",
+  "identity": {
+    "name": "Anthropic",
+    "oneLiner": "Anthropic builds AI research and products that put safety at the frontier, including Claude.",
+    "category": "AI safety company and frontier model lab",
+    "audience": [
+      "developers",
+      "enterprises"
+    ],
+    "primaryEntityId": "e_anthropic",
+    "sources": [
+      {
+        "chunkId": "c_1a2b3c4d",
+        "routePath": "/",
+        "url": "https://www.anthropic.com/",
+        "quote": "AI research and products that put safety at the frontier"
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "e_anthropic",
+      "name": "Anthropic",
+      "type": "organization",
+      "aliases": [
+        "Anthropic PBC"
+      ],
+      "description": "Anthropic is a public benefit corporation building AI research and products that put safety at the frontier.",
+      "url": "https://www.anthropic.com/",
+      "salience": 1,
+      "mentions": 9,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://www.anthropic.com/",
+          "quote": "Anthropic is a public benefit corporation dedicated to securing its benefits and mitigating its risks."
+        }
+      ]
+    },
+    {
+      "id": "e_claude",
+      "name": "Claude",
+      "type": "product",
+      "aliases": [
+        "Claude AI",
+        "Claude platform"
+      ],
+      "description": "Claude is a highly performant, trustworthy, and intelligent AI platform built by Anthropic.",
+      "url": "https://claude.ai",
+      "salience": 1,
+      "mentions": 9,
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Claude is a highly performant, trustworthy, and intelligent AI platform built by Anthropic."
+        }
+      ]
+    },
+    {
+      "id": "e_claudecode",
+      "name": "Claude Code",
+      "type": "product",
+      "aliases": [],
+      "description": "Claude Code is Anthropic's agentic coding product, also available as a library via the Agent SDK.",
+      "salience": 0.44,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_d6e7f809",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Build production AI agents with Claude Code as a library"
+        }
+      ]
+    },
+    {
+      "id": "e_opus",
+      "name": "Claude Opus 4.8",
+      "type": "product",
+      "aliases": [
+        "Opus",
+        "claude-opus-4-8"
+      ],
+      "description": "Anthropic's most capable model for complex reasoning and agentic coding.",
+      "salience": 0.56,
+      "mentions": 5,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Anthropic's most capable model for complex reasoning and agentic coding"
+        }
+      ]
+    },
+    {
+      "id": "e_sonnet",
+      "name": "Claude Sonnet 4.6",
+      "type": "product",
+      "aliases": [
+        "Sonnet",
+        "claude-sonnet-4-6"
+      ],
+      "description": "Frontier intelligence at scale, built for coding, agents, and enterprise workflows.",
+      "salience": 0.33,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Frontier intelligence at scale, built for coding, agents, and enterprise workflows"
+        }
+      ]
+    },
+    {
+      "id": "e_haiku",
+      "name": "Claude Haiku 4.5",
+      "type": "product",
+      "aliases": [
+        "Haiku",
+        "claude-haiku-4-5"
+      ],
+      "description": "Anthropic's fastest model, with near-frontier intelligence.",
+      "salience": 0.33,
+      "mentions": 3,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Fastest model with near-frontier intelligence"
+        }
+      ]
+    },
+    {
+      "id": "e_agentsdk",
+      "name": "Claude Agent SDK",
+      "type": "technology",
+      "aliases": [
+        "Agent SDK",
+        "claude-agent-sdk"
+      ],
+      "description": "A library that gives you the same tools, agent loop, and context management that power Claude Code, in Python and TypeScript.",
+      "salience": 0.67,
+      "mentions": 6,
+      "sources": [
+        {
+          "chunkId": "c_d6e7f809",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "The Agent SDK gives you the same tools, agent loop, and context management that power Claude Code, programmable in Python and TypeScript."
+        }
+      ]
+    },
+    {
+      "id": "e_mcp",
+      "name": "Model Context Protocol",
+      "type": "technology",
+      "aliases": [
+        "MCP"
+      ],
+      "description": "Protocol for connecting agents to external systems such as databases, browsers, and APIs.",
+      "salience": 0.22,
+      "mentions": 2,
+      "sources": [
+        {
+          "chunkId": "c_e7f8091a",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Connect to external systems via the Model Context Protocol: databases, browsers, APIs"
+        }
+      ]
+    },
+    {
+      "id": "e_slack",
+      "name": "Claude for Slack",
+      "type": "integration",
+      "aliases": [],
+      "description": "An integration that brings Claude into Slack.",
+      "salience": 0.11,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_70819203",
+          "routePath": "/product/overview",
+          "url": "https://claude.com/product/overview",
+          "quote": "Claude for Slack"
+        }
+      ]
+    },
+    {
+      "id": "e_agents_uc",
+      "name": "Building AI agents",
+      "type": "use_case",
+      "aliases": [
+        "AI agents"
+      ],
+      "description": "Building AI agents that autonomously read files, run commands, search the web, and edit code.",
+      "salience": 0.44,
+      "mentions": 4,
+      "sources": [
+        {
+          "chunkId": "c_d6e7f809",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Build AI agents that autonomously read files, run commands, search the web, edit code, and more."
+        }
+      ]
+    },
+    {
+      "id": "e_pbc",
+      "name": "Public benefit corporation",
+      "type": "concept",
+      "aliases": [
+        "PBC"
+      ],
+      "description": "Anthropic's corporate structure, dedicated to securing AI's benefits and mitigating its risks.",
+      "salience": 0.11,
+      "mentions": 1,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://www.anthropic.com/",
+          "quote": "Anthropic is a public benefit corporation dedicated to securing its benefits and mitigating its risks."
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "cl_safety",
+      "text": "Anthropic builds AI research and products that put safety at the frontier.",
+      "kind": "positioning",
+      "subjectEntityId": "e_anthropic",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://www.anthropic.com/",
+          "quote": "AI research and products that put safety at the frontier"
+        }
+      ]
+    },
+    {
+      "id": "cl_pbc",
+      "text": "Anthropic is a public benefit corporation dedicated to securing AI's benefits and mitigating its risks.",
+      "kind": "fact",
+      "subjectEntityId": "e_anthropic",
+      "sentiment": "neutral",
+      "confidence": 0.92,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://www.anthropic.com/",
+          "quote": "Anthropic is a public benefit corporation dedicated to securing its benefits and mitigating its risks."
+        }
+      ]
+    },
+    {
+      "id": "cl_claude_def",
+      "text": "Claude is a highly performant, trustworthy, and intelligent AI platform built by Anthropic.",
+      "kind": "value_prop",
+      "subjectEntityId": "e_claude",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Claude is a highly performant, trustworthy, and intelligent AI platform built by Anthropic."
+        }
+      ]
+    },
+    {
+      "id": "cl_opus_capable",
+      "text": "Claude Opus 4.8 is Anthropic's most capable model for complex reasoning and agentic coding.",
+      "kind": "capability",
+      "subjectEntityId": "e_opus",
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "Anthropic's most capable model for complex reasoning and agentic coding"
+        }
+      ]
+    },
+    {
+      "id": "cl_haiku_fast",
+      "text": "Claude Haiku 4.5 is the fastest model with near-frontier intelligence.",
+      "kind": "differentiator",
+      "subjectEntityId": "e_haiku",
+      "sentiment": "positive",
+      "confidence": 0.85,
+      "isMarketing": true,
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Fastest model with near-frontier intelligence"
+        }
+      ]
+    },
+    {
+      "id": "cl_two_ways",
+      "text": "Anthropic offers two ways to build with Claude, each suited to different use cases.",
+      "kind": "capability",
+      "subjectEntityId": "e_claude",
+      "sentiment": "neutral",
+      "confidence": 0.86,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_5e6f7081",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Anthropic offers two ways to build with Claude, each suited to different use cases:"
+        }
+      ]
+    },
+    {
+      "id": "cl_agentsdk",
+      "text": "The Agent SDK gives you the same tools, agent loop, and context management that power Claude Code, programmable in Python and TypeScript.",
+      "kind": "capability",
+      "subjectEntityId": "e_agentsdk",
+      "sentiment": "positive",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_d6e7f809",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "The Agent SDK gives you the same tools, agent loop, and context management that power Claude Code, programmable in Python and TypeScript."
+        }
+      ]
+    },
+    {
+      "id": "cl_sessions",
+      "text": "Agent SDK sessions maintain context across multiple exchanges, remembering files read, analysis done, and conversation history.",
+      "kind": "capability",
+      "subjectEntityId": "e_agentsdk",
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_f8091a2b",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Maintain context across multiple exchanges. Claude remembers files read, analysis done, and conversation history."
+        }
+      ]
+    },
+    {
+      "id": "cl_mcp",
+      "text": "The Agent SDK can connect to external systems via the Model Context Protocol, including databases, browsers, and APIs.",
+      "kind": "capability",
+      "subjectEntityId": "e_mcp",
+      "sentiment": "neutral",
+      "confidence": 0.85,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_e7f8091a",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Connect to external systems via the Model Context Protocol: databases, browsers, APIs"
+        }
+      ]
+    },
+    {
+      "id": "cl_models_family",
+      "text": "Claude is a family of state-of-the-art large language models developed by Anthropic.",
+      "kind": "fact",
+      "subjectEntityId": "e_claude",
+      "sentiment": "neutral",
+      "confidence": 0.9,
+      "isMarketing": false,
+      "sources": [
+        {
+          "chunkId": "c_a3b4c5d6",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "Claude is a family of state-of-the-art large language models developed by Anthropic."
+        }
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": "st_opus_ctx",
+      "label": "Claude Opus 4.8 context window",
+      "valueRaw": "1M tokens",
+      "valueNumber": 1000000,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "e_opus",
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "1M tokens"
+        }
+      ]
+    },
+    {
+      "id": "st_opus_maxout",
+      "label": "Claude Opus 4.8 max output",
+      "valueRaw": "128k tokens",
+      "valueNumber": 128000,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "e_opus",
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "128k tokens"
+        }
+      ]
+    },
+    {
+      "id": "st_opus_in_price",
+      "label": "Claude Opus 4.8 input price",
+      "valueRaw": "$5 / input MTok",
+      "valueNumber": 5,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": false,
+      "subjectEntityId": "e_opus",
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "5 / input MTok"
+        }
+      ]
+    },
+    {
+      "id": "st_opus_out_price",
+      "label": "Claude Opus 4.8 output price",
+      "valueRaw": "$25 / output MTok",
+      "valueNumber": 25,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": false,
+      "subjectEntityId": "e_opus",
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "25 / output MTok"
+        }
+      ]
+    },
+    {
+      "id": "st_haiku_ctx",
+      "label": "Claude Haiku 4.5 context window",
+      "valueRaw": "200k tokens",
+      "valueNumber": 200000,
+      "unit": "count",
+      "approximate": false,
+      "subjectEntityId": "e_haiku",
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "200k tokens"
+        }
+      ]
+    },
+    {
+      "id": "st_sonnet_in_price",
+      "label": "Claude Sonnet 4.6 input price",
+      "valueRaw": "$3 / input MTok",
+      "valueNumber": 3,
+      "unit": "currency",
+      "currency": "USD",
+      "approximate": false,
+      "subjectEntityId": "e_sonnet",
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "3 / input MTok"
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "tp_safety",
+      "label": "AI safety",
+      "weight": 0.2,
+      "keywords": [
+        "safety",
+        "frontier",
+        "public benefit corporation",
+        "risks"
+      ],
+      "routePaths": [
+        "/"
+      ],
+      "entityIds": [
+        "e_anthropic",
+        "e_pbc"
+      ]
+    },
+    {
+      "id": "tp_models",
+      "label": "Claude models",
+      "weight": 0.3,
+      "keywords": [
+        "Opus",
+        "Sonnet",
+        "Haiku",
+        "tokens",
+        "pricing",
+        "context window"
+      ],
+      "routePaths": [
+        "/docs/en/about-claude/models/overview",
+        "/docs/en/docs/welcome"
+      ],
+      "entityIds": [
+        "e_opus",
+        "e_sonnet",
+        "e_haiku",
+        "e_claude"
+      ]
+    },
+    {
+      "id": "tp_devplatform",
+      "label": "Developer platform",
+      "weight": 0.25,
+      "keywords": [
+        "Messages API",
+        "SDK",
+        "Console",
+        "build with Claude"
+      ],
+      "routePaths": [
+        "/docs/en/docs/welcome"
+      ],
+      "entityIds": [
+        "e_claude"
+      ]
+    },
+    {
+      "id": "tp_agents",
+      "label": "Agent building",
+      "weight": 0.2,
+      "keywords": [
+        "Agent SDK",
+        "tools",
+        "agent loop",
+        "MCP",
+        "sessions"
+      ],
+      "routePaths": [
+        "/docs/en/agent-sdk/overview"
+      ],
+      "entityIds": [
+        "e_agentsdk",
+        "e_mcp",
+        "e_agents_uc",
+        "e_claudecode"
+      ]
+    },
+    {
+      "id": "tp_products",
+      "label": "Claude products and integrations",
+      "weight": 0.05,
+      "keywords": [
+        "Claude Code",
+        "Cowork",
+        "Security",
+        "integrations"
+      ],
+      "routePaths": [
+        "/product/overview",
+        "/"
+      ],
+      "entityIds": [
+        "e_claude",
+        "e_claudecode",
+        "e_slack"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_claude_anthropic",
+      "sourceEntityId": "e_claude",
+      "targetEntityId": "e_anthropic",
+      "kind": "owned_by",
+      "label": "built by Anthropic",
+      "confidence": 0.92,
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Claude is a highly performant, trustworthy, and intelligent AI platform built by Anthropic."
+        }
+      ]
+    },
+    {
+      "id": "rel_opus_claude",
+      "sourceEntityId": "e_opus",
+      "targetEntityId": "e_claude",
+      "kind": "part_of",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "chunkId": "c_a3b4c5d6",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "Claude is a family of state-of-the-art large language models developed by Anthropic."
+        }
+      ]
+    },
+    {
+      "id": "rel_sonnet_claude",
+      "sourceEntityId": "e_sonnet",
+      "targetEntityId": "e_claude",
+      "kind": "part_of",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "chunkId": "c_a3b4c5d6",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "Claude is a family of state-of-the-art large language models developed by Anthropic."
+        }
+      ]
+    },
+    {
+      "id": "rel_haiku_claude",
+      "sourceEntityId": "e_haiku",
+      "targetEntityId": "e_claude",
+      "kind": "part_of",
+      "confidence": 0.88,
+      "sources": [
+        {
+          "chunkId": "c_a3b4c5d6",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "Claude is a family of state-of-the-art large language models developed by Anthropic."
+        }
+      ]
+    },
+    {
+      "id": "rel_anthropic_opus",
+      "sourceEntityId": "e_anthropic",
+      "targetEntityId": "e_opus",
+      "kind": "offers",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "Anthropic's most capable model for complex reasoning and agentic coding"
+        }
+      ]
+    },
+    {
+      "id": "rel_sdk_code",
+      "sourceEntityId": "e_agentsdk",
+      "targetEntityId": "e_claudecode",
+      "kind": "built_with",
+      "label": "powers / library of Claude Code",
+      "confidence": 0.86,
+      "sources": [
+        {
+          "chunkId": "c_d6e7f809",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "the same tools, agent loop, and context management that power Claude Code"
+        }
+      ]
+    },
+    {
+      "id": "rel_sdk_mcp",
+      "sourceEntityId": "e_agentsdk",
+      "targetEntityId": "e_mcp",
+      "kind": "integrates_with",
+      "confidence": 0.85,
+      "sources": [
+        {
+          "chunkId": "c_e7f8091a",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Connect to external systems via the Model Context Protocol: databases, browsers, APIs"
+        }
+      ]
+    },
+    {
+      "id": "rel_uc_sdk",
+      "sourceEntityId": "e_agents_uc",
+      "targetEntityId": "e_agentsdk",
+      "kind": "depends_on",
+      "confidence": 0.84,
+      "sources": [
+        {
+          "chunkId": "c_d6e7f809",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Build AI agents that autonomously read files, run commands, search the web, edit code, and more."
+        }
+      ]
+    },
+    {
+      "id": "rel_slack_claude",
+      "sourceEntityId": "e_slack",
+      "targetEntityId": "e_claude",
+      "kind": "integrates_with",
+      "confidence": 0.8,
+      "sources": [
+        {
+          "chunkId": "c_70819203",
+          "routePath": "/product/overview",
+          "url": "https://claude.com/product/overview",
+          "quote": "Claude for Slack"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q_what_is_anthropic",
+      "question": "What is Anthropic?",
+      "answer": "Anthropic is a public benefit corporation that builds AI research and products putting safety at the frontier, dedicated to securing AI's benefits and mitigating its risks.",
+      "category": "what_is_it",
+      "importance": 1,
+      "entityIds": [
+        "e_anthropic",
+        "e_pbc"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://www.anthropic.com/",
+          "quote": "Anthropic is a public benefit corporation dedicated to securing its benefits and mitigating its risks."
+        }
+      ]
+    },
+    {
+      "id": "q_what_is_claude",
+      "question": "What is Claude?",
+      "answer": "Claude is a highly performant, trustworthy, and intelligent AI platform built by Anthropic that excels at tasks involving language, reasoning, analysis, and coding.",
+      "category": "what_is_it",
+      "importance": 0.95,
+      "entityIds": [
+        "e_claude"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_3c4d5e6f",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Claude is a highly performant, trustworthy, and intelligent AI platform built by Anthropic. Claude excels at tasks involving language, reasoning, analysis, coding, and more."
+        }
+      ]
+    },
+    {
+      "id": "q_models_differ",
+      "question": "How do Claude Opus, Sonnet, and Haiku differ?",
+      "answer": "Opus 4.8 is Anthropic's most capable model for complex reasoning and agentic coding, Sonnet 4.6 delivers frontier intelligence at scale for coding and enterprise workflows, and Haiku 4.5 is the fastest model with near-frontier intelligence.",
+      "category": "differentiators",
+      "importance": 0.85,
+      "entityIds": [
+        "e_opus",
+        "e_sonnet",
+        "e_haiku"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_4d5e6f70",
+          "routePath": "/docs/en/docs/welcome",
+          "url": "https://platform.claude.com/docs/en/docs/welcome",
+          "quote": "Fastest model with near-frontier intelligence"
+        }
+      ]
+    },
+    {
+      "id": "q_pricing",
+      "question": "How much does the Claude API cost?",
+      "answer": "Claude Opus 4.8 is $5 per input MTok and $25 per output MTok, Sonnet 4.6 is $3 input and $15 output, and Haiku 4.5 is $1 input and $5 output.",
+      "category": "pricing",
+      "importance": 0.7,
+      "entityIds": [
+        "e_opus",
+        "e_sonnet",
+        "e_haiku"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_b4c5d6e7",
+          "routePath": "/docs/en/about-claude/models/overview",
+          "url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "quote": "5 / input MTok"
+        }
+      ]
+    },
+    {
+      "id": "q_agent_sdk_build",
+      "question": "What can I build with the Claude Agent SDK?",
+      "answer": "You can build AI agents that autonomously read files, run commands, search the web, and edit code, using the same tools and agent loop that power Claude Code in Python and TypeScript.",
+      "category": "how_it_works",
+      "importance": 0.8,
+      "entityIds": [
+        "e_agentsdk",
+        "e_agents_uc"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_d6e7f809",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Build AI agents that autonomously read files, run commands, search the web, edit code, and more."
+        }
+      ]
+    },
+    {
+      "id": "q_mcp_support",
+      "question": "Does the Agent SDK support the Model Context Protocol?",
+      "answer": "Yes — agents can connect to external systems such as databases, browsers, and APIs via the Model Context Protocol.",
+      "category": "integrations",
+      "importance": 0.65,
+      "entityIds": [
+        "e_agentsdk",
+        "e_mcp"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_e7f8091a",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Connect to external systems via the Model Context Protocol: databases, browsers, APIs"
+        }
+      ]
+    },
+    {
+      "id": "q_sdk_memory",
+      "question": "How does the Agent SDK maintain context across turns?",
+      "answer": "Sessions maintain context across multiple exchanges; Claude remembers files read, analysis done, and conversation history, and you can resume sessions later or fork them to explore different approaches.",
+      "category": "how_it_works",
+      "importance": 0.7,
+      "entityIds": [
+        "e_agentsdk"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_f8091a2b",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "Maintain context across multiple exchanges. Claude remembers files read, analysis done, and conversation history. Resume sessions later, or fork them to explore different approaches."
+        }
+      ]
+    },
+    {
+      "id": "q_install_sdk",
+      "question": "How do I install the Claude Agent SDK?",
+      "answer": "Install the TypeScript SDK with npm install @anthropic-ai/claude-agent-sdk, or the Python SDK with pip install claude-agent-sdk (Python 3.10 or later).",
+      "category": "getting_started",
+      "importance": 0.6,
+      "entityIds": [
+        "e_agentsdk"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_091a2b3c",
+          "routePath": "/docs/en/agent-sdk/overview",
+          "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+          "quote": "npm install @anthropic-ai/claude-agent-sdk"
+        }
+      ]
+    },
+    {
+      "id": "q_safety_focus",
+      "question": "Is Anthropic focused on AI safety?",
+      "answer": "Yes — Anthropic positions safety at the frontier and is a public benefit corporation dedicated to securing AI's benefits and mitigating its risks.",
+      "category": "trust_security",
+      "importance": 0.75,
+      "entityIds": [
+        "e_anthropic",
+        "e_pbc"
+      ],
+      "sources": [
+        {
+          "chunkId": "c_1a2b3c4d",
+          "routePath": "/",
+          "url": "https://www.anthropic.com/",
+          "quote": "AI research and products that put safety at the frontier"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "pagesAnalyzed": 5,
+    "chunksAnalyzed": 13,
+    "entitiesWithSources": 11,
+    "ungroundedDropped": 4
+  },
+  "usedProvider": "heuristic",
+  "confidence": 0.82
+}

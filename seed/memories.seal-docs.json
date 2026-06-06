@@ -1,0 +1,18 @@
+{
+  "namespace": "demo:seal-docs",
+  "target": "https://seal-docs.wal.app",
+  "memories": [
+    "Seal is a decentralized secrets management (DSM) product/service that secures sensitive data at rest on decentralized storage like Walrus or any other onchain/offchain storage, with access controlled by onchain policies defined and validated on Sui.",
+    "Seal uses identity-based encryption (IBE): a Move package at address PkgId controls the namespace of identities of the form [PkgId]*, and off-chain key servers validate the onchain access policy before returning derived secret keys to authorized users.",
+    "Seal enforces access control through application-specific Move packages that define seal_approve* functions; these are evaluated on full nodes via the dry_run_transaction_block RPC call, must be side-effect free, and cannot modify onchain state.",
+    "Seal supports t-out-of-n threshold encryption across n key servers, guaranteeing privacy as long as fewer than t key servers are compromised and liveness as long as at least t key servers are available.",
+    "Seal's cryptographic primitives are Boneh-Franklin IBE on the BLS12-381 curve as the KEM (key encapsulation), and AES-256-GCM or HMAC-based CTR mode as the DEM; AES-256-GCM is preferred for speed and HMAC-CTR is used when onchain decryption is required.",
+    "Seal offers two key server types: Independent servers run by a single operator (in Open or Permissioned mode), and Decentralized committee-mode servers where an MPC committee using a DKG ceremony splits the master secret so no single operator holds the full key; committee mode is currently only available on Testnet.",
+    "Seal key servers expose two APIs, /v1/service and /v1/fetch_key; each fetch_key request must be signed by the user with signPersonalMessage, include a valid PTB evaluated against the seal_approve* rules, and provide an ephemeral encryption key to encrypt the response.",
+    "Seal is integrated via the @mysten/seal TypeScript SDK on npm, where developers configure a SealClient with key server object IDs and a SessionKey (approved once per package by the user's wallet) to encrypt and decrypt data.",
+    "Seal supports onchain HMAC-CTR decryption in Move through the seal::bf_hmac_encryption package, enabling verifiable onchain workflows such as auctions and secure voting.",
+    "Seal is explicitly not a Web2 key management service like AWS KMS — its backends store only a master key pair, not application- or user-specific keys — and should not be used to store highly sensitive data such as wallet keys or regulated PHI.",
+    "Seal uses client-side encryption with a secret-sharing mechanism so that the application or user, not Seal, is responsible for encrypting and decrypting data; the set of key servers is fixed once data is encrypted and cannot be changed without re-encryption.",
+    "Seal is developed by Mysten Labs (seal.mystenlabs.com) with documentation at seal-docs.wal.app and source on GitHub at MystenLabs/seal; post-quantum cryptographic primitives are planned to be added in the future."
+  ]
+}

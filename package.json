@@ -29,6 +29,7 @@
     "@modelcontextprotocol/sdk": "^1.23.0",
     "@mozilla/readability": "^0.6.0",
     "@mysten/sui": "^2.9.1",
+    "@react-three/fiber": "^9.6.1",
     "@vitejs/plugin-react": "^5.1.1",
     "agents": "^0.13.2",
     "cheerio": "^1.1.2",
@@ -46,6 +47,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.15.1",
+    "three": "^0.184.0",
     "turndown": "^7.2.2",
     "zod": "^4.2.0"
   },
