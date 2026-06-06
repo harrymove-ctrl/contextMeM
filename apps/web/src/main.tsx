@@ -6,6 +6,8 @@ import remarkGfm from "remark-gfm";
 import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, Hash, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, Maximize2, MessageSquare, Palette, Play, Plus, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, X, Zap } from "lucide-react";
 import Auth1 from "./components/blocks/auth-1.js";
 import Navigation10 from "./components/blocks/navigation-10.js";
+import StaggeredText from "./components/react-bits/staggered-text.js";
+import { BlurHighlight } from "./components/react-bits/blur-highlight.js";
 import "./styles.css";
 
 type DesignSystem = {
@@ -538,6 +540,32 @@ const showcaseCards = [
   { title: "Verify", detail: "Check Sui provenance, Walrus blob IDs, hashes, routes, and resource metadata.", icon: ShieldCheck },
   { title: "Package", detail: "Bundle markdown, screenshots, assets, design tokens, and resource manifests for agents.", icon: Boxes },
   { title: "Remember", detail: "Sync verified context into Walrus Memory for future agent recall.", icon: Brain }
+];
+const builtForUseCards = [
+  {
+    eyebrow: "Resolve & verify",
+    heading: "Resolve .wal.app names and Sui object IDs, then verify every blob.",
+    highlights: [".wal.app", "Sui", "verify"],
+    body: "Paste a name, an object ID, or a web URL. ContextMeM reads the onchain resources and checks every hash, route, and content type before trusting a byte."
+  },
+  {
+    eyebrow: "Agent context",
+    heading: "Package markdown, llms.txt, and design tokens agents can actually read.",
+    highlights: ["markdown", "llms.txt", "design tokens"],
+    body: "Every run emits static, agent-readable artifacts — markdown, a resource manifest, screenshots — that you can inspect, diff, and download."
+  },
+  {
+    eyebrow: "Walrus Memory",
+    heading: "Remember verified context so agents recall it later.",
+    highlights: ["Remember", "recall"],
+    body: "Sync the certified context into Walrus Memory. Agents recall the pointer and re-fetch the real artifact, keyed by blobId."
+  },
+  {
+    eyebrow: "Onchain provenance",
+    heading: "Every artifact carries onchain proof, certified on Walrus.",
+    highlights: ["onchain", "certified", "Walrus"],
+    body: "Tar the bundle, store it on Walrus through Tatum, and keep a verifiable blobId and digest for every run."
+  }
 ];
 const pipelineSteps = [
   { n: "01", title: "Resolve the target", detail: "Paste a .wal.app name, a Sui object ID, or any web URL. ContextMeM resolves it to the on-chain Walrus Site object and its full resource map.", icon: Globe2 },
@@ -2353,6 +2381,43 @@ function LandingPage({
             </article>
           );
         })}
+      </section>
+
+      <section className="lpUse" aria-label="Built so agents actually use it">
+        <StaggeredText
+          as="h2"
+          className="lpUseTitle"
+          text="Built so agents actually use it."
+          segmentBy="words"
+          blur
+          direction="bottom"
+          delay={55}
+          duration={0.6}
+        />
+        <div className="lpUseGrid">
+          {builtForUseCards.map((card) => (
+            <article className="lpUseCard" key={card.eyebrow}>
+              <span className="lpUseEyebrow">{card.eyebrow}</span>
+              <BlurHighlight
+                className="lpUseHeading"
+                highlightedBits={card.highlights}
+                highlightColor="rgba(168, 217, 70, 0.5)"
+                highlightClassName="lpUseHi"
+                blurAmount={6}
+                blurDuration={0.7}
+                highlightDelay={0.45}
+                highlightDuration={0.6}
+                viewportOptions={{ once: true, amount: 0.4 }}
+              >
+                {card.heading}
+              </BlurHighlight>
+              <div className="lpUseGif" role="img" aria-label="Demo placeholder — drop a GIF here">
+                <span className="lpUseGifHint"><Play size={15} /> Drop a GIF here</span>
+              </div>
+              <p className="lpUseBody">{card.body}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="lpHow" aria-label="How ContextMeM works">
