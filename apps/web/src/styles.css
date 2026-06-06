@@ -9515,22 +9515,22 @@ textarea:focus {
 }
 
 /* Per-EntityType color (closed enum -> stable legend mapping) */
-.factsType-organization { background: #1d63ed; }
-.factsType-product { background: #a8d946; }
-.factsType-platform { background: #0f766e; }
-.factsType-feature { background: #7c3aed; }
-.factsType-technology { background: #0891b2; }
-.factsType-integration { background: #d97706; }
-.factsType-pricing_plan { background: #16a34a; }
-.factsType-use_case { background: #db2777; }
-.factsType-person { background: #e36d52; }
-.factsType-customer { background: #2563eb; }
-.factsType-competitor { background: #b91c1c; }
-.factsType-metric { background: #ca8a04; }
-.factsType-location { background: #4f46e5; }
-.factsType-event { background: #be185d; }
-.factsType-concept { background: #64748b; }
-.factsType-other { background: #94a3b8; }
+.factsType-organization { background: #3e7bd6; }
+.factsType-product { background: #46a758; }
+.factsType-platform { background: #12a594; }
+.factsType-feature { background: #8e4ec6; }
+.factsType-technology { background: #3aa6c4; }
+.factsType-integration { background: #e07b3c; }
+.factsType-pricing_plan { background: #29a383; }
+.factsType-use_case { background: #cf5b9b; }
+.factsType-person { background: #dd6a52; }
+.factsType-customer { background: #5b7fd6; }
+.factsType-competitor { background: #d65b5f; }
+.factsType-metric { background: #d6b150; }
+.factsType-location { background: #6b6bcf; }
+.factsType-event { background: #d65b8a; }
+.factsType-concept { background: #8b97a8; }
+.factsType-other { background: #6e7079; }
 
 /* Claims */
 .factsClaimGroups {

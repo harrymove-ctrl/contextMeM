@@ -9,6 +9,9 @@ import Navigation10 from "./components/blocks/navigation-10.js";
 import { API_BASE } from "./lib/api-base.js";
 import { NamespaceMemoryConstellation } from "./components/namespace-memory/NamespaceMemoryConstellation.js";
 import { factsToMemoryGraph } from "./components/namespace-memory/facts-to-graph.js";
+import { buildEntityDetail } from "./components/namespace-memory/entity-detail.js";
+import { ENTITY_TYPE_COLORS, ENTITY_TYPE_LABELS, ENTITY_TYPE_ORDER } from "./lib/entity-colors.js";
+import type { EntityType } from "./lib/entity-colors.js";
 import StaggeredText from "./components/react-bits/staggered-text.js";
 import { BlurHighlight } from "./components/react-bits/blur-highlight.js";
 import DotShift from "./components/react-bits/dot-shift.js";
@@ -194,23 +197,8 @@ type FactSourceRef = {
   quote: string;
 };
 
-type EntityType =
-  | "organization"
-  | "product"
-  | "feature"
-  | "person"
-  | "technology"
-  | "integration"
-  | "platform"
-  | "pricing_plan"
-  | "use_case"
-  | "metric"
-  | "customer"
-  | "competitor"
-  | "location"
-  | "event"
-  | "concept"
-  | "other";
+// EntityType, ENTITY_TYPE_COLORS/LABELS/ORDER now live in ./lib/entity-colors.js
+// (single source shared with the constellation so graph + legend stay in sync).
 
 type SiteEntity = {
   id: string;
@@ -7069,44 +7057,6 @@ function TokenChips({ label, values }: { label: string; values: string[] }) {
   );
 }
 
-const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
-  organization: "Organizations",
-  product: "Products",
-  feature: "Features",
-  person: "People",
-  technology: "Technologies",
-  integration: "Integrations",
-  platform: "Platforms",
-  pricing_plan: "Pricing plans",
-  use_case: "Use cases",
-  metric: "Metrics",
-  customer: "Customers",
-  competitor: "Competitors",
-  location: "Locations",
-  event: "Events",
-  concept: "Concepts",
-  other: "Other"
-};
-
-const ENTITY_TYPE_ORDER: EntityType[] = [
-  "organization",
-  "product",
-  "platform",
-  "feature",
-  "technology",
-  "integration",
-  "pricing_plan",
-  "use_case",
-  "person",
-  "customer",
-  "competitor",
-  "metric",
-  "location",
-  "event",
-  "concept",
-  "other"
-];
-
 const CLAIM_KIND_LABELS: Record<ClaimKind, string> = {
   value_prop: "Value props",
   capability: "Capabilities",
@@ -7148,25 +7098,6 @@ function FactsSourceWhy({ sources, label = "why" }: { sources: FactSourceRef[]; 
   );
 }
 
-// Single-source entity-type -> color map (mirrors the .factsType-* legend in styles.css).
-const ENTITY_TYPE_COLORS: Record<EntityType, string> = {
-  organization: "#1d63ed",
-  product: "#a8d946",
-  platform: "#0f766e",
-  feature: "#7c3aed",
-  technology: "#0891b2",
-  integration: "#d97706",
-  pricing_plan: "#16a34a",
-  use_case: "#db2777",
-  person: "#e36d52",
-  customer: "#2563eb",
-  competitor: "#b91c1c",
-  metric: "#ca8a04",
-  location: "#4f46e5",
-  event: "#be185d",
-  concept: "#64748b",
-  other: "#94a3b8"
-};
 
 
 // Proportional topic band — facts.topics weights drive tile size; tinted by the
@@ -7222,7 +7153,20 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
     () =>
       factsToMemoryGraph(
         (facts?.entities ?? []).filter((entity) => (entity.sources?.length ?? 0) > 0),
-        facts?.relationships ?? []
+        facts?.relationships ?? [],
+        facts?.identity?.primaryEntityId
+      ),
+    [facts]
+  );
+  // Per-entity detail (aliases/topics/claims/stats) joined from the flat fact
+  // collections, looked up by entity id when a constellation node is selected.
+  const entityDetail = useMemo(
+    () =>
+      buildEntityDetail(
+        (facts?.entities ?? []).filter((entity) => (entity.sources?.length ?? 0) > 0),
+        facts?.claims ?? [],
+        facts?.stats ?? [],
+        facts?.topics ?? []
       ),
     [facts]
   );
@@ -7304,7 +7248,7 @@ function FactsPanel({ facts }: { facts?: SiteFacts }) {
             </span>
           </div>
           <div className="nmc-host">
-            <NamespaceMemoryConstellation graph={constellationGraph} />
+            <NamespaceMemoryConstellation graph={constellationGraph} entityDetail={entityDetail} />
           </div>
         </section>
       ) : null}

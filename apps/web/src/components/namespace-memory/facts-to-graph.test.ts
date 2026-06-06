@@ -15,7 +15,27 @@ describe("factsToMemoryGraph", () => {
 
   it("keeps only relationships between kept nodes and drops self-loops", () => {
     const g = factsToMemoryGraph([ent("a"), ent("b")], [rel("a", "b"), rel("a", "ghost"), rel("a", "a")]);
-    expect(g.links).toEqual([{ source: "a", target: "b", kind: "spine" }]);
+    expect(g.links).toHaveLength(1);
+    expect(g.links[0]).toMatchObject({ source: "a", target: "b" });
+  });
+
+  it("preserves relationship kind/label/confidence so edges can be typed and explained", () => {
+    // The richest part of the data — discarding it is what made the old graph read as undifferentiated lines.
+    const g = factsToMemoryGraph(
+      [ent("a"), ent("b")],
+      [{ sourceEntityId: "a", targetEntityId: "b", kind: "built_with", label: "binds blobs to Sui", confidence: 0.9 }],
+    );
+    expect(g.links[0]).toMatchObject({ relKind: "built_with", relLabel: "binds blobs to Sui", confidence: 0.9 });
+  });
+
+  it("marks the identity entity as primary, falling back to the highest-salience node", () => {
+    const entities = [ent("a", 0.4), ent("b", 0.9)];
+    // explicit identity wins even if it isn't the most salient
+    expect(factsToMemoryGraph(entities, [], "a").nodes.find((n) => n.id === "a")!.primary).toBe(true);
+    // no identity -> the top-salience node becomes the focal point
+    const fallback = factsToMemoryGraph(entities, []);
+    expect(fallback.nodes.find((n) => n.id === "b")!.primary).toBe(true);
+    expect(fallback.nodes.find((n) => n.id === "a")!.primary).toBe(false);
   });
 
   it("caps at 40 highest-salience nodes and drops links that reference a dropped node", () => {
