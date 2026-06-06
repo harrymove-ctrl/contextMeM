@@ -8634,23 +8634,22 @@ textarea:focus {
   backdrop-filter: blur(8px);
   display: grid;
   place-items: stretch;
-  padding: 24px;
+  padding: clamp(12px, 2.2vw, 32px);
 }
 
 .resultsExpandModalInner {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  background: #f5f7f0;
-  border: 1px solid #d8dee9;
-  border-radius: 14px;
-  padding: 18px;
+  gap: 16px;
+  background: var(--cm-bg);
+  border: 1px solid var(--cm-border);
+  border-radius: 16px;
+  padding: clamp(18px, 2vw, 30px);
   width: 100%;
-  max-width: 1400px;
   margin: 0 auto;
-  max-height: calc(100vh - 48px);
+  max-height: calc(100vh - clamp(24px, 4.4vw, 64px));
   overflow-y: auto;
-  box-shadow: 0 32px 60px rgba(15, 17, 21, 0.35);
+  box-shadow: var(--cm-shadow);
 }
 
 @media (max-width: 720px) {
@@ -9196,4 +9195,128 @@ textarea:focus {
   opacity: 0.75;
   cursor: not-allowed;
   transform: none;
+}
+
+/* ========== Expanded results view redesign (near-fullscreen + rebalanced grids) ========== */
+
+/* (a) OPEN BIGGER — near-fullscreen width + brand-lime top accent rule */
+.resultsExpandModalInnerWide {
+  max-width: min(1640px, 95vw);
+}
+
+.resultsExpandModalInnerWide > .resultsMetaBar {
+  border-top: 2px solid var(--cm-accent);
+}
+
+/* the 4-up stats can breathe wider and the tab bar stays reachable while scrolling */
+.resultsExpandModalInnerWide .stats {
+  gap: 14px;
+}
+
+.resultsExpandModalInnerWide .tabs {
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 6px 0;
+  background: var(--cm-bg);
+}
+
+.resultsExpandModalInnerWide .tabs button {
+  min-height: 36px;
+}
+
+/* fill the taller modal so panels aren't short cards floating in space */
+.resultsExpandModalInnerWide .resultsTabBody .panel,
+.resultsExpandModalInnerWide .resultsTabBody .grid,
+.resultsExpandModalInnerWide .resultsTabBody .empty {
+  min-height: calc(100vh - 280px);
+}
+
+/* (b)+(c) REBALANCE the Design System tab */
+
+/* 1) auto-fit the design stats so 1-4 cards fill the row evenly (no lopsided gaps) */
+.designStatsAuto {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+/* 2) asymmetric Typography / Layout split — give content-light Typography the wider column */
+.designSection.split.designSplitType {
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .designSection.split.designSplitType {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 3) fill the empty Typography panel: font specimens + 2-col token scale */
+.designTypography {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.designTypography .fontList {
+  margin-bottom: 2px;
+}
+
+.fontSpecimens span {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--cm-muted);
+}
+
+.fontSpecimens span strong {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--cm-ink);
+  min-width: 36px;
+}
+
+.typeScaleRows {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-content: start;
+}
+
+.typeScaleRows > div {
+  grid-template-columns: minmax(96px, 0.5fr) 1fr;
+  padding: 8px 10px;
+  border: 1px solid var(--cm-border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+/* 4) pack the color/component/export grids into the near-fullscreen width */
+.resultsExpandModalInnerWide .colorRoles {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.resultsExpandModalInnerWide .componentGrid,
+.resultsExpandModalInnerWide .exportGrid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.resultsExpandModalInnerWide .swatches.compact {
+  grid-template-columns: repeat(auto-fill, minmax(94px, 1fr));
+}
+
+/* (c) hierarchy/spacing tighten — a touch more vertical rhythm + elevated section heads */
+.resultsExpandModalInnerWide .designPanel {
+  gap: 18px;
+}
+
+.resultsExpandModalInnerWide .designSection {
+  padding: 16px;
+}
+
+.resultsExpandModalInnerWide .sectionHead h2 {
+  font-size: 16px;
+}
+
+.resultsExpandModalInnerWide .designHero h2 {
+  font-size: 26px;
 }

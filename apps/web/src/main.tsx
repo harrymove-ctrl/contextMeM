@@ -573,8 +573,8 @@ const storageLayers = [
   { tag: "Walrus Memory", title: "A recall-able index, not the bytes", detail: "Walrus Memory remembers only the semantic pointer: target, namespace, artifactDigest, blobId, jobId, and what changed. Agents recall it, then re-fetch the real artifact from storage.", icon: Brain, accent: "accent" },
   { tag: "Tatum", title: "One gateway for storage + chain", detail: "A single Tatum API key powers the Walrus storage REST and Sui chain reads — and the same key drives the @tatumio/blockchain-mcp server so agents read blockchain data directly.", icon: Cpu, accent: "teal" }
 ];
-const sdkImportTitle = "Import MemWal SDK credentials";
-const sdkImportBody = "Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted and unlocks verified Walrus context.";
+const sdkImportTitle = "Import Walrus Memory SDK credentials";
+const sdkImportBody = "Paste your Walrus Memory account ID and delegate private key. ContextMeM stores the delegate encrypted and unlocks verified Walrus context.";
 const memwalDashboardUrl = "https://memwal.ai/dashboard";
 
 const anonymousMe: AccountMe = {
@@ -584,7 +584,7 @@ const anonymousMe: AccountMe = {
   access: {
     canPreview: true,
     canRun: false,
-    reason: "Import MemWal SDK credentials for verified recall and memory."
+    reason: "Import Walrus Memory SDK credentials for verified recall and memory."
   }
 };
 
@@ -670,14 +670,14 @@ function ContextMemExperience() {
     if (callbackSession) {
       window.localStorage.setItem("contextmem.session", callbackSession);
       setSessionToken(callbackSession);
-      setAuthHint("MemWal connected. ContextMeM session restored.");
-      setMemwalNotice({ tone: "success", message: "MemWal connected. SDK delegate is ready for ContextMeM." });
+      setAuthHint("Walrus Memory connected. ContextMeM session restored.");
+      setMemwalNotice({ tone: "success", message: "Walrus Memory connected. SDK delegate is ready for ContextMeM." });
       params.delete("contextmem_session");
       params.delete("memwal");
       const nextQuery = params.toString();
       window.history.replaceState({}, "", `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash}`);
     } else if (memwalStatus && memwalStatus !== "connected") {
-      setMemwalNotice({ tone: "warning", message: `MemWal auth did not finish: ${memwalStatus.replaceAll("_", " ")}.` });
+      setMemwalNotice({ tone: "warning", message: `Walrus Memory auth did not finish: ${memwalStatus.replaceAll("_", " ")}.` });
     }
   }, []);
 
@@ -781,7 +781,7 @@ function ContextMemExperience() {
 
   async function attachLocalMemWal() {
     if (!me.authenticated) {
-      const message = "Import MemWal SDK credentials first, then local MCP credentials can be attached in dev mode.";
+      const message = "Import Walrus Memory SDK credentials first, then local MCP credentials can be attached in dev mode.";
       setAuthHint(message);
       setMemwalNotice({ tone: "info", message });
       return;
@@ -799,14 +799,14 @@ function ContextMemExperience() {
       const result = (await response.json()) as MemWalConnectResponse;
       if (result.imported && result.me) {
         setMe(result.me);
-        setAuthHint("Local MemWal MCP credentials attached for dev. Delegate key stays server-side.");
-        setMemwalNotice({ tone: "success", message: "Local MemWal MCP credentials attached for dev. Delegate key stays encrypted on the ContextMeM API." });
+        setAuthHint("Local Walrus Memory MCP credentials attached for dev. Delegate key stays server-side.");
+        setMemwalNotice({ tone: "success", message: "Local Walrus Memory MCP credentials attached for dev. Delegate key stays encrypted on the ContextMeM API." });
         return;
       }
       const command = result.commands?.[0];
       const tone = result.status === "account-mismatch" || result.status === "credentials-invalid" ? "warning" : "info";
       setMemwalNotice({ tone, message: result.message, command });
-      setAuthHint(command ? `Local MCP dev attach needs MemWal MCP login. Copy/run: ${command}` : result.message);
+      setAuthHint(command ? `Local MCP dev attach needs Walrus Memory MCP login. Copy/run: ${command}` : result.message);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -820,7 +820,7 @@ function ContextMemExperience() {
     const accountId = delegateAccountId.trim();
     const key = delegateKey.trim();
     if (!accountId || key.length < 12) {
-      const message = "Paste both your MemWal account ID and a delegate private key (12+ chars).";
+      const message = "Paste both your Walrus Memory account ID and a delegate private key (12+ chars).";
       setError(message);
       setMemwalNotice({ tone: "warning", message });
       return;
@@ -840,7 +840,7 @@ function ContextMemExperience() {
       setMe(hostedBrowserMe({ memwalAccountId: accountId, delegateKey: key }));
       setDelegateAccountId("");
       setDelegateKey("");
-      setAuthHint("MemWal delegate stored for this browser session and sent to the hosted API only when you run private ContextMeM requests.");
+      setAuthHint("Walrus Memory delegate stored for this browser session and sent to the hosted API only when you run private ContextMeM requests.");
       setMemwalNotice({
         tone: "success",
         message: "Delegate ready on the hosted app. The Worker accepts it for prod testing and does not persist the private key server-side."
@@ -865,7 +865,7 @@ function ContextMemExperience() {
       setMe(nextMe);
       setDelegateAccountId("");
       setDelegateKey("");
-      setAuthHint("MemWal delegate imported. ContextMeM will use it server-side.");
+      setAuthHint("Walrus Memory delegate imported. ContextMeM will use it server-side.");
       setMemwalNotice({ tone: "success", message: "SDK credentials imported. The delegate key was sent once and is stored encrypted server-side." });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -911,7 +911,7 @@ function ContextMemExperience() {
 
   async function startRun() {
     if (!hasMemWalDelegate) {
-      setError("Import MemWal SDK credentials before building context.");
+      setError("Import Walrus Memory SDK credentials before building context.");
       return;
     }
     if (isHostedApiBase) {
@@ -1072,7 +1072,7 @@ function ContextMemExperience() {
   async function remember() {
     if (!run) return;
     if (!hasMemWalDelegate) {
-      setError("Import MemWal SDK credentials before remembering context.");
+      setError("Import Walrus Memory SDK credentials before remembering context.");
       return;
     }
     if (isHostedApiBase) {
@@ -1088,10 +1088,10 @@ function ContextMemExperience() {
       const response = await fetch(`${API_BASE}/api/runs/${run.manifest.runId}/memwal/remember`, { method: "POST", headers: authHeaders(sessionToken) });
       if (!response.ok) throw new Error(await readResponseError(response));
       const result = await response.json();
-      setError(`MemWal remembered namespace: ${result.namespace}`);
+      setError(`Walrus Memory remembered namespace: ${result.namespace}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(isUnavailableMessage(message) ? `MemWal unavailable: ${message}` : message);
+      setError(isUnavailableMessage(message) ? `Walrus Memory unavailable: ${message}` : message);
     } finally {
       setBusy(false);
     }
@@ -1174,7 +1174,7 @@ function ContextMemExperience() {
     }
   }
 
-  const statusLabel = hasMemWalDelegate ? "Walrus Memory ready" : "SDK import needed";
+  const statusLabel = hasMemWalDelegate ? "Walrus Memory ready" : "Walrus Memory import needed";
   const statusTone: "ready" | "needsMemWal" | "preview" = hasMemWalDelegate ? "ready" : "needsMemWal";
   const sessionSlot = me.authenticated ? (
     <button className="sessionButton" onClick={logout}>
@@ -1311,7 +1311,7 @@ function ContextMemExperience() {
       <Route
         path="/app/memory"
         element={renderShell(
-          "MemWal memory",
+          "Walrus Memory",
           "Recall and remember verified context namespaces from the active package.",
           <MemoryAppPage artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={sessionToken} onRemember={remember} busy={busy} />
         )}
@@ -1324,8 +1324,8 @@ function ContextMemExperience() {
         element={renderShell(
           "Settings",
           isLocalApiBase(API_BASE)
-            ? "Manage MemWal delegate status and encrypted server-side credentials."
-            : "Manage MemWal delegate status for hosted prod testing.",
+            ? "Manage Walrus Memory delegate status and encrypted server-side credentials."
+            : "Manage Walrus Memory delegate status for hosted prod testing.",
           <SettingsAppPage
             me={me}
             quotaLabel={quotaLabel}
@@ -1998,7 +1998,7 @@ function AppShell({
           <div className="devAuthBanner" role="alert">
             <strong>Developer auth fallback active.</strong>
             <span>
-              <code>VITE_CONTEXTMEM_DEV_AUTH</code> or <code>?devAuth=1</code> is enabling a local MemWal bypass. This panel is hidden in production builds. Disable before sharing this browser session.
+              <code>VITE_CONTEXTMEM_DEV_AUTH</code> or <code>?devAuth=1</code> is enabling a local Walrus Memory bypass. This panel is hidden in production builds. Disable before sharing this browser session.
             </span>
           </div>
         ) : null}
@@ -2585,7 +2585,7 @@ function BuildConsolePage({
         ))}
       </div>
 
-      <ResultPane tab={visibleTab} artifact={artifact} run={run} busy={busy} error={error?.startsWith("MemWal") ? null : error} setArtifact={setArtifact} history={history} refreshHistory={refreshHistory} authToken={authToken} accountLabel={accountLabel} target={target} setTarget={setTarget} onStartRun={onStartRun} canStart={Boolean(target.trim()) && !busy} />
+      <div className="resultsTabBody"><ResultPane tab={visibleTab} artifact={artifact} run={run} busy={busy} error={error?.startsWith("Walrus Memory") ? null : error} setArtifact={setArtifact} history={history} refreshHistory={refreshHistory} authToken={authToken} accountLabel={accountLabel} target={target} setTarget={setTarget} onStartRun={onStartRun} canStart={Boolean(target.trim()) && !busy} /></div>
     </>
   );
 
@@ -2711,13 +2711,13 @@ function BuildConsolePage({
         {hasMemWalDelegate && run ? (
           <button className="secondary" disabled={!run || busy || !hasMemWalDelegate} onClick={onRemember}>
             <Brain size={17} />
-            Remember in MemWal
+            Remember in Walrus Memory
           </button>
         ) : null}
 
         {hostedBuildResult ? <HostedBuildBanner result={hostedBuildResult} /> : null}
 
-        {error ? <div className={artifact || error.startsWith("MemWal") ? "notice" : "error"}>{artifact && !error.startsWith("MemWal") ? `Partial context kept: ${error}` : error}</div> : null}
+        {error ? <div className={artifact || error.startsWith("Walrus Memory") ? "notice" : "error"}>{artifact && !error.startsWith("Walrus Memory") ? `Partial context kept: ${error}` : error}</div> : null}
       </aside>
 
       {firstRun ? (
@@ -2745,7 +2745,7 @@ function BuildConsolePage({
       )}
       {resultsExpanded ? (
         <div className="resultsExpandModal" role="dialog" aria-modal="true" aria-label="Build output (expanded)" onClick={() => setResultsExpanded(false)}>
-          <div className="resultsExpandModalInner" onClick={(event) => event.stopPropagation()}>
+          <div className="resultsExpandModalInner resultsExpandModalInnerWide" onClick={(event) => event.stopPropagation()}>
             {resultsBody}
           </div>
         </div>
@@ -2883,7 +2883,7 @@ function MemoryAppPage({
 }) {
   return (
     <section className="appPanelStack">
-      {artifact && run ? <MemWalPanel artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={authToken} onRemember={onRemember} rememberBusy={busy} /> : <div className="panel subEmpty">Build or reopen a run before using MemWal memory tools.</div>}
+      {artifact && run ? <MemWalPanel artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={authToken} onRemember={onRemember} rememberBusy={busy} /> : <div className="panel subEmpty">Build or reopen a run before using Walrus Memory tools.</div>}
     </section>
   );
 }
@@ -2929,8 +2929,8 @@ function SettingsAppPage({
         <div className="accountCardHead">
           <Database size={17} />
           <div>
-            <strong>MemWal account</strong>
-            <span>{me.authenticated ? me.account?.memwalAccountId ?? "MemWal not connected" : "login required"}</span>
+            <strong>Walrus Memory account</strong>
+            <span>{me.authenticated ? me.account?.memwalAccountId ?? "Walrus Memory not connected" : "login required"}</span>
           </div>
         </div>
         <div className="accountGrid">
@@ -2939,7 +2939,7 @@ function SettingsAppPage({
             <strong>{me.authenticated ? quotaLabel : "locked"}</strong>
           </div>
           <div>
-            <span>MemWal</span>
+            <span>Walrus Memory</span>
             <strong>{hasMemWalDelegate ? "ready" : "import"}</strong>
           </div>
         </div>
@@ -2964,14 +2964,14 @@ function SettingsAppPage({
         </div>
         <p className="settingsCopy">
           {hasMemWalDelegate
-            ? "Import again only if you rotate the delegate key in MemWal."
+            ? "Import again only if you rotate the delegate key in Walrus Memory."
             : isLocalApiBase(API_BASE)
               ? sdkImportBody
-              : "Paste your MemWal account ID and delegate private key. On the public site the delegate is stored in this browser only, sent as a request header for private hosted runs, and never persisted by the Worker."}
+              : "Paste your Walrus Memory account ID and delegate private key. On the public site the delegate is stored in this browser only, sent as a request header for private hosted runs, and never persisted by the Worker."}
         </p>
         <a className="sdkSetupLink" href={memwalDashboardUrl} target="_blank" rel="noreferrer">
           <ExternalLink size={13} />
-          Open MemWal dashboard to create or copy credentials
+          Open Walrus Memory dashboard to create or copy credentials
         </a>
         <SdkCredentialImportForm authenticated={me.authenticated} authBusy={authBusy} delegateAccountId={delegateAccountId} delegateKey={delegateKey} setDelegateAccountId={setDelegateAccountId} setDelegateKey={setDelegateKey} onImport={onImport} />
       </section>
@@ -3006,7 +3006,7 @@ function SettingsUsageGuide({ authenticated, onLogout }: { authenticated: boolea
       <div className="usageGuideGrid">
         <article>
           <strong>Log out</strong>
-          <p>Use this when you want to remove the MemWal delegate from this browser and clear the active run state.</p>
+          <p>Use this when you want to remove the Walrus Memory delegate from this browser and clear the active run state.</p>
           <button className="secondary danger" type="button" disabled={!authenticated} onClick={onLogout}>
             <KeyRound size={14} />
             Log out now
@@ -3156,7 +3156,7 @@ function ResultPane({
     return (
       <div className="empty">
         <Sparkles size={24} />
-        <span>Build a Walrus Site context package to inspect verified resources, markdown, visual assets, MemWal memory, and publish artifacts.</span>
+        <span>Build a Walrus Site context package to inspect verified resources, markdown, visual assets, Walrus Memory, and publish artifacts.</span>
       </div>
     );
   }
@@ -3386,7 +3386,7 @@ function StatusPill({ statusLabel, statusTone, run, hasMemWalDelegate, sessionSl
   // with a popover. Mirrors the aisssa header pattern: a coloured dot + concise
   // label up top, full breakdown one click away.
   const dotTone = hasMemWalDelegate ? "ready" : statusTone === "needsMemWal" ? "warn" : "info";
-  const compactLabel = hasMemWalDelegate ? (run ? "Building" : "Ready") : "Locked preview";
+  const compactLabel = hasMemWalDelegate ? (run ? "Building" : "Ready") : "Walrus Memory import needed";
 
   return (
     <details className="statusPill">
@@ -3738,8 +3738,8 @@ function SdkCredentialImportForm({
       dashboardUrl={memwalDashboardUrl}
       delegateStorage={isLocalApiBase(API_BASE) ? "server" : "browser"}
       description={isLocalApiBase(API_BASE)
-        ? "Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted server-side and unlocks verified Walrus context."
-        : "Paste your MemWal account ID and delegate private key. On the public site they are stored in this browser only, sent as request headers for private hosted runs, and never persisted by the Worker."}
+        ? "Paste your Walrus Memory account ID and delegate private key. ContextMeM stores the delegate encrypted server-side and unlocks verified Walrus context."
+        : "Paste your Walrus Memory account ID and delegate private key. On the public site they are stored in this browser only, sent as request headers for private hosted runs, and never persisted by the Worker."}
     />
   );
 }
@@ -3795,7 +3795,7 @@ function SavedSdkCredentialStatus({ accountId }: { accountId?: string }) {
       <ShieldCheck size={16} />
       <div>
         <strong>SDK credentials saved</strong>
-        <p>{isLocalApiBase(API_BASE) ? "ContextMeM will reuse the encrypted server-side delegate. Import again only if you rotate this key in MemWal." : "ContextMeM will reuse the delegate from this browser for hosted prod testing. Import again only if you rotate this key in MemWal."}</p>
+        <p>{isLocalApiBase(API_BASE) ? "ContextMeM will reuse the encrypted server-side delegate. Import again only if you rotate this key in Walrus Memory." : "ContextMeM will reuse the delegate from this browser for hosted prod testing. Import again only if you rotate this key in Walrus Memory."}</p>
         {accountId ? <code>{compactHash(accountId)}</code> : null}
         <div className="sdkTestRow">
           <button type="button" className="sdkTestButton" onClick={() => void testConnection()} disabled={busy}>
@@ -3808,7 +3808,7 @@ function SavedSdkCredentialStatus({ accountId }: { accountId?: string }) {
       </div>
       <a className="sdkSetupLink" href={memwalDashboardUrl} target="_blank" rel="noreferrer">
         <ExternalLink size={13} />
-        Open MemWal dashboard
+        Open Walrus Memory dashboard
       </a>
     </div>
   );
@@ -3824,7 +3824,7 @@ function HostedCredentialGate({ notice, previewBusy, onPreviewDemo, panel = fals
       <span>Hosted prod test</span>
       <h2>Run a public preview or import credentials.</h2>
       <p>
-        Public preview works without credentials. Private hosted runs accept your MemWal delegate from Settings and do not require a local API.
+        Public preview works without credentials. Private hosted runs accept your Walrus Memory delegate from Settings and do not require a local API.
       </p>
       {hasInput ? (
         <form
@@ -3860,7 +3860,7 @@ function HostedCredentialGate({ notice, previewBusy, onPreviewDemo, panel = fals
       <div className="hostedCredentialActions secondary">
         <a href={memwalDashboardUrl} target="_blank" rel="noreferrer">
           <ExternalLink size={14} />
-          Open MemWal dashboard
+          Open Walrus Memory dashboard
         </a>
       </div>
       <MemWalNoticeCard notice={notice} centered={panel} />
@@ -3887,7 +3887,7 @@ function LockedPreview({
     <div className="lockedPreview">
       <div className="blurredDemo" aria-hidden="true">
         <div className="stats">
-          {["Pages", "Resources", "Design tokens", "MemWal"].map((item, index) => (
+          {["Pages", "Resources", "Design tokens", "Walrus Memory"].map((item, index) => (
             <div className="stat" key={item}>
               <Sparkles size={16} />
               <span>{item}</span>
@@ -3896,7 +3896,7 @@ function LockedPreview({
           ))}
         </div>
         <div className="panel">
-          <pre>{`Walrus Site package\n- verified Sui object provenance\n- resource manifest and blob IDs\n- markdown and visual system export\n- MemWal recall namespace`}</pre>
+          <pre>{`Walrus Site package\n- verified Sui object provenance\n- resource manifest and blob IDs\n- markdown and visual system export\n- Walrus Memory recall namespace`}</pre>
         </div>
       </div>
       {canImportSdkCredentials ? (
@@ -3913,8 +3913,8 @@ function LockedPreview({
           noticeSlot={<MemWalNoticeCard notice={notice} centered />}
           delegateStorage={isLocalApiBase(API_BASE) ? "server" : "browser"}
           description={isLocalApiBase(API_BASE)
-            ? "Paste your MemWal account ID and delegate private key. ContextMeM stores the delegate encrypted server-side and unlocks verified Walrus context."
-            : "Paste your MemWal account ID and delegate private key. On the public site they are stored in this browser only, sent as request headers for private hosted runs, and never persisted by the Worker."}
+            ? "Paste your Walrus Memory account ID and delegate private key. ContextMeM stores the delegate encrypted server-side and unlocks verified Walrus context."
+            : "Paste your Walrus Memory account ID and delegate private key. On the public site they are stored in this browser only, sent as request headers for private hosted runs, and never persisted by the Worker."}
         />
       ) : (
         <HostedCredentialGate notice={notice} previewBusy={previewBusy} onPreviewDemo={onPreviewDemo} panel target={target} setTarget={setTarget} />
@@ -5791,7 +5791,7 @@ function MemWalPanel({
 
   return (
     <div className="panel memwalPanel memoryChatPanel">
-      <section className="memoryChatShell" aria-label="MemWal memory chat">
+      <section className="memoryChatShell" aria-label="Walrus Memory chat">
         <header className="memoryChatHeader">
           <div>
             <span>Namespace</span>
@@ -5824,7 +5824,7 @@ function MemWalPanel({
               <article key={message.id} className={`memoryBubble ${message.role} ${message.mode ?? ""}`}>
                 <div className="memoryBubbleIcon">{message.role === "user" ? <UserCheck size={16} /> : message.mode === "recall" ? <Brain size={16} /> : <MessageSquare size={16} />}</div>
                 <div>
-                  <span>{message.role === "user" ? (message.mode === "recall" ? "Recall prompt" : "Memory question") : message.mode === "recall" ? "MemWal recall" : "ContextMeM memory"}</span>
+                  <span>{message.role === "user" ? (message.mode === "recall" ? "Recall prompt" : "Memory question") : message.mode === "recall" ? "Walrus Memory recall" : "ContextMeM memory"}</span>
                   <p>{message.content}</p>
                   {message.data ? (
                     <details>
@@ -5841,7 +5841,7 @@ function MemWalPanel({
                   <LoaderCircle size={16} />
                 </div>
                 <div>
-                  <span>{busy === "memwal/recall" ? "MemWal recall" : "ContextMeM memory"}</span>
+                  <span>{busy === "memwal/recall" ? "Walrus Memory recall" : "ContextMeM memory"}</span>
                   <p>{busy === "memwal/recall" ? "Searching previous namespace memory..." : "Querying remembered context..."}</p>
                 </div>
               </article>
@@ -5856,7 +5856,7 @@ function MemWalPanel({
             void sendMemoryMessage("query");
           }}
         >
-          <textarea value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ask MemWal what changed, what matters, or what the next agent should remember..." />
+          <textarea value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ask Walrus Memory what changed, what matters, or what the next agent should remember..." />
           <div className="memoryComposerActions">
             <button type="button" onClick={() => void sendMemoryMessage("recall")} disabled={!run || busy !== null || !query.trim()}>
               <Brain size={15} />
@@ -5946,7 +5946,7 @@ function buildInitialMemoryMessage(artifact: ArtifactManifest, run: RunResponse 
   return {
     id: `system-${run?.manifest.runId ?? "empty"}`,
     role: "assistant",
-    content: `Active package loaded for ${compactHash(namespace)}. Ask what changed, what should be remembered, or query existing MemWal context for this namespace.`,
+    content: `Active package loaded for ${compactHash(namespace)}. Ask what changed, what should be remembered, or query existing Walrus Memory context for this namespace.`,
     mode: "query"
   };
 }
@@ -5976,7 +5976,7 @@ function memoryPayloadToText(payload: unknown, kind: "recall" | "query"): string
 
   if (Array.isArray(record.matches) && record.matches.length) return `Found ${record.matches.length} matching memory item${record.matches.length === 1 ? "" : "s"}. Open Raw response for details.`;
   if (Array.isArray(record.memories) && record.memories.length) return `Found ${record.memories.length} remembered item${record.memories.length === 1 ? "" : "s"} for this namespace.`;
-  if (Array.isArray(record.results) && record.results.length) return `Found ${record.results.length} result${record.results.length === 1 ? "" : "s"} from MemWal.`;
+  if (Array.isArray(record.results) && record.results.length) return `Found ${record.results.length} result${record.results.length === 1 ? "" : "s"} from Walrus Memory.`;
 
   const rendered = JSON.stringify(payload, null, 2);
   return rendered.length > 1200 ? `${rendered.slice(0, 1200)}\n...` : rendered;
@@ -5985,8 +5985,8 @@ function memoryPayloadToText(payload: unknown, kind: "recall" | "query"): string
 function normalizeMemoryError(message: string, kind: "recall" | "query") {
   const connectionProblem = /unable to connect|failed to fetch|network|ECONNREFUSED|ENOTFOUND/i.test(message);
   if (!connectionProblem) return message;
-  if (kind === "recall") return "MemWal could not be reached from the ContextMeM server. The active package is still available here; remember this run once the MemWal service is reachable, then retry recall.";
-  return "MemWal could not answer right now. The active package is loaded locally, but the server-side MemWal connection failed. Try Remember run first, then send the question again.";
+  if (kind === "recall") return "Walrus Memory could not be reached from the ContextMeM server. The active package is still available here; remember this run once the Walrus Memory service is reachable, then retry recall.";
+  return "Walrus Memory could not answer right now. The active package is loaded locally, but the server-side Walrus Memory connection failed. Try Remember run first, then send the question again.";
 }
 
 function FileChecklist({ files }: { files: Array<{ path: string; exists: boolean; size?: number }> }) {
@@ -6157,7 +6157,7 @@ function DesignSystemPanel({ data, fallback, run, authToken }: { data?: DesignSy
         </div>
       ) : null}
 
-      <section className="designStats">
+      <section className="designStats designStatsAuto">
         <div>
           <span>Tokens</span>
           <strong>{brandTokenCount}</strong>
@@ -6203,18 +6203,18 @@ function DesignSystemPanel({ data, fallback, run, authToken }: { data?: DesignSy
         </div>
       </section>
 
-      <section className="designSection split">
-        <article>
+      <section className="designSection split designSplitType">
+        <article className="designTypography">
           <div className="sectionHead">
             <h2>Typography</h2>
             <span>{data.tokens.typography.scale.length} styles</span>
           </div>
-          <div className="fontList">
-            {data.tokens.typography.fontFamilies.slice(0, 10).map((font) => (
-              <span key={font}>{font}</span>
+          <div className="fontList fontSpecimens">
+            {data.tokens.typography.fontFamilies.slice(0, 6).map((font) => (
+              <span key={font} style={{ fontFamily: font }}><strong>Ag</strong>{font}</span>
             ))}
           </div>
-          <div className="tokenRows">
+          <div className="tokenRows typeScaleRows">
             {[data.tokens.typography.body, ...data.tokens.typography.headings].filter(Boolean).map((token) => (
               <div key={token!.name}>
                 <strong>{token!.name}</strong>
@@ -6784,7 +6784,7 @@ function hostedBrowserMe(stored: { memwalAccountId: string; delegateKey: string 
       updatedAt: now
     },
     quota: { limit: 0, used: 0, remaining: 0, unlimited: true },
-    access: { canPreview: true, canRun: true, reason: "Hosted MemWal delegate is available for this browser session." }
+    access: { canPreview: true, canRun: true, reason: "Hosted Walrus Memory delegate is available for this browser session." }
   };
 }
 
@@ -6823,13 +6823,13 @@ function failureHintFor(message: string): { code?: string; hint: string } | null
   if (!message) return null;
   const lower = message.toLowerCase();
   if (lower.includes("[demo_limit_exceeded]") || lower.includes("demo limit reached")) {
-    return { code: "DEMO_LIMIT_EXCEEDED", hint: "Open /app/settings, generate an account secret and import MemWal credentials to unlock unlimited extractions." };
+    return { code: "DEMO_LIMIT_EXCEEDED", hint: "Open /app/settings, generate an account secret and import Walrus Memory credentials to unlock unlimited extractions." };
   }
   if (lower.includes("walrus") && (lower.includes("aggregator") || lower.includes("timeout") || lower.includes("unreachable"))) {
     return { code: "WALRUS_UNREACHABLE", hint: "Walrus aggregator is unreachable. Try again in a minute or set WALRUS_AGGREGATOR_URL to an alternate mirror." };
   }
   if (lower.includes("memwal") && (lower.includes("401") || lower.includes("unauthorized") || lower.includes("delegate"))) {
-    return { code: "MEMWAL_AUTH", hint: "MemWal rejected the delegate key. Re-import SDK credentials in /app/settings or rotate the key in the MemWal dashboard." };
+    return { code: "MEMWAL_AUTH", hint: "Walrus Memory rejected the delegate key. Re-import SDK credentials in /app/settings or rotate the key in the Walrus Memory dashboard." };
   }
   if (lower.includes("openai") && (lower.includes("rate") || lower.includes("429"))) {
     return { code: "OPENAI_RATE_LIMIT", hint: "OpenAI rate-limited the request. Wait ~30 seconds, then retry — or set a higher-tier OPENAI_API_KEY." };
