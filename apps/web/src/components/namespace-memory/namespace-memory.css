@@ -1,4 +1,16 @@
-.nmc-root { position: fixed; inset: 0; background: var(--cm-graph-bg); overflow: hidden; }
+.nmc-root { position: absolute; inset: 0; background: var(--cm-graph-bg); overflow: hidden; }
+/* In-shell embed host: gives the absolutely-positioned .nmc-root a sized,
+   positioned parent inside .appContent. The 220px ≈ shell chrome (topbar +
+   paddings); the component's ResizeObserver fits the canvas to whatever this
+   resolves to, so the value is a tunable cosmetic, not load-bearing. */
+.nmc-host {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 220px);
+  min-height: 460px;
+  border-radius: 12px;
+  overflow: hidden;
+}
 .nmc-canvas { position: absolute; inset: 0; }
 .nmc-panel {
   position: absolute; top: 0; right: 0; height: 100%; width: min(420px, 92vw);

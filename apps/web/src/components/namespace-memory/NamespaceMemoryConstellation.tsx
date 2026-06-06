@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import ForceGraph3D from "react-force-graph-3d";
 import type { MemoryGraph, MemoryNode } from "../../lib/memory-graph-types.js";
@@ -23,6 +23,24 @@ const nodeThreeObject = (n: any) => createNodeObject(n, routePathColor(n.routePa
 
 export function NamespaceMemoryConstellation({ graph }: { graph: MemoryGraph }) {
   const fgRef = useRef<any>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
+  // Seed with non-zero dims, NOT {0,0}. The mount-frame canvas computes camera
+  // aspect = width/height; 0/0 = NaN poisons the Three.js view matrix and the
+  // scene can come up blank even after the observer corrects the size.
+  const [size, setSize] = useState({ width: 800, height: 600 });
+
+  // react-force-graph-3d defaults to window size and never observes its parent,
+  // so measure the host ourselves and feed explicit width/height to the canvas.
+  useLayoutEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const measure = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const [selected, setSelected] = useState<MemoryNode | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const reducedMotion = useMemo(
@@ -85,11 +103,13 @@ export function NamespaceMemoryConstellation({ graph }: { graph: MemoryGraph }) 
   }
 
   return (
-    <div className="nmc-root">
+    <div className="nmc-root" ref={hostRef}>
       <MemorySearchBox nodes={graph.nodes} onSelect={focusNode} />
       <div className="nmc-canvas">
         <ForceGraph3D
           ref={fgRef}
+          width={size.width}
+          height={size.height}
           graphData={graph}
           controlType="orbit"
           backgroundColor={GRAPH_BG}
