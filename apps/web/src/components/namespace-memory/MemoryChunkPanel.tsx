@@ -20,7 +20,7 @@ export function MemoryChunkPanel({ node, onClose }: { node: MemoryNode; onClose:
         {node.url ? <> · <a href={node.url} target="_blank" rel="noreferrer" style={{ color: "var(--cm-accent)" }}>source</a></> : null}
       </div>
       <div className="nmc-panel-text">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{node.textPreview ?? ""}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{node.text}</ReactMarkdown>
       </div>
     </motion.aside>
   );

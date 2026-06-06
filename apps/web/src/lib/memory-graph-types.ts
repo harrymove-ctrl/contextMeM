@@ -22,7 +22,7 @@ export interface MemoryNode {
   routePath: string; // page — colour + clustering key
   headingPath: string[];
   url?: string;
-  textPreview: string;
+  text: string; // full chunk text — panel body + search haystack (spec §1.4/§10)
   byteLength: number;
   order: number;
   val: number; // force-graph node size

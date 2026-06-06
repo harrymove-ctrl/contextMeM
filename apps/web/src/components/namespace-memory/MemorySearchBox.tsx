@@ -3,16 +3,16 @@ import type { MemoryNode } from "../../lib/memory-graph-types.js";
 
 export function MemorySearchBox({ nodes, onSelect }: { nodes: MemoryNode[]; onSelect: (n: MemoryNode) => void }) {
   const [q, setQ] = useState("");
+  // Lowercase the full-text haystack once per graph, not on every keystroke.
+  const haystacks = useMemo(
+    () => nodes.map((n) => `${n.label} ${n.routePath} ${n.text}`.toLowerCase()),
+    [nodes],
+  );
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return [];
-    return nodes
-      .filter((n) =>
-        n.label.toLowerCase().includes(needle) ||
-        n.routePath.toLowerCase().includes(needle) ||
-        n.textPreview.toLowerCase().includes(needle))
-      .slice(0, 20);
-  }, [q, nodes]);
+    return nodes.filter((_, i) => haystacks[i]!.includes(needle)).slice(0, 20);
+  }, [q, nodes, haystacks]);
   return (
     <div className="nmc-search">
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search memory…" />

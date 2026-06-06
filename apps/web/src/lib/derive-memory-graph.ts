@@ -1,5 +1,9 @@
 import type { ContextChunk, MemoryGraph, MemoryLink, MemoryNode } from "./memory-graph-types.js";
-import { sizeScale } from "../components/namespace-memory/memory-theme.js";
+
+// Node area ∝ bytes; clamp so tiny chunks stay visible and huge ones don't dominate.
+export function sizeScale(byteLength: number): number {
+  return Math.min(12, Math.max(1, Math.sqrt(Math.max(0, byteLength)) / 6));
+}
 
 // `prefix` is a strictly-shorter ancestor of `full` in the heading hierarchy.
 function isProperPrefix(prefix: string[], full: string[]): boolean {
@@ -14,11 +18,11 @@ function toNode(c: ContextChunk): MemoryNode {
   const firstLine = c.text.split("\n")[0] ?? "";
   return {
     id: c.chunkId,
-    label: c.heading ?? firstLine,
+    label: c.heading || firstLine,
     routePath: c.routePath,
     headingPath: c.headingPath,
     url: c.url,
-    textPreview: c.text.slice(0, 200),
+    text: c.text,
     byteLength: c.byteLength,
     order: c.order,
     val: sizeScale(c.byteLength),

@@ -10,10 +10,7 @@ function hashString(s: string): number {
 
 export function routePathColor(routePath: string): string {
   const hue = hashString(routePath) % 360;
-  return `hsl(${hue} 85% 62%)`;
-}
-
-// Node area ∝ bytes; clamp so tiny chunks stay visible and huge ones don't dominate.
-export function sizeScale(byteLength: number): number {
-  return Math.min(12, Math.max(1, Math.sqrt(Math.max(0, byteLength)) / 6));
+  // Comma-separated form: THREE.Color.setStyle only parses comma hsl(), not the
+  // space-separated CSS Color 4 syntax — the space form leaves every sprite white.
+  return `hsl(${hue}, 85%, 62%)`;
 }

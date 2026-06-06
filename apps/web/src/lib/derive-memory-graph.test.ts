@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { deriveMemoryGraph } from "./derive-memory-graph.js";
+import { deriveMemoryGraph, sizeScale } from "./derive-memory-graph.js";
 import type { ContextChunk, MemoryGraph } from "./memory-graph-types.js";
+
+describe("sizeScale", () => {
+  it("is monotonic non-decreasing in byteLength", () => {
+    expect(sizeScale(4000)).toBeGreaterThanOrEqual(sizeScale(100));
+  });
+  it("never returns below 1 (zero-byte chunk still visible)", () => {
+    expect(sizeScale(0)).toBeGreaterThanOrEqual(1);
+  });
+});
 
 function chunk(p: {
   id: string;

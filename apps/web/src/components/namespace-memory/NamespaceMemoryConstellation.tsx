@@ -17,6 +17,10 @@ function linkEndId(end: unknown): string {
   return typeof end === "object" && end !== null ? (end as { id: string }).id : (end as string);
 }
 
+// Stable accessor: a new reference makes react-force-graph clear and rebuild every
+// sprite, so keep it module-scoped (it closes over module constants only).
+const nodeThreeObject = (n: any) => createNodeObject(n, routePathColor(n.routePath), SELECTIVE_BLOOM);
+
 export function NamespaceMemoryConstellation({ graph }: { graph: MemoryGraph }) {
   const fgRef = useRef<any>(null);
   const [selected, setSelected] = useState<MemoryNode | null>(null);
@@ -45,12 +49,13 @@ export function NamespaceMemoryConstellation({ graph }: { graph: MemoryGraph }) 
   );
 
   useEffect(() => {
-    attachBloom(fgRef.current);
+    const detachBloom = attachBloom(fgRef.current);
     const controls = fgRef.current?.controls?.();
     if (controls && "autoRotate" in controls) {
       controls.autoRotate = !reducedMotion; // requires controlType="orbit"
       controls.autoRotateSpeed = 0.4;
     }
+    return detachBloom;
   }, [reducedMotion]);
 
   useEffect(() => {
@@ -64,10 +69,19 @@ export function NamespaceMemoryConstellation({ graph }: { graph: MemoryGraph }) 
     setSelected(node);
     const fg = fgRef.current;
     if (!fg) return;
-    const n = node as unknown as { x: number; y: number; z: number };
+    const n = node as unknown as { x?: number; y?: number; z?: number };
+    const x = n.x ?? 0, y = n.y ?? 0, z = n.z ?? 0;
     const dist = 120;
-    const ratio = 1 + dist / Math.hypot(n.x || 1, n.y || 1, n.z || 1);
-    fg.cameraPosition({ x: (n.x || 0) * ratio, y: (n.y || 0) * ratio, z: (n.z || 0) * ratio }, n, reducedMotion ? 0 : 1200);
+    const ms = reducedMotion ? 0 : 1200;
+    const mag = Math.hypot(x, y, z);
+    // Node at the origin or before the sim assigns coords: look at it from a fixed
+    // offset so the camera never lands on the target (degenerate / NaN view matrix).
+    if (mag < 1e-3) {
+      fg.cameraPosition({ x: 0, y: 0, z: dist }, { x, y, z }, ms);
+      return;
+    }
+    const ratio = 1 + dist / mag;
+    fg.cameraPosition({ x: x * ratio, y: y * ratio, z: z * ratio }, { x, y, z }, ms);
   }
 
   return (
@@ -79,7 +93,7 @@ export function NamespaceMemoryConstellation({ graph }: { graph: MemoryGraph }) 
           graphData={graph}
           controlType="orbit"
           backgroundColor={GRAPH_BG}
-          nodeThreeObject={(n: any) => createNodeObject(n, routePathColor(n.routePath), SELECTIVE_BLOOM)}
+          nodeThreeObject={nodeThreeObject}
           nodeLabel={(n: any) => n.label}
           onNodeHover={(n: any) => setHoverId(n ? n.id : null)}
           linkColor={(l: any) => {
