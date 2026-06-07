@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -262,6 +263,36 @@ export function NamespaceMemoryConstellation({ graph, entityDetail }: { graph: M
   const [selected, setSelected] = useState<MemoryNode | null>(null);
   const selectedRef = useRef<MemoryNode | null>(null);
   selectedRef.current = selected;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Native Fullscreen API on the root (not CSS position:fixed): the constellation is
+  // embedded in a backdrop-blurred, scrollable panel whose ancestors form a containing
+  // block that would clip a fixed element — the top layer sidesteps that. The canvas
+  // ResizeObserver already refits the renderer to the new size, so nothing else to do.
+  useEffect(() => {
+    const onChange = () => {
+      const fsEl = document.fullscreenElement ?? (document as any).webkitFullscreenElement ?? null;
+      setIsFullscreen(fsEl === rootRef.current);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange as EventListener);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange as EventListener);
+    };
+  }, []);
+
+  function toggleFullscreen() {
+    const el = rootRef.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null;
+    if (!el) return;
+    const fsEl = document.fullscreenElement ?? (document as any).webkitFullscreenElement ?? null;
+    if (fsEl) {
+      (document.exitFullscreen ?? (document as any).webkitExitFullscreen)?.call(document);
+    } else {
+      (el.requestFullscreen ?? el.webkitRequestFullscreen)?.call(el);
+    }
+  }
 
   // BFS hop distance from the primary entity → label/animation phase + edge feel.
   const levelOf = useMemo(() => {
@@ -515,8 +546,16 @@ export function NamespaceMemoryConstellation({ graph, entityDetail }: { graph: M
   }
 
   return (
-    <div className="nmc-root nmc-3d">
+    <div className="nmc-root nmc-3d" ref={rootRef}>
       <MemorySearchBox nodes={graph.nodes} onSelect={focusById} />
+      <button
+        className="nmc-fullscreen"
+        onClick={toggleFullscreen}
+        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+      >
+        {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+      </button>
       <div className="nmc-canvas" ref={mountRef} />
       <div className="nmc-labels" ref={labelHostRef} aria-hidden="true" />
       <MemoryLegend nodeCount={graph.nodes.length} linkCount={graph.links.length} />
