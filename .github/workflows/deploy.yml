@@ -46,6 +46,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api/cloudflare
+          # Force bun: this is a bun workspace, npm chokes on `workspace:*` deps
+          # (EUNSUPPORTEDPROTOCOL) when wrangler-action tries to self-install.
+          packageManager: bun
+          wranglerVersion: "4.95.0"
           command: deploy
           secrets: |
             CONTEXTMEM_NAMESPACE_IMPORT_TOKEN
@@ -70,4 +74,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: bun
+          wranglerVersion: "4.95.0"
           command: pages deploy apps/web/dist --project-name=contextmem --branch=main
