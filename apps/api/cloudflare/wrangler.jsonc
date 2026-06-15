@@ -51,5 +51,59 @@
   },
   "triggers": {
     "crons": ["*/30 * * * *"]
+  },
+  // ── Staging environment ──────────────────────────────────────────────
+  // Deployed by CI on push to the `staging` branch via `wrangler deploy --env staging`.
+  // Fully isolated resources (own D1 / R2 / queue) so staging never touches prod data.
+  // main / compatibility_date / compatibility_flags / alias / triggers are INHERITED
+  // from the top level; bindings (vars, d1, r2, ai, queues) are NOT inherited and are
+  // redefined here. Create the resources + set the D1 id with the commands in README/CI notes.
+  "env": {
+    "staging": {
+      "name": "contextmem-backend-staging",
+      "workers_dev": true,
+      "preview_urls": false,
+      "vars": {
+        "CONTEXTMEM_WORKER_BASE_URL": "https://contextmem-backend-staging.petlofi.workers.dev",
+        "CONTEXTMEM_DEMO_SAMPLE_TARGET": "https://seal-docs.wal.app/",
+        "OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
+        "OPENAI_MODEL": "openai/gpt-4o-mini"
+      },
+      "d1_databases": [
+        {
+          "binding": "CONTEXTMEM_DB",
+          "database_name": "contextmem-staging",
+          "database_id": "884f4669-081a-4f1f-8ce1-b6715a9a6d29",
+          "migrations_dir": "../migrations"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "CONTEXTMEM_CONTEXT_BUCKET",
+          "bucket_name": "contextmem-context-staging"
+        }
+      ],
+      "ai": {
+        "binding": "AI"
+      },
+      "queues": {
+        "producers": [
+          {
+            "binding": "CONTEXTMEM_EXTRACT_QUEUE",
+            "queue": "contextmem-extractions-staging"
+          }
+        ],
+        "consumers": [
+          {
+            "queue": "contextmem-extractions-staging"
+          }
+        ]
+      },
+      // Disable the inherited */30 cron on staging — no scheduled extractions needed
+      // there, and it would otherwise invoke the staging worker every 30 min for nothing.
+      "triggers": {
+        "crons": []
+      }
+    }
   }
 }

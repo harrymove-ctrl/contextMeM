@@ -23,7 +23,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 concurrency:
@@ -33,7 +33,7 @@ concurrency:
 jobs:
   deploy-worker:
     runs-on: ubuntu-latest
-    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    if: ${{ vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -58,7 +58,7 @@ jobs:
 
   deploy-pages:
     runs-on: ubuntu-latest
-    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    if: ${{ vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -77,3 +77,52 @@ jobs:
           packageManager: bun
           wranglerVersion: "4.95.0"
           command: pages deploy apps/web/dist --project-name=contextmem --branch=main
+
+  # ── Staging (push to `staging` branch) ────────────────────────────────
+  # Deploys the isolated staging Worker (env.staging in wrangler.jsonc) and a
+  # `staging` preview deployment on the same Pages project.
+  # One-time setup before the first staging deploy:
+  #   1. Create resources (see commands in PR/README), put the D1 id in wrangler.jsonc.
+  #   2. Push the staging Worker secret once:
+  #      echo "<token>" | bunx wrangler@4.95.0 secret put CONTEXTMEM_NAMESPACE_IMPORT_TOKEN \
+  #        --env staging --config apps/api/cloudflare/wrangler.jsonc
+  deploy-worker-staging:
+    runs-on: ubuntu-latest
+    if: ${{ vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/staging' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+      - run: bun install --frozen-lockfile
+      - name: Deploy Worker (staging)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api/cloudflare
+          packageManager: bun
+          wranglerVersion: "4.95.0"
+          command: deploy --env staging
+
+  deploy-pages-staging:
+    runs-on: ubuntu-latest
+    if: ${{ vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/staging' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+      - run: bun install --frozen-lockfile
+      - name: Build web (staging)
+        run: bun run --filter @contextmem/web build
+        env:
+          VITE_CONTEXTMEM_API_BASE: ${{ vars.CONTEXTMEM_API_BASE_STAGING || 'https://contextmem-backend-staging.petlofi.workers.dev' }}
+      - name: Deploy Pages (staging)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: bun
+          wranglerVersion: "4.95.0"
+          command: pages deploy apps/web/dist --project-name=contextmem --branch=staging
