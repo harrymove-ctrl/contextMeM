@@ -45,6 +45,10 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # workingDirectory has no lockfile, so the action would infer npm and choke
+          # on bun's `workspace:*` deps. Force bun (handles workspace:*) and pin wrangler.
+          packageManager: bun
+          wranglerVersion: "4.95.0"
           workingDirectory: apps/api/cloudflare
           # Force bun: this is a bun workspace, npm chokes on `workspace:*` deps
           # (EUNSUPPORTEDPROTOCOL) when wrangler-action tries to self-install.
