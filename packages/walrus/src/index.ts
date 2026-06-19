@@ -5,3 +5,4 @@ export * from "./resources.js";
 export * from "./proof.js";
 export * from "./storage.js";
 export * from "./history.js";
+export * as harbor from "./harbor/index.js";
