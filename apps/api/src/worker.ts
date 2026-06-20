@@ -16,7 +16,11 @@ import { MemWalMcpClient } from "@contextmem/memwal";
 // artifacts in the Worker and store the ciphertext in a per-namespace Harbor
 // bucket instead of writing plaintext to R2. See resolveHarborConfig + the
 // private branch of storeNamespaceImport / readArtifact below.
-import { harbor } from "@contextmem/walrus";
+// Import from the leaf SUBPATH (not the "@contextmem/walrus" barrel): the barrel
+// re-exports siblings that pull "@contextmem/core" → html.ts → jsdom, which uses
+// __dirname at import time and is rejected by the Workers runtime. The harbor
+// subtree is core-free, so this keeps jsdom out of the Worker bundle.
+import * as harbor from "@contextmem/walrus/harbor";
 // Runtime fns imported from leaf SUBPATHS (not the "@contextmem/core" barrel) so
 // esbuild does NOT bundle web.ts/html.ts -> cheerio + @mozilla/readability, whose
 // top-level `__dirname` reference is undefined in the Workers runtime.
