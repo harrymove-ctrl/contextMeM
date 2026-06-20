@@ -11,3 +11,6 @@ coverage/
 runs/
 artifacts/
 *.tsbuildinfo
+
+# Cloudflare local secrets
+.dev.vars
