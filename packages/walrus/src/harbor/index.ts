@@ -31,6 +31,22 @@ function isMirrorMissingGrant(err: unknown): boolean {
   return err.code === "mirror_missing_grant" || /mirror_missing_grant/i.test(err.message);
 }
 
+/**
+ * Walrus/Sui testnet occasionally lands an upload in `failed` state with a
+ * transient on-chain settlement code (e.g. `upload_funding_timeout` — "Funding
+ * settlement timed out. Please try again shortly."). These are not data errors:
+ * re-uploading a fresh file usually succeeds. Detect them so {@link
+ * HarborStorage.putEncrypted} can retry instead of surfacing a hard failure.
+ */
+function isTransientSettlement(err: unknown): boolean {
+  if (!(err instanceof FileStatusError)) return false;
+  const code = err.error?.code ?? "";
+  // Only transient *timeouts* (e.g. upload_funding_timeout, settlement_timeout) —
+  // NOT permanent billing failures like insufficient_funding / settlement_rejected,
+  // which must surface immediately instead of burning the whole retry budget.
+  return (/funding|settlement/i.test(code) && /timeout/i.test(code)) || /try again shortly/i.test(err.message);
+}
+
 export interface CreatePrivateBucketResult {
   readonly bucketId: BucketId;
   readonly sealPolicyId: string | null;
@@ -50,6 +66,10 @@ export interface PutEncryptedOptions {
   readonly pollIntervalMs?: number;
   /** Optional metadata stored alongside the file. */
   readonly metadata?: Record<string, unknown>;
+  /** Extra re-upload attempts when the upload ends in a transient settlement failure. */
+  readonly settleAttempts?: number;
+  /** Backoff before a settlement re-upload (ms). */
+  readonly settleBackoffMs?: number;
 }
 
 /**
@@ -108,55 +128,92 @@ export class HarborStorage {
     const uploadBackoffMs = options.uploadBackoffMs ?? 3000;
     const pollAttempts = options.pollAttempts ?? 40;
     const pollIntervalMs = options.pollIntervalMs ?? 2000;
+    const settleAttempts = options.settleAttempts ?? 3;
+    const settleBackoffMs = options.settleBackoffMs ?? 4000;
 
     const encrypted = await this.seal.encrypt(bytes, sealPolicyId);
 
-    // Upload with a retry loop on the post-finalize mirror_missing_grant 403.
-    let uploadResult: FileUploadResponse | undefined;
-    for (let attempt = 0; attempt < uploadAttempts; attempt++) {
-      try {
-        uploadResult = await this.client.uploadBucketFile(
-          bucketId,
-          encrypted,
-          fileName,
-          options.metadata,
-        );
-        break;
-      } catch (err) {
-        if (isMirrorMissingGrant(err) && attempt < uploadAttempts - 1) {
-          await sleep(uploadBackoffMs);
-          continue;
+    // Outer loop: tolerate transient on-chain settlement failures (e.g.
+    // upload_funding_timeout) by dropping the dead file and re-uploading.
+    let lastError: FileStatusError | undefined;
+    for (let settle = 0; settle <= settleAttempts; settle++) {
+      // Upload with a retry loop on the post-finalize mirror_missing_grant 403.
+      let uploadResult: FileUploadResponse | undefined;
+      for (let attempt = 0; attempt < uploadAttempts; attempt++) {
+        try {
+          uploadResult = await this.client.uploadBucketFile(
+            bucketId,
+            encrypted,
+            fileName,
+            options.metadata,
+          );
+          break;
+        } catch (err) {
+          if (isMirrorMissingGrant(err) && attempt < uploadAttempts - 1) {
+            await sleep(uploadBackoffMs);
+            continue;
+          }
+          throw err;
         }
-        throw err;
       }
-    }
-    if (!uploadResult) {
-      throw new MirrorGrantMissingError({ bucketId, attempt: uploadAttempts });
-    }
+      if (!uploadResult) {
+        throw new MirrorGrantMissingError({ bucketId, attempt: uploadAttempts });
+      }
 
-    const fileId = uploadResult.data.id;
+      const fileId = uploadResult.data.id;
 
-    // Poll until completed or failed.
-    let lastState = "queued";
-    for (let i = 0; i < pollAttempts; i++) {
-      const status = await this.client.getFileUploadStatus(bucketId, fileId);
-      lastState = status.data.state;
-      if (status.data.state === "completed") return fileId;
-      if (status.data.state === "failed") {
-        throw new FileStatusError({
+      // Poll until completed or failed (or our own poll budget runs out).
+      let lastState = "queued";
+      let failure: FileStatusError | undefined;
+      for (let i = 0; i < pollAttempts; i++) {
+        const status = await this.client.getFileUploadStatus(bucketId, fileId);
+        lastState = status.data.state;
+        if (status.data.state === "completed") return fileId;
+        if (status.data.state === "failed") {
+          failure = new FileStatusError({
+            fileId,
+            state: status.data.state,
+            error: status.data.error ?? { code: "unknown", message: "Upload failed" },
+          });
+          break;
+        }
+        await sleep(pollIntervalMs);
+      }
+      if (!failure) {
+        failure = new FileStatusError({
           fileId,
-          state: status.data.state,
-          error: status.data.error ?? { code: "unknown", message: "Upload failed" },
+          state: lastState,
+          error: { code: "timeout", message: "Upload did not complete in time" },
         });
       }
-      await sleep(pollIntervalMs);
+
+      // A transient settlement failure leaves a dead file either way — drop it to
+      // avoid orphan accumulation, then retry while the budget remains.
+      if (isTransientSettlement(failure)) {
+        try {
+          await this.client.deleteBucketFile(bucketId, fileId);
+        } catch {
+          // failed file is orphaned but harmless; non-fatal
+        }
+        if (settle < settleAttempts) {
+          lastError = failure;
+          await sleep(settleBackoffMs);
+          continue;
+        }
+      }
+      throw failure;
     }
 
-    throw new FileStatusError({
-      fileId,
-      state: lastState,
-      error: { code: "timeout", message: "Upload did not complete in time" },
-    });
+    // Unreachable under normal config: the loop returns on success or throws on
+    // failure. Retained to satisfy the type checker and guard settleAttempts < 0.
+    throw (
+      lastError ??
+      new FileStatusError({
+        fileId: "unknown",
+        state: "failed",
+        error: { code: "upload_funding_timeout", message: "Upload failed after settlement retries" },
+      })
+    );
   }
 
   /** Download a file and decrypt it with the bucket's sealPolicyId. */

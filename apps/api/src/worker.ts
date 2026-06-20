@@ -12,6 +12,11 @@ import {
   type HostedNamespaceVisibility
 } from "@contextmem/mcp/hosted";
 import { MemWalMcpClient } from "@contextmem/memwal";
+// Harbor + Seal client (on-chain-verified). Used to encrypt private-namespace
+// artifacts in the Worker and store the ciphertext in a per-namespace Harbor
+// bucket instead of writing plaintext to R2. See resolveHarborConfig + the
+// private branch of storeNamespaceImport / readArtifact below.
+import { harbor } from "@contextmem/walrus";
 // Runtime fns imported from leaf SUBPATHS (not the "@contextmem/core" barrel) so
 // esbuild does NOT bundle web.ts/html.ts -> cheerio + @mozilla/readability, whose
 // top-level `__dirname` reference is undefined in the Workers runtime.
@@ -52,6 +57,14 @@ export type WorkerEnv = {
   OPENAI_API_KEY?: string;
   OPENAI_BASE_URL?: string;
   OPENAI_MODEL?: string;
+  // Harbor (Walrus) private storage. When HARBOR_API_KEY + HARBOR_SERVICE_PRIVATE_KEY
+  // are set, PRIVATE namespaces are Seal-encrypted in the Worker and stored to a
+  // Harbor bucket instead of R2. All optional → graceful degradation to R2 when unset.
+  // Mirrors the MEMWAL_* secret pattern (HARBOR_SERVICE_PRIVATE_KEY is a Worker secret).
+  HARBOR_BASE_URL?: string;
+  HARBOR_API_KEY?: string;
+  HARBOR_SERVICE_PRIVATE_KEY?: string;
+  HARBOR_DEFAULT_SPACE_ID?: string;
 };
 
 type WorkersAiBinding = {
@@ -144,6 +157,9 @@ type ArtifactRow = {
   size: number;
   sha256?: string | null;
   updated_at: string;
+  // Harbor (private, Seal-encrypted) storage. Null for legacy/public R2 artifacts.
+  harbor_file_id?: string | null;
+  harbor_bucket_id?: string | null;
 };
 
 type ExtractionJobRow = {
@@ -456,14 +472,14 @@ export class CloudflareNamespaceStore implements HostedNamespaceStore {
     const versionId = this.versionFor(namespace);
     const statement = versionId
       ? this.env.CONTEXTMEM_DB.prepare(
-          `SELECT a.namespace, a.version_id, a.path, a.r2_key, a.content_type, a.kind, a.size, a.sha256, a.updated_at
+          `SELECT a.namespace, a.version_id, a.path, a.r2_key, a.content_type, a.kind, a.size, a.sha256, a.updated_at, a.harbor_file_id, a.harbor_bucket_id
            FROM contextmem_namespace_artifacts a
            WHERE a.namespace = ?
              AND a.version_id = ?
              AND a.path = ?`
         ).bind(namespace, versionId, normalizedPath)
       : this.env.CONTEXTMEM_DB.prepare(
-          `SELECT a.namespace, a.version_id, a.path, a.r2_key, a.content_type, a.kind, a.size, a.sha256, a.updated_at
+          `SELECT a.namespace, a.version_id, a.path, a.r2_key, a.content_type, a.kind, a.size, a.sha256, a.updated_at, a.harbor_file_id, a.harbor_bucket_id
            FROM contextmem_namespace_artifacts a
            JOIN contextmem_namespaces n
              ON n.namespace = a.namespace
@@ -473,6 +489,36 @@ export class CloudflareNamespaceStore implements HostedNamespaceStore {
         ).bind(namespace, normalizedPath);
     const row = await statement.first<ArtifactRow>();
     if (!row) return undefined;
+
+    // Harbor-backed (private, Seal-encrypted) artifact: decrypt in the Worker
+    // instead of reading from R2. Keys off harbor_file_id FIRST so legacy/public
+    // R2 artifacts (no harbor_file_id) fall through to the unchanged R2 path below.
+    if (row.harbor_file_id && row.harbor_bucket_id) {
+      const cfg = resolveHarborConfig(this.env);
+      // Fail closed: artifact is Harbor-only, so we cannot serve it without creds.
+      if (!cfg) return undefined;
+      // seal_policy_id lives on the namespace row, not the artifact row.
+      const policyRow = await this.env.CONTEXTMEM_DB.prepare(
+        `SELECT harbor_seal_policy_id FROM contextmem_namespaces WHERE namespace = ?`
+      )
+        .bind(namespace)
+        .first<{ harbor_seal_policy_id: string | null }>();
+      const sealPolicyId = policyRow?.harbor_seal_policy_id;
+      if (!sealPolicyId) return undefined;
+      const bytes = await new harbor.HarborStorage(cfg).getDecrypted(row.harbor_bucket_id, sealPolicyId, row.harbor_file_id);
+      const record = {
+        path: row.path,
+        contentType: row.content_type,
+        kind: row.kind,
+        size: Number(row.size),
+        sha256: row.sha256 ?? undefined,
+        updatedAt: row.updated_at
+      };
+      if (isHostedTextArtifact(record)) {
+        return { ...record, encoding: "utf8", content: new TextDecoder().decode(bytes) };
+      }
+      return { ...record, encoding: "base64", content: arrayBufferToBase64(toArrayBuffer(bytes)) };
+    }
 
     const object = await this.env.CONTEXTMEM_CONTEXT_BUCKET.get(row.r2_key);
     if (!object) return undefined;
@@ -1101,7 +1147,7 @@ async function importNamespace(request: Request, env: WorkerEnv): Promise<Respon
   return json(result, 201);
 }
 
-async function updateNamespaceArtifact(request: Request, env: WorkerEnv, namespace: string): Promise<Response> {
+export async function updateNamespaceArtifact(request: Request, env: WorkerEnv, namespace: string): Promise<Response> {
   const body = await request.json().catch(() => null);
   const parsed = z.object({ path: z.string().min(1), content: z.string() }).safeParse(body);
   if (!parsed.success) return json({ error: "Body must be { path: string, content: string }." }, 400);
@@ -1111,10 +1157,10 @@ async function updateNamespaceArtifact(request: Request, env: WorkerEnv, namespa
   }
 
   const row = await env.CONTEXTMEM_DB.prepare(
-    `SELECT namespace, owner_id, current_version_id, byte_length, manifest_json FROM contextmem_namespaces WHERE namespace = ?`
+    `SELECT namespace, owner_id, current_version_id, byte_length, manifest_json, harbor_seal_policy_id FROM contextmem_namespaces WHERE namespace = ?`
   )
     .bind(namespace)
-    .first<{ namespace: string; owner_id: string; current_version_id: string; byte_length: number; manifest_json: string | null }>();
+    .first<{ namespace: string; owner_id: string; current_version_id: string; byte_length: number; manifest_json: string | null; harbor_seal_policy_id: string | null }>();
   if (!row) return json({ error: "Namespace not found." }, 404);
 
   const providedOwner = request.headers.get("x-memwal-account-id") ?? new URL(request.url).searchParams.get("ownerId") ?? "";
@@ -1129,20 +1175,73 @@ async function updateNamespaceArtifact(request: Request, env: WorkerEnv, namespa
   }
 
   const store = new CloudflareNamespaceStore(env);
-  const existing = await store.readArtifact(namespace, artifactPath);
+  let existing: Awaited<ReturnType<CloudflareNamespaceStore["readArtifact"]>>;
+  try {
+    existing = await store.readArtifact(namespace, artifactPath);
+  } catch {
+    // Harbor-backed reads hit the network + Seal decrypt; a transient blip should
+    // surface as 503, not an uncaught 500.
+    return json({ error: "Could not read the current artifact (storage temporarily unavailable). Try again shortly." }, 503);
+  }
   if (!existing) return json({ error: "Artifact not found in this namespace." }, 404);
 
   const newBytes = new TextEncoder().encode(parsed.data.content);
-  const r2Key = `namespaces/${await sha256Hex(namespace)}/${row.current_version_id}${artifactPath}`;
-  await env.CONTEXTMEM_CONTEXT_BUCKET.put(r2Key, newBytes, {
-    httpMetadata: { contentType: existing.contentType ?? "text/markdown; charset=utf-8" },
-    customMetadata: {
-      namespace,
-      versionId: row.current_version_id,
-      path: artifactPath,
-      sha256: await sha256Hex(newBytes)
+  const newSha = await sha256Hex(newBytes);
+
+  // Harbor-aware write: if this artifact lives in a Seal-encrypted Harbor bucket,
+  // the edit MUST be re-encrypted and re-uploaded to Harbor — never written as
+  // plaintext to R2. A plaintext R2 write here would both (a) leak the private
+  // content and (b) be silently ignored, since readArtifact keys off
+  // harbor_file_id first. Public / legacy artifacts keep the R2 path.
+  // Classify against the SAME row readArtifact serves: scope to the current
+  // version. The artifacts PK is (namespace, version_id, path) and old-version
+  // rows are never pruned, so an unscoped .first() can return a stale R2 row and
+  // misclassify a private Harbor edit as plaintext-to-R2 (the original leak).
+  const artStorage = await env.CONTEXTMEM_DB.prepare(
+    `SELECT harbor_file_id, harbor_bucket_id FROM contextmem_namespace_artifacts WHERE namespace = ? AND version_id = ? AND path = ?`
+  )
+    .bind(namespace, row.current_version_id, artifactPath)
+    .first<{ harbor_file_id: string | null; harbor_bucket_id: string | null }>();
+  const harborBacked = Boolean(artStorage?.harbor_file_id && artStorage?.harbor_bucket_id);
+  const harborCfg = harborBacked ? resolveHarborConfig(env) : null;
+
+  let harborNewFileId: string | null = null;
+  let harborStorage: harbor.HarborStorage | null = null;
+  let oldHarborFileId: string | null = null;
+  let oldHarborBucketId: string | null = null;
+  if (harborBacked) {
+    if (!harborCfg || !row.harbor_seal_policy_id) {
+      // Fail closed: encrypted artifact but Harbor unavailable — do NOT fall back
+      // to a plaintext R2 write.
+      return json(
+        { error: "This namespace is Seal-encrypted (Harbor) but Harbor is not configured on this server; cannot edit." },
+        503
+      );
     }
-  });
+    oldHarborBucketId = artStorage!.harbor_bucket_id as string;
+    oldHarborFileId = artStorage!.harbor_file_id as string;
+    harborStorage = new harbor.HarborStorage(harborCfg);
+    const harborFileName = artifactPath.replace(/^\/+/, "").replace(/\/+/g, "_") || "artifact";
+    harborNewFileId = await harborStorage.putEncrypted(
+      oldHarborBucketId,
+      row.harbor_seal_policy_id,
+      newBytes,
+      harborFileName
+    );
+    // NB: the superseded ciphertext is deleted only AFTER the new harbor_file_id is
+    // durably persisted to D1 (below). Deleting here would risk a dangling pointer.
+  } else {
+    const r2Key = `namespaces/${await sha256Hex(namespace)}/${row.current_version_id}${artifactPath}`;
+    await env.CONTEXTMEM_CONTEXT_BUCKET.put(r2Key, newBytes, {
+      httpMetadata: { contentType: existing.contentType ?? "text/markdown; charset=utf-8" },
+      customMetadata: {
+        namespace,
+        versionId: row.current_version_id,
+        path: artifactPath,
+        sha256: newSha
+      }
+    });
+  }
 
   let manifestJson = row.manifest_json;
   if (manifestJson) {
@@ -1170,12 +1269,38 @@ async function updateNamespaceArtifact(request: Request, env: WorkerEnv, namespa
     .run();
   void updates;
 
-  await env.CONTEXTMEM_DB.prepare(
-    `UPDATE contextmem_namespace_artifacts SET size = ?, sha256 = ?, updated_at = ? WHERE namespace = ? AND path = ?`
-  )
-    .bind(newBytes.byteLength, await sha256Hex(newBytes), new Date().toISOString(), namespace, artifactPath)
-    .run()
-    .catch(() => undefined);
+  if (harborNewFileId) {
+    // Persist the new ciphertext pointer BEFORE deleting the old file, and do NOT
+    // swallow this error: a dangling harbor_file_id would make the private artifact
+    // permanently unreadable. Until this commits, D1 still points at the old file
+    // (still present), so readArtifact keeps serving the pre-edit content.
+    try {
+      await env.CONTEXTMEM_DB.prepare(
+        `UPDATE contextmem_namespace_artifacts SET size = ?, sha256 = ?, harbor_file_id = ?, r2_key = ?, updated_at = ? WHERE namespace = ? AND version_id = ? AND path = ?`
+      )
+        .bind(newBytes.byteLength, newSha, harborNewFileId, `harbor:${harborNewFileId}`, new Date().toISOString(), namespace, row.current_version_id, artifactPath)
+        .run();
+    } catch {
+      // Rotation failed: the new file is an orphan, the old file + pointer are intact,
+      // so the artifact still reads back as the pre-edit content. Surface the failure.
+      return json({ error: "Failed to persist the encrypted edit; the previous version is unchanged." }, 500);
+    }
+    // Pointer durably rotated -> the superseded ciphertext is now safe to remove.
+    if (harborStorage && oldHarborBucketId && oldHarborFileId) {
+      try {
+        await harborStorage.client.deleteBucketFile(oldHarborBucketId, oldHarborFileId);
+      } catch {
+        // orphaned old file is harmless; non-fatal
+      }
+    }
+  } else {
+    await env.CONTEXTMEM_DB.prepare(
+      `UPDATE contextmem_namespace_artifacts SET size = ?, sha256 = ?, updated_at = ? WHERE namespace = ? AND version_id = ? AND path = ?`
+    )
+      .bind(newBytes.byteLength, newSha, new Date().toISOString(), namespace, row.current_version_id, artifactPath)
+      .run()
+      .catch(() => undefined);
+  }
 
   return json({ ok: true, path: artifactPath, size: newBytes.byteLength });
 }
@@ -1752,7 +1877,7 @@ async function listAlerts(request: Request, env: WorkerEnv): Promise<Response> {
   return json({ alerts: allResults(result).map(publicAlert) });
 }
 
-async function storeNamespaceImport(input: NamespaceImportInput, request: Request, env: WorkerEnv) {
+export async function storeNamespaceImport(input: NamespaceImportInput, request: Request, env: WorkerEnv) {
   const namespace = normalizeNamespace(input.namespace);
   const now = new Date().toISOString();
   const versionId = createVersionId();
@@ -1781,24 +1906,96 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
   );
   const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
 
-  await Promise.all(
-    files.map((file) =>
-      env.CONTEXTMEM_CONTEXT_BUCKET.put(file.r2Key, file.bytes, {
-        httpMetadata: { contentType: file.contentType },
-        customMetadata: {
-          namespace,
-          versionId,
-          path: file.path,
-          sha256: file.sha256
-        }
-      })
+  // --- Storage backend: Harbor (private + encrypted) vs R2 (public/plaintext) ---
+  // For PRIVATE namespaces, when Harbor is configured we Seal-encrypt each artifact
+  // in the Worker and upload the ciphertext to a per-namespace Harbor bucket — and
+  // we do NOT write plaintext bytes to R2. Public namespaces (and any namespace when
+  // Harbor is not configured) keep using R2 exactly as before. Fail-closed: a Harbor
+  // bucket-create/upload error propagates and aborts the import rather than silently
+  // leaking plaintext to R2.
+  const isPrivate = input.visibility === "private";
+  const harborCfg = isPrivate ? resolveHarborConfig(env) : null;
+  let harborSpaceId: string | null = null;
+  let harborBucketId: string | null = null;
+  let harborSealPolicyId: string | null = null;
+  // harbor_file_id per artifact, aligned to `files` by index (null when stored in R2).
+  const harborFileIds: Array<string | null> = files.map(() => null);
+
+  if (harborCfg) {
+    const storage = new harbor.HarborStorage(harborCfg);
+    // Track whether THIS call created the bucket, so a later upload failure can roll
+    // it back (a leaked bucket counts against the space's bucket cap). Never delete a
+    // reused/pre-existing bucket — it may hold other versions' ciphertext.
+    let createdNewBucket = false;
+    // Reuse the namespace's existing bucket across re-imports so every version lands
+    // under the SAME Seal policy; only create a bucket on first import.
+    const existing = await env.CONTEXTMEM_DB.prepare(
+      `SELECT harbor_space_id, harbor_bucket_id, harbor_seal_policy_id FROM contextmem_namespaces WHERE namespace = ?`
     )
-  );
+      .bind(namespace)
+      .first<{ harbor_space_id: string | null; harbor_bucket_id: string | null; harbor_seal_policy_id: string | null }>();
+    if (existing?.harbor_bucket_id && existing.harbor_seal_policy_id) {
+      harborSpaceId = existing.harbor_space_id ?? harborCfg.defaultSpaceId ?? null;
+      harborBucketId = existing.harbor_bucket_id;
+      harborSealPolicyId = existing.harbor_seal_policy_id;
+    } else {
+      // Resolve the space: configured default, else the first personal space.
+      let spaceId = harborCfg.defaultSpaceId;
+      if (!spaceId) {
+        const spaces = await storage.client.listSpaces({ type: "personal" });
+        spaceId = spaces[0]?.id;
+        if (!spaceId) throw new Error("Harbor: no personal space available to create a private bucket.");
+      }
+      const created = await storage.createPrivateBucket(spaceId, `ctxm-ns-${await sha256Hex(namespace)}`);
+      if (!created.sealPolicyId) throw new Error(`Harbor: bucket ${created.bucketId} has no seal policy id (private bucket expected).`);
+      harborSpaceId = spaceId;
+      harborBucketId = created.bucketId;
+      harborSealPolicyId = created.sealPolicyId;
+      createdNewBucket = true;
+    }
+    // Encrypt + upload each artifact (ciphertext only; NO plaintext to R2).
+    // Harbor rejects file names containing slashes, but artifact paths are nested
+    // (e.g. "/context/facts.json"). Flatten to a slash-free name — the real path
+    // lives in D1 and retrieval is keyed by harbor_file_id, so this name is only a
+    // display/content-type hint. Keep the extension so contentTypeFromName works.
+    try {
+      for (let i = 0; i < files.length; i += 1) {
+        const harborFileName = files[i]!.path.replace(/^\/+/, "").replace(/\/+/g, "_") || "artifact";
+        harborFileIds[i] = await storage.putEncrypted(harborBucketId, harborSealPolicyId, files[i]!.bytes, harborFileName);
+      }
+    } catch (err) {
+      // Roll back a freshly-created bucket so a failed first import doesn't leak a
+      // bucket against the space cap. Reused buckets are left intact.
+      if (createdNewBucket && harborBucketId) {
+        try {
+          await storage.client.deleteBucket(harborBucketId);
+        } catch {
+          // best-effort; surfacing the original upload error matters more
+        }
+      }
+      throw err;
+    }
+  } else {
+    // Public namespace, or Harbor not configured: store plaintext bytes in R2 as today.
+    await Promise.all(
+      files.map((file) =>
+        env.CONTEXTMEM_CONTEXT_BUCKET.put(file.r2Key, file.bytes, {
+          httpMetadata: { contentType: file.contentType },
+          customMetadata: {
+            namespace,
+            versionId,
+            path: file.path,
+            sha256: file.sha256
+          }
+        })
+      )
+    );
+  }
 
   const statements = [
     env.CONTEXTMEM_DB.prepare(
-      `INSERT INTO contextmem_namespaces (namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, build_kind, sources_json, source_count, manifest_json, artifact_count, byte_length, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO contextmem_namespaces (namespace, target, visibility, owner_id, display_name, description, tags_json, source_type, directory_enabled, current_version_id, source_run_id, build_kind, sources_json, source_count, manifest_json, artifact_count, byte_length, harbor_space_id, harbor_bucket_id, harbor_seal_policy_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(namespace) DO UPDATE SET
          target = excluded.target,
          visibility = excluded.visibility,
@@ -1816,6 +2013,9 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
          manifest_json = excluded.manifest_json,
          artifact_count = excluded.artifact_count,
          byte_length = excluded.byte_length,
+         harbor_space_id = COALESCE(excluded.harbor_space_id, harbor_space_id),
+         harbor_bucket_id = COALESCE(excluded.harbor_bucket_id, harbor_bucket_id),
+         harbor_seal_policy_id = COALESCE(excluded.harbor_seal_policy_id, harbor_seal_policy_id),
          updated_at = excluded.updated_at`
     ).bind(
       namespace,
@@ -1835,6 +2035,9 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
       JSON.stringify(input.manifest),
       files.length,
       totalBytes,
+      harborSpaceId,
+      harborBucketId,
+      harborSealPolicyId,
       now,
       now
     ),
@@ -1847,12 +2050,16 @@ async function storeNamespaceImport(input: NamespaceImportInput, request: Reques
        VALUES (?, ?, ?, ?, ?)`
     ).bind(tokenHash, tokenId, namespace, `import:${versionId}`, now),
     env.CONTEXTMEM_DB.prepare(`DELETE FROM contextmem_namespace_artifacts WHERE namespace = ? AND version_id = ?`).bind(namespace, versionId),
-    ...files.map((file) =>
-      env.CONTEXTMEM_DB.prepare(
-        `INSERT INTO contextmem_namespace_artifacts (namespace, version_id, path, r2_key, content_type, kind, size, sha256, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(namespace, versionId, file.path, file.r2Key, file.contentType, file.kind, file.size, file.sha256, now)
-    )
+    ...files.map((file, i) => {
+      const harborFileId = harborFileIds[i];
+      // r2_key is NOT NULL: for Harbor artifacts store a `harbor:<fileId>` sentinel
+      // (the read path keys off harbor_file_id first, never this value).
+      const r2KeyValue = harborFileId ? `harbor:${harborFileId}` : file.r2Key;
+      return env.CONTEXTMEM_DB.prepare(
+        `INSERT INTO contextmem_namespace_artifacts (namespace, version_id, path, r2_key, content_type, kind, size, sha256, harbor_file_id, harbor_bucket_id, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(namespace, versionId, file.path, r2KeyValue, file.contentType, file.kind, file.size, file.sha256, harborFileId, harborFileId ? harborBucketId : null, now);
+    })
   ];
 
   if (env.CONTEXTMEM_DB.batch) await env.CONTEXTMEM_DB.batch(statements);
@@ -3349,6 +3556,27 @@ function resolveMemwalCreds(request: Request, env: WorkerEnv): { url: string; pr
   if (isMemwalSeed(headerKey)) return { url, privateKey: headerKey, accountId: headerAccount ?? envAccount };
   if (isMemwalSeed(envKey)) return { url, privateKey: envKey, accountId: envAccount ?? headerAccount };
   return { url, privateKey: headerKey ?? envKey, accountId: headerAccount ?? envAccount };
+}
+
+// Harbor (Walrus private storage) is "configured" only when BOTH the API key and
+// the Seal service private key are present. baseUrl + defaultSpaceId are optional.
+// Gate ALL Harbor behavior on this so an unconfigured Worker degrades to plain R2.
+function isHarborConfigured(env: WorkerEnv): boolean {
+  return Boolean(env.HARBOR_API_KEY && env.HARBOR_SERVICE_PRIVATE_KEY);
+}
+
+// Build a HarborConfig from the Worker `env` binding (NOT process.env, which is
+// empty in the Workers runtime). Reuses harbor.harborConfigFromEnv but feeds it the
+// per-request env. Returns null (instead of throwing) when Harbor is not configured
+// so callers can transparently fall back to R2.
+function resolveHarborConfig(env: WorkerEnv): harbor.HarborConfig | null {
+  if (!isHarborConfigured(env)) return null;
+  return harbor.harborConfigFromEnv({
+    HARBOR_BASE_URL: env.HARBOR_BASE_URL,
+    HARBOR_API_KEY: env.HARBOR_API_KEY,
+    HARBOR_SERVICE_PRIVATE_KEY: env.HARBOR_SERVICE_PRIVATE_KEY,
+    HARBOR_DEFAULT_SPACE_ID: env.HARBOR_DEFAULT_SPACE_ID
+  });
 }
 
 // GET /api/memwal/namespaces — curated namespace picker for the Memory explorer.
