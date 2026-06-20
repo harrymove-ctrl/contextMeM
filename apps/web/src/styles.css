@@ -2350,6 +2350,151 @@ textarea {
   --cm-soft-shadow: 0 12px 38px rgba(22, 31, 45, 0.09);
 }
 
+/* =============================================================================
+   Design-token contract (from the dashboard comp) + dark mode + --cm-* bridge.
+   data-theme is set on <html> (and mirrored on .appShell). Light = :root default,
+   dark = [data-theme="dark"]; equal specificity, dark wins by source order.
+   ============================================================================= */
+:root {
+  color-scheme: light;
+
+  /* contract tokens */
+  --bg:        #f4f6ef;
+  --bg2:       #ffffff;
+  --card:      #ffffff;
+  --card2:     #f5f7ee;
+  --ink:       #14181c;
+  --panel:     #fbfcf8;
+  --border:    rgba(20, 24, 14, 0.11);
+  --border2:   rgba(20, 24, 14, 0.18);
+  --text:      #14181c;
+  --muted:     #586055;
+  --faint:     #8a917f;
+  --lime:      #a8d946;
+  --olive:     #4f7a17;
+  --lime-soft: rgba(132, 180, 40, 0.16);
+  --mint:      #0fae9a;
+  --mint-soft: rgba(15, 174, 154, 0.12);
+  --amber:     #b87a06;
+  --amber-soft:rgba(184, 122, 6, 0.12);
+  --shadow:    0 20px 48px -26px rgba(30, 40, 15, 0.26);
+
+  /* derived helpers */
+  --shadow-soft:       0 12px 30px -22px rgba(30, 40, 15, 0.18);
+  --cm-surface-invert: var(--ink);   /* inverted dark chips/bars (NOT text) */
+
+  /* font stacks */
+  --cm-sans:    'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --cm-display: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --cm-mono:    'JetBrains Mono', ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  font-family: var(--cm-sans);
+  background: var(--bg);
+  color: var(--text);
+
+  /* --cm-* bridge: re-point every legacy --cm-* token at a contract token */
+  --cm-bg:            var(--bg);
+  --cm-ink:           var(--text);          /* TEXT role only (see --cm-surface-invert) */
+  --cm-muted:         var(--muted);
+  --cm-border:        var(--border);
+  --cm-border-strong: var(--border2);
+  --cm-frame:         var(--card);
+  --cm-accent:        var(--lime);
+  --cm-graph-bg:      var(--ink);
+  --cm-blue:          var(--mint);          /* contract has no blue → links/info use mint */
+  --cm-teal:          var(--mint);
+  --cm-coral:         var(--amber);
+  --cm-shadow:        var(--shadow);
+  --cm-soft-shadow:   var(--shadow-soft);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:        #0a0d07;
+  --bg2:       #0f1209;
+  --card:      #11140c;
+  --card2:     #181c10;
+  --ink:       #070905;
+  --panel:     #0d1008;
+  --border:    rgba(255, 255, 255, 0.10);
+  --border2:   rgba(255, 255, 255, 0.17);
+  --text:      #eef2e6;
+  --muted:     #a8b09a;
+  --faint:     #79806c;
+  --lime:      #b6e84f;
+  --olive:     #bdef55;
+  --lime-soft: rgba(182, 232, 79, 0.16);
+  --mint:      #4fe0b0;
+  --mint-soft: rgba(79, 224, 176, 0.15);
+  --amber:     #f3c64a;
+  --amber-soft:rgba(243, 198, 74, 0.16);
+  --shadow:    0 18px 44px -22px rgba(0, 0, 0, 0.7);
+
+  --shadow-soft:       0 12px 30px -18px rgba(0, 0, 0, 0.6);
+  --cm-surface-invert: var(--ink);
+
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--bg2) 88%, transparent),
+      color-mix(in srgb, var(--bg) 96%, transparent) 44%,
+      var(--bg) 100%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--cm-sans);
+  transition: background .35s ease, color .35s ease;
+}
+
+::selection { background: rgba(132, 180, 40, 0.26); }
+
+/* headings → Space Grotesk */
+h1, h2, h3, h4, h5, h6,
+.appTitleBlock h1,
+.sectionHead h2,
+.quickStartHead h2,
+.demoRunPanelTop h2,
+.markdownBody h1, .markdownBody h2, .markdownBody h3,
+.markdownBody h4, .markdownBody h5, .markdownBody h6 {
+  font-family: var(--cm-display);
+  letter-spacing: -0.02em;
+}
+
+/* mono usages → JetBrains Mono */
+.shareTabBadge,
+.shareStructureTree li code,
+.shareArtifactRow code,
+.markdownRawEditor,
+.hostedBuildBannerRow a,
+.mcpPlaygroundActions input,
+.statusRow strong,
+.recentRunChipHost,
+.failurePanel .failureCode,
+.aiChatSchema textarea,
+.showcaseCard header code,
+.compareColumn header code,
+.comparePalette span small,
+.compareList li span,
+.lpFlowPill code,
+.markdownBody code,
+.markdownBody pre,
+.markdownBody pre code,
+.memPlayCode code,
+.memPlayRespBody code {
+  font-family: var(--cm-mono);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
 html {
   min-height: 100%;
   overflow-y: auto;
@@ -10333,3 +10478,936 @@ textarea:focus {
   max-width: 720px; text-align: center; font-size: 12.5px; color: var(--cm-muted);
 }
 .memPlayFoot svg { color: #5c7a16; flex: none; }
+
+/* =============================================================================
+   Section overrides — tokenize legacy literals (dark-mode safe) + bring the
+   .app* chrome closer to the dashboard comp. Appended last so it wins by source
+   order. Tokens only, no hardcoded light colors. Markup/logic untouched.
+   ============================================================================= */
+
+/* ---- SHELL: sidebar -------------------------------------------------------- */
+.appShell {
+  grid-template-columns: 252px minmax(0, 1fr);
+  background: var(--bg);
+}
+.appSidebar {
+  padding: 18px 14px;
+  border-right: 1px solid var(--border);
+  background: var(--bg2);
+  gap: 18px;
+}
+.appBrandMark {
+  background: var(--cm-surface-invert);
+  color: var(--lime);
+  box-shadow: var(--shadow-soft);
+}
+.appBrand small { color: var(--faint); }
+.appSideLink { color: var(--muted); }
+.appSideLink:hover { background: var(--lime-soft); color: var(--text); }
+.appSideLink.selected { background: var(--cm-surface-invert); color: #fff; }
+.appSidebarFoot {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card2);
+}
+.appSidebarFoot span {
+  font-family: var(--cm-mono);
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+/* ---- SHELL: topbar --------------------------------------------------------- */
+.appTopbar {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(160%) blur(12px);
+  box-shadow: var(--shadow-soft);
+}
+.appTitleBlock span { color: var(--faint); }
+.appTitleBlock h1   { color: var(--text); }
+.appTitleBlock p    { color: var(--muted); }
+.appTopbarActions { justify-content: flex-end; gap: 10px; }
+
+.themeToggle {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.themeToggle:hover { border-color: var(--border2); }
+
+.mainnetPill,
+.runChip,
+.appHint {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+}
+.mainnetPill span {
+  background: var(--mint);
+  box-shadow: 0 0 0 4px var(--mint-soft);
+}
+
+/* ---- StatusPill popover ---------------------------------------------------- */
+.statusPill > summary {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+.statusPill > summary:hover { border-color: var(--border2); }
+.statusDot           { background: var(--faint); }
+.statusDot-ready     { background: var(--mint);  box-shadow: 0 0 0 3px var(--mint-soft); }
+.statusDot-warn      { background: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+.statusDot-info      { background: var(--mint);  box-shadow: 0 0 0 3px var(--mint-soft); }
+.statusPillCaret     { color: var(--faint); }
+.statusPanel {
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.statusRow         { color: var(--muted); }
+.statusRow strong  { color: var(--text); }
+.statusValue-ready       { color: var(--olive); }
+.statusValue-needsMemWal { color: var(--amber); }
+.statusValue-preview     { color: var(--mint); }
+.statusSession           { border-top: 1px dashed var(--border); }
+
+/* ---- Cards: radius 14 + token shadow --------------------------------------- */
+.recentRunsRow,
+.quickStartCard,
+.settingsCard {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+.recentRunsLabel { color: var(--muted); }
+.settingsCopy    { color: var(--muted); }
+.recentRunChip {
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--text);
+}
+.recentRunChip:hover:not(:disabled) {
+  border-color: var(--border2);
+  background: var(--card);
+}
+.recentRunChipMeta { color: var(--muted); }
+.quickStartBadge {
+  background: var(--lime-soft);
+  color: var(--olive);
+}
+
+/* ---- Runs list + page toolbar ---------------------------------------------- */
+.pageToolbar button {
+  border: 1px solid transparent;
+  background: var(--cm-surface-invert);
+  color: #fff;
+}
+.runRow {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+}
+.runRow:hover:not(:disabled),
+.runRow.selected {
+  border-color: var(--olive);
+  box-shadow: 5px 5px 0 var(--lime-soft);
+}
+
+/* ---- BUILD: hero input ----------------------------------------------------- */
+.appWorkspace .heroInput,
+.heroInput {
+  position: relative;
+  z-index: 1;
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: 0 30px 70px -30px rgba(30, 40, 15, 0.4);
+}
+.buildHeroGlow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% 120%, rgba(120,180,150,0.22), transparent 60%),
+    linear-gradient(180deg, rgba(168,217,70,0.10), rgba(56,160,120,0.07) 42%, rgba(60,140,200,0.10));
+}
+
+/* ---- BUILD: LIVE PIPELINE (both implementations) --------------------------- */
+.demoRunPanel {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.demoRunPanelIcon {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+.demoRunPanel.completed .demoRunPanelIcon {
+  background: var(--lime-soft);
+  color: var(--olive);
+}
+.demoRunPanelTrack { background: var(--border); }
+.demoRunPanelTrack span { background: linear-gradient(90deg, var(--mint), var(--lime)); }
+.demoRunPanelButton {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+}
+.demoRunPanelButton.primary {
+  border-color: transparent;
+  background: var(--cm-surface-invert);
+  color: #fff;
+  box-shadow: 5px 5px 0 var(--lime-soft);
+}
+.pipelineStep {
+  border: 1px solid var(--border);
+  background: var(--card2);
+}
+.pipelineStep.isActive {
+  border-color: var(--olive);
+  background: var(--lime-soft);
+  box-shadow: inset 0 -3px 0 var(--olive);
+}
+.pipelineStep.isDone {
+  border-color: var(--mint);
+  background: var(--mint-soft);
+  box-shadow: inset 0 -3px 0 var(--mint);
+}
+.pipelineStep svg          { color: var(--olive); }
+.pipelineStep.isDone svg   { color: var(--mint); }
+.previewLog {
+  border: 1px solid transparent;
+  background: var(--cm-surface-invert);
+  color: #cfe0a8;
+  font-family: var(--cm-mono);
+}
+
+/* ---- ARTIFACTS: markdown viewer + selected artifact ------------------------ */
+.markdownBody {
+  background: var(--card);
+  color: var(--text);
+}
+.markdownBody h1, .markdownBody h2, .markdownBody h3,
+.markdownBody h4, .markdownBody h5, .markdownBody h6 { color: var(--text); }
+.markdownBody h1 { border-bottom: 1px solid var(--border); }
+.markdownBody h2 { border-bottom: 1px solid var(--border); }
+.markdownBody a  { color: var(--olive); }
+.markdownBody blockquote {
+  border-left: 3px solid var(--olive);
+  background: var(--card2);
+  color: var(--muted);
+}
+.markdownBody code {
+  border: 1px solid var(--border);
+  background: var(--card2);
+  color: var(--text);
+}
+.markdownBody pre {
+  border: 1px solid transparent;
+  background: var(--cm-surface-invert);
+  color: #dfe9c8;
+}
+.artifactList button.selected {
+  border: 1px solid var(--olive);
+  background: var(--lime-soft);
+  color: var(--text);
+}
+
+/* ---- Tables: mono uppercase headers ---------------------------------------- */
+.appContent thead th,
+.markdownBody thead th {
+  font-family: var(--cm-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* ---- Optional additive recipes (need markup to appear) --------------------- */
+.appStatGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+.appStatCard {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 17px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.appStatCard .appStatLabel { font-size: 13px; color: var(--muted); }
+.appStatCard .appStatValue { font-family: var(--cm-display); font-weight: 700; font-size: 30px; margin-top: 10px; }
+.appMcpBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 11px;
+  padding: 11px 14px;
+  background: var(--cm-surface-invert);
+}
+.appMcpBar .appMcpUrl {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--cm-mono);
+  font-size: 12.5px;
+  color: #cfe0a8;
+}
+.appMcpBar button {
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--lime);
+  font-family: var(--cm-mono);
+  font-size: 11.5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* =============================================================================
+   In-app Overview / Home dashboard (OverviewAppPage) — mirrors the dashboard
+   comp's Overview section. Token-driven (contract --* + --cm-* font stacks).
+   ============================================================================= */
+.ovPage {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1180px;
+}
+
+/* header */
+.ovHead {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.ovBuildBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  cursor: pointer;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 11px 17px;
+  border-radius: 11px;
+  font-family: inherit;
+}
+.ovBuildBtn:hover { opacity: 0.92; }
+
+/* stat cards */
+.ovStatGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+.ovStatCard {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 17px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.ovStatTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ovStatLabel { font-size: 13px; color: var(--muted); }
+.ovStatIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--lime-soft);
+  display: grid;
+  place-items: center;
+  color: var(--olive);
+}
+.ovStatIcon.isAlert { background: var(--amber-soft); color: var(--amber); }
+.ovStatNum {
+  font-family: var(--cm-display);
+  font-weight: 700;
+  font-size: 30px;
+  margin-top: 10px;
+  color: var(--text);
+}
+.ovStatNum.isAlert { color: var(--amber); }
+.ovStatSub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.ovStatSub.isGood { color: var(--mint); }
+
+/* two-column panels */
+.ovPanelGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+}
+.ovPanel {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.ovPanelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+}
+.ovLink {
+  border: 0;
+  background: transparent;
+  color: var(--olive);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ovLink:hover { text-decoration: underline; }
+
+/* recent runs */
+.ovRunRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ovRunRow:last-child { border-bottom: 0; }
+.ovRunMeta { min-width: 0; }
+.ovRunTitle {
+  display: block;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ovRunSub {
+  display: block;
+  font-family: var(--cm-mono);
+  font-size: 11px;
+  color: var(--faint);
+  margin-top: 2px;
+}
+.ovRunTime {
+  font-family: var(--cm-mono);
+  font-size: 11px;
+  color: var(--faint);
+}
+.ovStatusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.ovStatusPill .ovDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ovStatusPill.done { background: var(--mint-soft); color: var(--mint); }
+.ovStatusPill.running { background: var(--lime-soft); color: var(--olive); }
+.ovStatusPill.running .ovDot { animation: ovPulse 1.4s infinite; }
+.ovStatusPill.failed { background: rgba(224, 85, 106, 0.14); color: #e0556a; }
+@keyframes ovPulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+.ovRunEmpty,
+.ovAlertEmpty,
+.ovTableEmpty {
+  padding: 22px 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* alerts */
+.ovAlert {
+  display: flex;
+  gap: 11px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ovAlert:last-child { border-bottom: 0; }
+.ovAlertDot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e0556a;
+  margin-top: 5px;
+}
+.ovAlertTitle { font-size: 13px; font-weight: 600; color: var(--text); }
+.ovAlertSub { font-size: 12px; color: var(--muted); line-height: 1.45; margin-top: 2px; }
+.ovAlertEmpty {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  color: var(--mint);
+}
+.ovAlertEmpty .ovAlertSub { color: var(--muted); }
+
+/* namespaces table */
+.ovTableWrap { overflow-x: auto; }
+.ovTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 620px;
+}
+.ovTable thead th {
+  text-align: left;
+  padding: 10px 16px;
+  font-weight: 600;
+  color: var(--faint);
+  font-family: var(--cm-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ovTable tbody tr { border-top: 1px solid var(--border); }
+.ovTable td { padding: 12px 16px; color: var(--text); }
+.ovNsName { font-weight: 600; }
+.ovMono { font-family: var(--cm-mono); }
+.ovSnap { color: var(--muted); }
+.ovVisPill {
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--mint-soft);
+  color: var(--mint);
+  font-size: 11px;
+  font-weight: 700;
+}
+.ovCopy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--olive);
+  font-family: var(--cm-mono);
+  font-size: 11.5px;
+  padding: 0;
+}
+.ovCopy:hover { text-decoration: underline; }
+
+/* responsive — collapse the two-col grid like the comp's 880px breakpoint */
+@media (max-width: 880px) {
+  .ovPanelGrid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================================
+   LANDING REDESIGN — saas222 hero + chrome (plain CSS, landing-scoped)
+   Appended at EOF so these re-declarations win the cascade.
+   Selectors below are reached only from <main class="landingShell">.
+   ============================================================================ */
+
+/* --- 1. Landing chrome: fixed white site-frame + corner notches ------------- */
+.lpFrame {
+  display: block;
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background-color: #ffffff;
+}
+.lpFrameTop    { top: 0; left: 0; right: 0; height: 10px; }
+.lpFrameBottom { bottom: 0; left: 0; right: 0; height: 10px; }
+.lpFrameLeft   { top: 0; left: 0; bottom: 0; width: 10px; }
+.lpFrameRight  { top: 0; right: 0; bottom: 0; width: 10px; }
+
+.lpCorner {
+  display: block;
+  position: fixed;
+  z-index: 9998;
+  pointer-events: none;
+  color: #ffffff; /* drives the corner <path fill="currentColor"> */
+}
+.lpCornerTL { top: 10px; left: 10px; transform: rotate(90deg); }
+.lpCornerTR { top: 10px; right: 10px; transform: rotate(180deg); }
+.lpCornerBL { bottom: 10px; left: 10px; transform: rotate(0deg); }
+.lpCornerBR { bottom: 10px; right: 10px; transform: rotate(270deg); }
+
+@media (max-width: 850px) {
+  .lpFrame,
+  .lpCorner { display: none; }
+}
+
+/* --- 2. Floating pill header (overrides .rbNav10 / .rbNav10Bar) ------------- */
+.rbNav10 {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1024px, calc(100% - 32px));
+  margin: 0;
+  z-index: 9998;
+}
+.rbNav10Bar {
+  position: relative; /* anchor the side notch pseudo-elements */
+  border: 0;
+  border-radius: 0 0 28px 28px;
+  background: #ffffff;
+  box-shadow: 0 30px 60px rgba(17, 20, 22, 0.18);
+}
+/* side corner notches that flare the pill's top edge into the top frame bar */
+.rbNav10Bar::before,
+.rbNav10Bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 49px;
+  height: 49px;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='50'%20height='50'%20viewBox='0%200%2050%2050'%3E%3Cpath%20d='M5.50871e-06%200C-0.00788227%2037.3001%208.99616%2050.0116%2050%2050H5.50871e-06V0Z'%20fill='%23ffffff'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+.rbNav10Bar::before { left: -49px; transform: rotate(180deg); }
+.rbNav10Bar::after  { right: -49px; transform: rotate(90deg); }
+
+/* split "Open" CTA on the right of the pill */
+.rbNav10Live {
+  min-height: 40px;
+  padding: 0;
+  gap: 0;
+  border: 0;
+  border-radius: 11px;
+  background: var(--cm-accent);
+  color: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(17, 20, 22, 0.12);
+}
+.rbNav10Live .rbNav10LiveLabel {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 8px;
+  width: auto;
+  height: auto;
+  padding: 0 14px;
+  border-radius: 11px;
+  background: #111416;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 750;
+  white-space: nowrap;
+  box-shadow: none; /* neutralize generic `.rbNav10Live span` green halo */
+}
+.rbNav10Live .rbNav10LiveArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 38px;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  color: #111416; /* black arrow on the green square */
+  box-shadow: none; /* neutralize generic `.rbNav10Live span` green halo */
+}
+.rbNav10Live .rbNav10LiveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #a8d946;
+  box-shadow: 0 0 0 4px rgba(168, 217, 70, 0.2);
+}
+
+/* --- 3. Hero: centered single column ---------------------------------------- */
+.heroGrid {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  text-align: center;
+  padding-top: clamp(104px, 13vh, 156px);
+}
+.heroCopy {
+  align-items: center;
+  text-align: center;
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+/* badge / kicker pill — saas222 "Now Available ✦" treatment */
+.heroKicker {
+  border-radius: 12px;
+}
+.heroKicker svg {
+  color: var(--cm-accent);
+}
+
+/* big centered headline; serif-italic green accent word like saas222 "Confidence" */
+.heroTitle {
+  margin: 22px 0 0;
+  font-size: clamp(44px, 6.6vw, 92px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  font-weight: 760;
+  color: var(--cm-ink);
+}
+.heroTitle span:nth-child(2) {
+  color: var(--cm-ink); /* drop the old dark-green line; only the <em> is accent */
+}
+.heroTitle em {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--cm-accent);
+  text-decoration: none;
+}
+
+/* center subhead + input row + demo status + actions */
+.heroCopy p {
+  max-width: 660px;
+  margin: 20px auto 0;
+}
+.heroTarget {
+  margin: 26px auto 0;
+}
+.heroDemoStatus {
+  margin: 10px auto 0;
+}
+.heroActions {
+  justify-content: center;
+}
+
+/* split CTA: black pill label + green arrow square (saas222 Get Started button) */
+.heroCta {
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--cm-accent);
+  color: var(--cm-ink);
+  box-shadow: 0 16px 38px rgba(17, 20, 22, 0.18);
+}
+.heroCtaLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  flex: 1 1 auto;
+  gap: 8px;
+  padding: 0 22px;
+  border-radius: 12px;
+  background: var(--cm-ink);
+  color: #ffffff;
+  font-weight: 800;
+}
+.heroCtaArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 46px;
+  color: var(--cm-ink); /* black arrow on green square */
+}
+
+/* --- 4. Wide centered dashboard mock (solid card, no clipping) -------------- */
+/* No bottom mask: the previous fade clipped the metrics row and let the dark
+   backdrop bleed through the white log panel, making it read as broken/illegible.
+   The mock is a self-contained white card (border + radius + shadow). */
+.heroPreview {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  border: 1px solid rgba(17, 20, 22, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 40px 90px rgba(17, 20, 22, 0.16);
+}
+
+/* Log panel is a dark terminal surface (--cm-surface-invert, set in the restyle
+   block) but the base .previewLog p is dark slate (#344050) — illegible on dark.
+   Give the log lines light text so the "waiting for target" state reads clean. */
+.previewLog p {
+  color: rgba(228, 241, 205, 0.82);
+}
+.previewLog div.isActive p,
+.previewLog div.isDone p {
+  color: #ffffff;
+}
+
+/* --- 5. Backdrop parallax: brighter BG that drifts with the mouse ----------- */
+.heroBackdrop {
+  background:
+    linear-gradient(180deg, rgba(244, 247, 241, 0.55) 0%, rgba(244, 247, 241, 0.3) 38%, rgba(244, 247, 241, 0.82) 100%),
+    url("/BG.jpg") center / cover no-repeat;
+  filter: saturate(1.05) contrast(1.02) brightness(1.08);
+  transform: translate3d(var(--hero-x, 0), var(--hero-y, 0), 0) scale(1.08);
+}
+
+/* --- 6. Logo loop edge-fade mask (adds -webkit- + exact 10%/90% stops) ------ */
+.logoLoop {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+}
+
+/* --- 7. Mobile: full-width pill, hide notches/live, tame hero spacing ------- */
+@media (max-width: 850px) {
+  .rbNav10 {
+    top: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+  }
+  .rbNav10Bar {
+    border-radius: 0 0 24px 24px;
+  }
+  .rbNav10Bar::before,
+  .rbNav10Bar::after {
+    display: none;
+  }
+  .rbNav10Live {
+    display: none;
+  }
+  .heroGrid {
+    padding-top: 92px;
+  }
+  .heroPreview {
+    max-width: 100%;
+  }
+}
+
+/* ============================================================================
+   /app/memory facts restyle — landing brand alignment (Space Grotesk display
+   headings, JetBrains-mono metadata, airier hierarchy, soft-green accents).
+   CSS-only. SCOPED to .factsSection so the shared .sectionHead used on other
+   pages stays untouched. Per-entity-type name link COLORS are preserved — only
+   the font/size/weight of names is changed.
+   ========================================================================== */
+
+/* Roomier rhythm: between sections and within each section */
+.factsPanel { gap: 26px; }
+.factsSection { gap: 16px; }
+
+/* Section header → display heading + mono soft-green count pill */
+.factsSection > .sectionHead { align-items: center; margin-bottom: 2px; }
+.factsSection > .sectionHead h2 {
+  font-family: var(--cm-display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--cm-ink);
+}
+.factsSection > .sectionHead > span {
+  font-family: var(--cm-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--olive);
+  background: var(--lime-soft);
+  border: 1px solid rgba(132, 180, 40, 0.28);
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Topics band → roomier tiles that lift on hover */
+.factsTopicBand { gap: 12px; }
+.factsTopicTile {
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(17, 20, 22, 0.04);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.factsTopicTile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(22, 31, 45, 0.10);
+}
+.factsTopicTop strong {
+  font-family: var(--cm-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.factsTopicPct { font-family: var(--cm-mono); font-weight: 600; color: var(--olive); }
+.factsTopicKeywords span {
+  font-family: var(--cm-mono);
+  font-size: 10.5px;
+  background: rgba(17, 20, 22, 0.04);
+  color: var(--cm-muted);
+}
+.factsTopicTile small { font-family: var(--cm-mono); letter-spacing: 0.01em; }
+
+/* Entity group cards → airier, header divider, mono label + count badge */
+.factsEntityGroups { gap: 16px; }
+.factsEntityGroup {
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(17, 20, 22, 0.04);
+  transition: box-shadow 160ms ease;
+}
+.factsEntityGroup:hover { box-shadow: 0 12px 30px rgba(22, 31, 45, 0.08); }
+.factsEntityGroup h3 {
+  gap: 8px;
+  margin: 0 0 12px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--cm-border);
+  font-family: var(--cm-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.factsEntityGroup h3 .factsTypeDot { width: 8px; height: 8px; }
+.factsEntityGroup h3 small {
+  font-family: var(--cm-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--olive);
+  background: var(--lime-soft);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+/* Entity rows → padded, clickable list items with a soft hover */
+.factsEntityList { gap: 4px; }
+.factsEntityRow { padding: 9px 11px; }
+.factsEntityRow:hover { background: rgba(17, 20, 22, 0.035); }
+.factsEntityRow.isActive:hover { background: rgba(168, 217, 70, 0.12); }
+/* font/size/weight only — link COLOR stays type-driven (see .factsType-* above) */
+.factsEntityHead > strong {
+  font-family: var(--cm-display);
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.factsEntityMentions { font-family: var(--cm-mono); font-size: 10.5px; }
+.factsEntityDesc { font-size: 13px; line-height: 1.5; color: #4a5563; }
+.factsSalienceTrack { height: 5px; background: rgba(17, 20, 22, 0.06); margin-top: 3px; }

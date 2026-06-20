@@ -1392,28 +1392,53 @@ function ContextMemExperience() {
       let body = (await response.json()) as { job: HostedExtractionJob; demo?: { remainingToday?: number } };
       lastJob = body.job;
       setDemoPreview(demoPreviewStateFromJob(body.job, displayTarget));
-      for (let attempt = 0; attempt < 20 && (body.job.status === "queued" || body.job.status === "running"); attempt += 1) {
-        await delay(800);
+      // Prod runs the build async on a Worker queue, so a real Walrus Site can
+      // take a couple of minutes. Poll ~3 min (200 × 900ms) before handing off
+      // to a graceful "still building" state instead of falsely erroring.
+      for (let attempt = 0; attempt < 200 && (body.job.status === "queued" || body.job.status === "running"); attempt += 1) {
+        await delay(900);
         const status = await fetch(`${API_BASE}/api/demo/extractions/${encodeURIComponent(body.job.id)}`);
         if (!status.ok) throw new Error(await readResponseError(status));
         body = (await status.json()) as { job: HostedExtractionJob };
         lastJob = body.job;
         setDemoPreview(demoPreviewStateFromJob(body.job, displayTarget));
       }
+      if (body.job.status === "failed") throw new Error(body.job.error ?? "Context build failed.");
       const shareId = (body.job.result as { share?: { id?: string } } | undefined)?.share?.id;
-      if (!shareId) throw new Error(body.job.error ?? "Demo extraction finished without a share page.");
-      setDemoPreview({
-        phase: "completed",
-        target: body.job.target || displayTarget,
-        jobId: body.job.id,
-        shareId,
-        message: "Preview ready. Opening share page",
-        updatedAt: Date.now()
-      });
-      navigate(`/share/${shareId}`);
-      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+      if (shareId) {
+        setDemoPreview({
+          phase: "completed",
+          target: body.job.target || displayTarget,
+          jobId: body.job.id,
+          shareId,
+          message: "Preview ready. Opening share page",
+          updatedAt: Date.now()
+        });
+        navigate(`/share/${shareId}`);
+        window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+        return;
+      }
+      if (body.job.status === "queued" || body.job.status === "running") {
+        // Our local poll budget ran out but the Worker is still building — don't
+        // surface this as a failure. The share page will appear shortly.
+        setDemoPreview({
+          phase: "queued",
+          target: body.job.target || displayTarget,
+          jobId: body.job.id,
+          message: "Still building — larger sites take a couple of minutes. Your share page will be ready shortly; reload or check Runs.",
+          updatedAt: Date.now()
+        });
+        setAuthHint("Still building on the Worker — larger sites take a couple of minutes. The share page will appear shortly.");
+        return;
+      }
+      throw new Error(body.job.error ?? "Demo extraction finished without a share page.");
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const raw = err instanceof Error ? err.message : String(err);
+      // Placeholder hosts (example.com/.org/.net) come back tagged from the
+      // Worker — replace the noisy tagged message with one clean line.
+      const message = raw.includes("DEMO_PLACEHOLDER_HOST")
+        ? "That looks like a placeholder URL (example.com). Try a real Walrus Site — e.g. https://fmsprint.wal.app/ — or a public product URL."
+        : raw;
       setDemoPreview({
         phase: "failed",
         target: lastJob?.target || displayTarget,
@@ -1489,13 +1514,17 @@ function ContextMemExperience() {
     />
   );
 
-  function renderShell(pageTitle: string, pageDescription: string, child: React.ReactNode) {
+  function renderShell(pageTitle: string, pageDescription: string, child: React.ReactNode, allowAnon = false) {
     const lockedContent = (
       <>
         {demoPreview ? <DemoPreviewAppPanel preview={demoPreview} onBackHome={() => openApp("/")} /> : null}
         {lockScreen}
       </>
     );
+    // Read-only pages (namespace gallery, knowledge-graph explorer) hit only public
+    // GET endpoints, so they render for anonymous visitors. Write/build/settings pages
+    // stay gated on a delegate.
+    const unlocked = allowAnon || hasMemWalDelegate;
     return (
       <AppShell
         pageTitle={pageTitle}
@@ -1505,9 +1534,10 @@ function ContextMemExperience() {
         authHint={authHint}
         sessionSlot={sessionSlot}
         hasMemWalDelegate={hasMemWalDelegate}
+        previewUnlocked={allowAnon}
         run={run}
       >
-        {hasMemWalDelegate ? <AppErrorBoundary>{child}</AppErrorBoundary> : lockedContent}
+        {unlocked ? <AppErrorBoundary>{child}</AppErrorBoundary> : lockedContent}
       </AppShell>
     );
   }
@@ -1537,7 +1567,8 @@ function ContextMemExperience() {
             onHeroMouseMove={handleHeroMouseMove}
             onHeroMouseLeave={resetHeroMotion}
             onHeroAction={startRunFromLanding}
-            onOpenApp={() => openApp("/app")}
+            onOpenApp={() => openApp("/app/home")}
+            onImportDelegate={() => openApp("/app/settings")}
             onInspectArtifacts={() => openApp("/app/artifacts")}
             onOpenHistory={() => openApp("/app/runs")}
           />
@@ -1545,6 +1576,7 @@ function ContextMemExperience() {
       />
       <Route path="/share/:shareId" element={<SharePage />} />
       <Route path="/showcase" element={<ShowcasePage />} />
+      <Route path="/app/home" element={renderShell("Overview", "Everything you've resolved, verified and published across the mainnet.", <OverviewAppPage history={history} />, true)} />
       <Route path="/app" element={renderShell("Build console", "Resolve a Walrus Site, verify resources, then generate a context package.", buildPage)} />
       <Route
         path="/app/artifacts"
@@ -1567,12 +1599,13 @@ function ContextMemExperience() {
         element={renderShell(
           "Walrus Memory",
           "Recall and remember verified context namespaces from the active package.",
-          <MemoryAppPage artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={sessionToken} onRemember={remember} busy={busy} />
+          <MemoryAppPage artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={sessionToken} onRemember={remember} busy={busy} />,
+          true
         )}
       />
       <Route path="/app/compare" element={renderShell("Compare", "Pick two runs and review brand, design tokens, and key facts side-by-side.", <CompareAppPage history={history} authToken={sessionToken} />)} />
       <Route path="/app/publish" element={renderShell("Publish", "Check readiness and copy the commands needed to publish the context package.", <PublishPanel run={run} authToken={sessionToken} />)} />
-      <Route path="/app/namespaces" element={renderShell("Namespaces", "Verified context namespaces — open one to browse its knowledge graph.", <NamespacesSimplePage />)} />
+      <Route path="/app/namespaces" element={renderShell("Namespaces", "Verified context namespaces — open one to browse its knowledge graph.", <NamespacesSimplePage />, true)} />
 
       <Route
         path="/app/settings"
@@ -2201,6 +2234,7 @@ function AppShell({
   authHint,
   sessionSlot,
   hasMemWalDelegate,
+  previewUnlocked = false,
   run,
   children
 }: {
@@ -2211,11 +2245,12 @@ function AppShell({
   authHint: string;
   sessionSlot: React.ReactNode;
   hasMemWalDelegate: boolean;
+  previewUnlocked?: boolean;
   run: RunResponse | null;
   children: React.ReactNode;
 }) {
   return (
-    <main className={`appShell ${hasMemWalDelegate ? "" : "isLocked"}`}>
+    <main className={`appShell ${hasMemWalDelegate || previewUnlocked ? "" : "isLocked"}`}>
       <aside className="appSidebar">
         <Link className="appBrand" to="/">
           <span className="appBrandMark">
@@ -2228,7 +2263,7 @@ function AppShell({
         </Link>
 
         <nav className="appSideNav" aria-label="App pages">
-          <NavLink className={({ isActive }) => `appSideLink ${isActive ? "selected" : ""}`} to="/" end>
+          <NavLink className={({ isActive }) => `appSideLink ${isActive ? "selected" : ""}`} to="/app/home" end>
             <Home size={17} />
             Home
           </NavLink>
@@ -2260,7 +2295,7 @@ function AppShell({
         ) : null}
         <header className="appTopbar">
           <div className="appTitleBlock">
-            <span>{hasMemWalDelegate ? "Full app" : "Locked preview"}</span>
+            <span>{hasMemWalDelegate ? "Full app" : previewUnlocked ? "Public preview" : "Locked preview"}</span>
             <h1>{pageTitle}</h1>
             <p>{pageDescription}</p>
           </div>
@@ -2432,9 +2467,12 @@ function playgroundSnippet(lang: "curl" | "ts" | "python", verb: PlaygroundVerb,
     return `import requests\nfacts = requests.get("${o}${path}").json()`;
   }
   if (verb === "remember") {
-    if (lang === "curl") return `# remember (write) is in private beta — needs an API key\ncurl -X POST ${o}/api/memory \\\n  -H "authorization: Bearer <YOUR_API_KEY>" \\\n  -H "content-type: application/json" \\\n  -d '{"namespace":"${ns}","text":"...","private":true}'`;
-    if (lang === "ts") return `// remember (write) is in private beta — needs an API key\nawait fetch("${o}/api/memory", {\n  method: "POST",\n  headers: { authorization: "Bearer <YOUR_API_KEY>", "content-type": "application/json" },\n  body: JSON.stringify({ namespace: "${ns}", text: "...", private: true })\n});`;
-    return `# remember (write) is in private beta — needs an API key\nimport requests\nrequests.post("${o}/api/memory",\n  headers={"authorization": "Bearer <YOUR_API_KEY>"},\n  json={"namespace": "${ns}", "text": "...", "private": True})`;
+    // There is no keyless public write endpoint. Memory is written to Walrus
+    // during a build (delegate-keyed) or through the MCP server — be honest
+    // about that instead of printing a fake POST /api/memory call.
+    if (lang === "curl") return `# remember (write) is NOT a keyless REST call.\n# Memory is written to Walrus during a build, or via the MCP server,\n# once you import a Walrus Memory delegate key in Settings.\n# recall · ask · knowledge above ARE keyless and live:\ncurl -X POST ${o}/api/memwal/recall \\\n  -H "content-type: application/json" \\\n  -d '{"namespace":"${ns}","query":"..."}'`;
+    if (lang === "ts") return `// remember (write) is NOT a keyless REST call.\n// Import a Walrus Memory delegate in Settings, then write memory by\n// running a build or wiring the ContextMEM MCP server into your agent.\n// recall · ask · knowledge above ARE keyless:\nconst res = await fetch("${o}/api/memwal/recall", {\n  method: "POST",\n  headers: { "content-type": "application/json" },\n  body: JSON.stringify({ namespace: "${ns}", query: "..." })\n});`;
+    return `# remember (write) is NOT a keyless REST call.\n# Import a Walrus Memory delegate in Settings, then write memory by\n# running a build or via the ContextMEM MCP server.\n# recall / ask / knowledge above ARE keyless:\nimport requests\ndata = requests.post("${o}/api/memwal/recall",\n  json={"namespace": "${ns}", "query": "..."}).json()`;
   }
   const path = verb === "ask" ? "/api/memwal/chat" : "/api/memwal/recall";
   const payload = verb === "ask"
@@ -2518,7 +2556,10 @@ function MemoryPlayground({ onRequestAccess }: { onRequestAccess?: () => void })
 
   async function run() {
     if (verb === "remember") {
-      onRequestAccess?.();
+      // No silent redirect: explain inline. Writing memory isn't a keyless
+      // call — it needs a delegate key (imported in Settings) and happens
+      // during a build or via the MCP server. The CTA button navigates.
+      setError("Writing memory needs a Walrus Memory delegate key — import one in Settings. recall · ask · knowledge are keyless and live.");
       return;
     }
     const ns = namespace.trim();
@@ -2618,11 +2659,11 @@ function MemoryPlayground({ onRequestAccess }: { onRequestAccess?: () => void })
             <div className="memPlayGate">
               <ShieldCheck size={18} />
               <div>
-                <strong>Writing memory is in private beta.</strong>
-                <span>recall · ask · knowledge are live now. Writing your own memory to Walrus — optionally Seal-encrypted — needs an account.</span>
+                <strong>Writing memory needs a delegate key.</strong>
+                <span>recall · ask · knowledge above are keyless and live. Writing your own memory to Walrus — optionally Seal-encrypted — runs during a build or via the MCP server, once you import a Walrus Memory delegate. There is no keyless public write endpoint.</span>
               </div>
               <button type="button" className="memPlayGateCta" onClick={() => onRequestAccess?.()}>
-                Get access <ArrowDownRight size={15} />
+                Import a delegate <ArrowDownRight size={15} />
               </button>
             </div>
           ) : (
@@ -2710,6 +2751,7 @@ function LandingPage({
   onHeroMouseLeave,
   onHeroAction,
   onOpenApp,
+  onImportDelegate,
   onInspectArtifacts,
   onOpenHistory
 }: {
@@ -2732,6 +2774,7 @@ function LandingPage({
   onHeroMouseLeave: () => void;
   onHeroAction: () => void;
   onOpenApp: () => void;
+  onImportDelegate: () => void;
   onInspectArtifacts: () => void;
   onOpenHistory: () => void;
 }) {
@@ -2746,6 +2789,23 @@ function LandingPage({
 
   return (
     <main className={`shell landingShell ${hasMemWalDelegate ? "" : "isLocked"}`}>
+      {/* Landing-only chrome: fixed white frame + corner notches (saas222 site-frame) */}
+      <div className="lpFrame lpFrameTop" aria-hidden="true" />
+      <div className="lpFrame lpFrameBottom" aria-hidden="true" />
+      <div className="lpFrame lpFrameLeft" aria-hidden="true" />
+      <div className="lpFrame lpFrameRight" aria-hidden="true" />
+      <svg className="lpCorner lpCornerTL" width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M5.50871e-06 0C-0.00788227 37.3001 8.99616 50.0116 50 50H5.50871e-06V0Z" fill="currentColor" />
+      </svg>
+      <svg className="lpCorner lpCornerTR" width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M5.50871e-06 0C-0.00788227 37.3001 8.99616 50.0116 50 50H5.50871e-06V0Z" fill="currentColor" />
+      </svg>
+      <svg className="lpCorner lpCornerBL" width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M5.50871e-06 0C-0.00788227 37.3001 8.99616 50.0116 50 50H5.50871e-06V0Z" fill="currentColor" />
+      </svg>
+      <svg className="lpCorner lpCornerBR" width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M5.50871e-06 0C-0.00788227 37.3001 8.99616 50.0116 50 50H5.50871e-06V0Z" fill="currentColor" />
+      </svg>
       <Navigation10
         statusLabel={statusLabel}
         statusTone={statusTone}
@@ -2814,9 +2874,13 @@ function LandingPage({
             ) : null}
             <div className="heroActions">
               <button className="heroCta" onClick={hasMemWalDelegate ? onOpenApp : onHeroAction} disabled={!hasMemWalDelegate && demoActive}>
-                {!hasMemWalDelegate && demoActive ? <LoaderCircle className="spinIcon" size={17} /> : null}
-                {hasMemWalDelegate ? "Open app" : demoActive ? demoPreviewButtonLabel(demoPreview) : "Run public preview"}
-                {!demoActive ? <ArrowDownRight size={18} /> : null}
+                <span className="heroCtaLabel">
+                  {!hasMemWalDelegate && demoActive ? <LoaderCircle className="spinIcon" size={17} /> : null}
+                  {hasMemWalDelegate ? "Open app" : demoActive ? demoPreviewButtonLabel(demoPreview) : "Run public preview"}
+                </span>
+                <span className="heroCtaArrow">
+                  {!demoActive ? <ArrowDownRight size={18} /> : null}
+                </span>
               </button>
               <button className="heroGhost" onClick={onInspectArtifacts}>
                 <LayoutGrid size={17} />
@@ -2891,7 +2955,7 @@ function LandingPage({
         </div>
       </section>
 
-      <MemoryPlayground onRequestAccess={onOpenApp} />
+      <MemoryPlayground onRequestAccess={onImportDelegate} />
 
       <section ref={headlineRef} className="headlineReveal">
         <p>
@@ -5941,7 +6005,24 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
     setHostedTags(run.manifest.mode === "walrus" ? "walrus,context" : "web,context");
     void fetch(`${API_BASE}/api/runs/${run.manifest.runId}/publish-readiness`, { headers: authHeaders(authToken) })
       .then((response) => (response.ok ? response.json() : response.text().then((text) => Promise.reject(new Error(text)))))
-      .then((data) => setReadiness(data as PublishReadiness))
+      .then((raw) => {
+        // Normalize defensively: older/slim backends may omit array fields, which
+        // would make FileChecklist's .map() crash and blank the whole page. Always
+        // hand the renderer well-formed arrays/objects, deriving warnings from a
+        // legacy `missing[]` payload when present.
+        const data = (raw ?? {}) as Partial<PublishReadiness> & { missing?: string[] };
+        setReadiness({
+          ready: Boolean(data.ready),
+          routeCount: data.routeCount ?? 0,
+          artifactCount: data.artifactCount ?? 0,
+          totalBytes: data.totalBytes ?? 0,
+          required: data.required ?? [],
+          optional: data.optional ?? [],
+          warnings: data.warnings ?? (data.missing ?? []).map((path) => `Missing required package file: ${path}`),
+          commands: data.commands ?? { publish: "" },
+          files: data.files ?? []
+        });
+      })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, [authToken, run?.manifest.runId]);
 
@@ -6044,18 +6125,20 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
         </section>
       ) : null}
 
-      <section className="commandBox">
-        <div className="sectionHead">
-          <h2>Publish Commands</h2>
-          <span>run locally with site-builder</span>
-        </div>
-        <code>{readiness.commands.publish}</code>
-        <button onClick={() => navigator.clipboard.writeText(readiness.commands.publish)}>
-          <Clipboard size={15} />
-          Copy publish command
-        </button>
-        {readiness.commands.update ? <code>{readiness.commands.update}</code> : null}
-      </section>
+      {readiness.commands.publish ? (
+        <section className="commandBox">
+          <div className="sectionHead">
+            <h2>Publish Commands</h2>
+            <span>run locally with site-builder</span>
+          </div>
+          <code>{readiness.commands.publish}</code>
+          <button onClick={() => navigator.clipboard.writeText(readiness.commands.publish)}>
+            <Clipboard size={15} />
+            Copy publish command
+          </button>
+          {readiness.commands.update ? <code>{readiness.commands.update}</code> : null}
+        </section>
+      ) : null}
 
       <section className="namespacePanel">
         <div className="sectionHead">
@@ -6176,6 +6259,275 @@ function PublishPanel({ run, authToken }: { run: RunResponse | null; authToken: 
   );
 }
 
+type OverviewNamespace = {
+  namespace: string;
+  displayName: string;
+  target: string;
+  entities: number;
+  relationships: number;
+  topics: number;
+  questions: number;
+  proof?: { blobId: string; certified: boolean } | null;
+};
+
+// Short relative token ("5m" / "2h" / "3d"). Floors sub-minute to "1m" so it reads
+// cleanly inside an "{x} ago" template. Returns "—" for an unparseable timestamp.
+function ovRelativeTime(value: string): string {
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return "—";
+  const minutes = Math.max(1, Math.floor((Date.now() - then) / 60000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w`;
+  return `${Math.floor(days / 30)}mo`;
+}
+
+function ovRunStatus(item: RunHistoryItem): { label: string; tone: "done" | "running" | "failed" } {
+  const status = (item.status ?? "").toLowerCase();
+  if ((item.errors?.length ?? 0) > 0 || status === "failed" || status === "error") {
+    return { label: "failed", tone: "failed" };
+  }
+  if (status === "running" || status === "queued" || status === "processing" || status === "pending") {
+    return { label: "running", tone: "running" };
+  }
+  return { label: "done", tone: "done" };
+}
+
+// In-app Overview / Home dashboard — mirrors the "ContextMeM Dashboard" comp's
+// Overview section. Honest data only: namespaces from the public facts catalog
+// (same fetch + shape as NamespacesSimplePage), runs/alerts from the in-memory run
+// history. Public (rendered with allowAnon) like the Namespaces gallery.
+function OverviewAppPage({ history }: { history: RunHistoryItem[] }) {
+  const navigate = useNavigate();
+  const [namespaces, setNamespaces] = useState<OverviewNamespace[]>([]);
+  const [busy, setBusy] = useState(true);
+  const [copiedNs, setCopiedNs] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/memwal/facts`);
+        const body = (await response.json()) as { namespaces?: OverviewNamespace[] };
+        if (!cancelled) setNamespaces(body.namespaces ?? []);
+      } catch {
+        /* leave empty */
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const totalArtifacts = namespaces.reduce((sum, ns) => sum + (ns.entities ?? 0), 0);
+  const certifiedCount = namespaces.filter((ns) => ns.proof?.certified).length;
+  const allCertified = namespaces.length > 0 && certifiedCount === namespaces.length;
+  const recentRuns = history.slice(0, 4);
+  const mostRecent = history.length
+    ? history.reduce((a, b) => (new Date(b.updatedAt).getTime() > new Date(a.updatedAt).getTime() ? b : a))
+    : null;
+  const alertRuns = history.filter(
+    (item) => (item.errors?.length ?? 0) > 0 || (item.status ?? "").toLowerCase() === "failed"
+  );
+  const openAlerts = alertRuns.length;
+
+  function copyMcp(namespace: string) {
+    // Same construction the app uses elsewhere: MCP must hit the worker gateway, so
+    // build from API_BASE on hosted, fall back to window.origin only on localhost.
+    const mcpBase = isLocalApiBase(API_BASE) ? window.location.origin : API_BASE;
+    const mcpUrl = `${mcpBase}/mcp?namespace=${encodeURIComponent(namespace)}`;
+    void navigator.clipboard.writeText(mcpUrl);
+    setCopiedNs(namespace);
+    window.setTimeout(() => setCopiedNs((current) => (current === namespace ? null : current)), 1600);
+  }
+
+  return (
+    <div className="ovPage">
+      {/* The shell topbar (AppShell) already renders the eyebrow + h1 "Overview" +
+          subtitle for this route, so the page body only adds the Build action — same
+          convention as every other app page (Runs, Artifacts, …). */}
+      <div className="ovHead">
+        <button type="button" className="ovBuildBtn" onClick={() => navigate("/app")}>
+          <Plus size={15} />
+          Build context
+        </button>
+      </div>
+
+      <div className="ovStatGrid">
+        <div className="ovStatCard">
+          <div className="ovStatTop">
+            <span className="ovStatLabel">Namespaces</span>
+            <span className="ovStatIcon">
+              <Database size={15} />
+            </span>
+          </div>
+          <div className="ovStatNum">{namespaces.length}</div>
+          <div className="ovStatSub">live on mainnet</div>
+        </div>
+        <div className="ovStatCard">
+          <div className="ovStatTop">
+            <span className="ovStatLabel">Artifacts</span>
+            <span className="ovStatIcon">
+              <Boxes size={15} />
+            </span>
+          </div>
+          <div className="ovStatNum">{totalArtifacts.toLocaleString()}</div>
+          <div className={`ovStatSub ${allCertified ? "isGood" : ""}`}>
+            {allCertified ? "100% verified" : `${certifiedCount} verified`}
+          </div>
+        </div>
+        <div className="ovStatCard">
+          <div className="ovStatTop">
+            <span className="ovStatLabel">Snapshots</span>
+            <span className="ovStatIcon">
+              <History size={15} />
+            </span>
+          </div>
+          <div className="ovStatNum">{history.length}</div>
+          <div className="ovStatSub">{mostRecent ? `last ${ovRelativeTime(mostRecent.updatedAt)} ago` : "—"}</div>
+        </div>
+        <div className="ovStatCard">
+          <div className="ovStatTop">
+            <span className="ovStatLabel">Open alerts</span>
+            <span className="ovStatIcon isAlert">
+              <AlertCircle size={15} />
+            </span>
+          </div>
+          <div className="ovStatNum isAlert">{openAlerts}</div>
+          <div className="ovStatSub">{openAlerts ? `${openAlerts} run${openAlerts > 1 ? "s" : ""} need attention` : "All clear"}</div>
+        </div>
+      </div>
+
+      <div className="ovPanelGrid">
+        <div className="ovPanel">
+          <div className="ovPanelHead">
+            <span>Recent runs</span>
+            <button type="button" className="ovLink" onClick={() => navigate("/app/runs")}>
+              View all →
+            </button>
+          </div>
+          <div className="ovRunList">
+            {recentRuns.length ? (
+              recentRuns.map((item) => {
+                const st = ovRunStatus(item);
+                const count = (item.pages ?? 0) + (item.images ?? 0) + (item.resources ?? 0);
+                return (
+                  <div key={item.runId} className="ovRunRow">
+                    <div className="ovRunMeta">
+                      <span className="ovRunTitle">{item.namespace || compactTarget(item.target)}</span>
+                      <span className="ovRunSub">
+                        {count} artifacts · {item.mode}
+                      </span>
+                    </div>
+                    <span className="ovRunTime">{ovRelativeTime(item.updatedAt)}</span>
+                    <span className={`ovStatusPill ${st.tone}`}>
+                      <span className="ovDot" />
+                      {st.label}
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="ovRunEmpty">No runs yet. Build a context package to get started.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="ovPanel">
+          <div className="ovPanelHead">
+            <span>Alerts</span>
+          </div>
+          <div className="ovAlertList">
+            {alertRuns.length ? (
+              alertRuns.slice(0, 6).map((item) => (
+                <div key={item.runId} className="ovAlert">
+                  <span className="ovAlertDot" />
+                  <div>
+                    <div className="ovAlertTitle">Run failed</div>
+                    <div className="ovAlertSub">
+                      {(item.namespace || compactTarget(item.target)) + " · " + (item.errors?.[0] ?? "build did not complete")}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="ovAlertEmpty">
+                <CheckCircle2 size={18} />
+                <div>
+                  <div className="ovAlertTitle">No open alerts</div>
+                  <div className="ovAlertSub">Every run finished cleanly. Drift and webhook checks surface here.</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="ovPanel ovTableCard">
+        <div className="ovPanelHead">
+          <span>Namespaces</span>
+          <button type="button" className="ovLink" onClick={() => navigate("/app/namespaces")}>
+            Manage →
+          </button>
+        </div>
+        <div className="ovTableWrap">
+          <table className="ovTable">
+            <thead>
+              <tr>
+                <th>NAMESPACE</th>
+                <th>VISIBILITY</th>
+                <th>ARTIFACTS</th>
+                <th>SNAPSHOT</th>
+                <th>MCP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {namespaces.map((ns) => {
+                const matchRun = history.find((h) => h.namespace === ns.namespace);
+                const snapshot = matchRun ? `${ovRelativeTime(matchRun.updatedAt)} ago` : "—";
+                return (
+                  <tr key={ns.namespace}>
+                    <td className="ovNsName">{ns.namespace}</td>
+                    <td>
+                      <span className="ovVisPill">public</span>
+                    </td>
+                    <td className="ovMono">{ns.entities}</td>
+                    <td className="ovSnap">{snapshot}</td>
+                    <td>
+                      <button type="button" className="ovCopy" onClick={() => copyMcp(ns.namespace)}>
+                        {copiedNs === ns.namespace ? (
+                          <>
+                            <CheckCircle2 size={12} /> copied
+                          </>
+                        ) : (
+                          <>
+                            <Clipboard size={12} /> copy
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {busy ? (
+          <div className="ovTableEmpty">Loading namespaces…</div>
+        ) : !namespaces.length ? (
+          <div className="ovTableEmpty">No namespaces yet. Build a context package to create one.</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 // Maximally simplified Namespaces view: a clean read-only list of verified context
 // namespaces (from the public facts catalog) that links straight into the Knowledge browser.
 function NamespacesSimplePage() {
@@ -6225,527 +6577,6 @@ function NamespacesSimplePage() {
       </div>
       {busy ? <div className="panel subEmpty">Loading namespaces…</div> : !namespaces.length ? <div className="panel subEmpty">No namespaces yet. Build a context package to create one.</div> : null}
     </section>
-  );
-}
-
-function NamespacesAppPage({ authToken }: { authToken: string }) {
-  const [namespaces, setNamespaces] = useState<HostedNamespaceSummary[]>([]);
-  const [directory, setDirectory] = useState<HostedNamespaceSummary[]>([]);
-  const [selected, setSelected] = useState<HostedNamespaceSummary | null>(null);
-  const [tokens, setTokens] = useState<HostedNamespaceToken[]>([]);
-  const [newTokenLabel, setNewTokenLabel] = useState("agent import");
-  const [freshToken, setFreshToken] = useState<string | null>(null);
-  const [metadataDraft, setMetadataDraft] = useState({ displayName: "", description: "", tags: "", visibility: "private" as "private" | "public", directoryEnabled: false });
-  const [builderSources, setBuilderSources] = useState<Array<{ target: string; label: string; mode: "auto" | "web" | "walrus" }>>([{ target: "https://fmsprint.wal.app/", label: "FMSprint", mode: "auto" }]);
-  const [builderNamespace, setBuilderNamespace] = useState("");
-  const [builderDisplayName, setBuilderDisplayName] = useState("AI namespace");
-  const [builderDescription, setBuilderDescription] = useState("");
-  const [builderTags, setBuilderTags] = useState("hosted,context");
-  const [builderVisibility, setBuilderVisibility] = useState<"private" | "public">("private");
-  const [builderDirectoryEnabled, setBuilderDirectoryEnabled] = useState(false);
-  const [extractJob, setExtractJob] = useState<HostedExtractionJob | null>(null);
-  const [schedules, setSchedules] = useState<HostedSchedule[]>([]);
-  const [alerts, setAlerts] = useState<ContextAlert[]>([]);
-  const [scheduleTarget, setScheduleTarget] = useState("https://fmsprint.wal.app/");
-  const [scheduleNamespace, setScheduleNamespace] = useState("");
-  const [scheduleInterval, setScheduleInterval] = useState(24);
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [webhookSecret, setWebhookSecret] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = async () => {
-    setError(null);
-    const [ownedResponse, directoryResponse, schedulesResponse, alertsResponse] = await Promise.all([
-      fetch(`${API_BASE}/api/hosted/namespaces`, { headers: authHeaders(authToken) }),
-      fetch(`${API_BASE}/api/hosted/directory`, { headers: authHeaders(authToken) }),
-      fetch(`${API_BASE}/api/hosted/schedules`, { headers: authHeaders(authToken) }),
-      fetch(`${API_BASE}/api/hosted/alerts`, { headers: authHeaders(authToken) })
-    ]);
-    if (!ownedResponse.ok) throw new Error(await readResponseError(ownedResponse));
-    if (!directoryResponse.ok) throw new Error(await readResponseError(directoryResponse));
-    const owned = (await ownedResponse.json()) as { namespaces: HostedNamespaceSummary[] };
-    const publicDirectory = (await directoryResponse.json()) as { namespaces: HostedNamespaceSummary[] };
-    setNamespaces(owned.namespaces ?? []);
-    setDirectory(publicDirectory.namespaces ?? []);
-    if (schedulesResponse.ok) setSchedules(((await schedulesResponse.json()) as { schedules: HostedSchedule[] }).schedules ?? []);
-    if (alertsResponse.ok) setAlerts(((await alertsResponse.json()) as { alerts: ContextAlert[] }).alerts ?? []);
-    setSelected((current) => (current ? owned.namespaces.find((item) => item.namespace === current.namespace) ?? current : owned.namespaces[0] ?? null));
-  };
-
-  useEffect(() => {
-    void refresh().catch((err) => setError(err instanceof Error ? err.message : String(err)));
-  }, [authToken]);
-
-  useEffect(() => {
-    if (!selected) {
-      setTokens([]);
-      return;
-    }
-    void fetch(`${API_BASE}/api/hosted/namespaces/${encodeURIComponent(selected.namespace)}/tokens`, { headers: authHeaders(authToken) })
-      .then((response) => (response.ok ? response.json() : response.text().then((text) => Promise.reject(new Error(text)))))
-      .then((body: { tokens: HostedNamespaceToken[] }) => setTokens(body.tokens ?? []))
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
-  }, [authToken, selected?.namespace]);
-
-  useEffect(() => {
-    if (!selected) return;
-    setMetadataDraft({
-      displayName: selected.displayName ?? defaultDisplayName(selected.target),
-      description: selected.description ?? "",
-      tags: selected.tags?.join(", ") ?? "",
-      visibility: selected.visibility,
-      directoryEnabled: Boolean(selected.directoryEnabled)
-    });
-    setFreshToken(null);
-  }, [selected?.namespace]);
-
-  async function copyText(value: string) {
-    await navigator.clipboard.writeText(value);
-  }
-
-  async function createToken() {
-    if (!selected) return;
-    setBusy("token");
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE}/api/hosted/namespaces/${encodeURIComponent(selected.namespace)}/tokens`, {
-        method: "POST",
-        headers: authHeaders(authToken, { "content-type": "application/json" }),
-        body: JSON.stringify({ label: newTokenLabel })
-      });
-      if (!response.ok) throw new Error(await readResponseError(response));
-      const body = (await response.json()) as { readToken: string };
-      setFreshToken(body.readToken);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function revokeToken(tokenId: string) {
-    if (!selected) return;
-    setBusy(tokenId);
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE}/api/hosted/namespaces/${encodeURIComponent(selected.namespace)}/tokens/${encodeURIComponent(tokenId)}`, {
-        method: "DELETE",
-        headers: authHeaders(authToken)
-      });
-      if (!response.ok) throw new Error(await readResponseError(response));
-      const tokenResponse = await fetch(`${API_BASE}/api/hosted/namespaces/${encodeURIComponent(selected.namespace)}/tokens`, { headers: authHeaders(authToken) });
-      if (tokenResponse.ok) setTokens(((await tokenResponse.json()) as { tokens: HostedNamespaceToken[] }).tokens ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function updateSelectedNamespace() {
-    if (!selected) return;
-    setBusy("metadata");
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE}/api/hosted/namespaces/${encodeURIComponent(selected.namespace)}`, {
-        method: "PATCH",
-        headers: authHeaders(authToken, { "content-type": "application/json" }),
-        body: JSON.stringify({
-          displayName: metadataDraft.displayName || undefined,
-          description: metadataDraft.description || undefined,
-          visibility: metadataDraft.visibility,
-          directoryEnabled: metadataDraft.visibility === "public" && metadataDraft.directoryEnabled,
-          tags: metadataDraft.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean)
-        })
-      });
-      if (!response.ok) throw new Error(await readResponseError(response));
-      const body = (await response.json()) as { namespace?: HostedNamespaceSummary } | HostedNamespaceSummary;
-      const updated = ("namespace" in body && typeof body.namespace === "object" ? body.namespace : body) as HostedNamespaceSummary;
-      setSelected(updated);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  function updateBuilderSource(index: number, patch: Partial<{ target: string; label: string; mode: "auto" | "web" | "walrus" }>) {
-    setBuilderSources((current) => current.map((source, itemIndex) => (itemIndex === index ? { ...source, ...patch } : source)));
-  }
-
-  function addBuilderSource() {
-    setBuilderSources((current) => (current.length >= 5 ? current : [...current, { target: "", label: "", mode: "auto" }]));
-  }
-
-  function removeBuilderSource(index: number) {
-    setBuilderSources((current) => (current.length <= 1 ? current : current.filter((_, itemIndex) => itemIndex !== index)));
-  }
-
-  async function startNamespaceBuild() {
-    setBusy("extract");
-    setError(null);
-    try {
-      const sources = builderSources
-        .map((source) => ({ target: source.target.trim(), label: source.label.trim() || undefined, mode: source.mode }))
-        .filter((source) => source.target);
-      const response = await fetch(`${API_BASE}/api/hosted/namespace-builds`, {
-        method: "POST",
-        headers: authHeaders(authToken, { "content-type": "application/json" }),
-        body: JSON.stringify({
-          namespace: builderNamespace || undefined,
-          visibility: builderVisibility,
-          displayName: builderDisplayName || defaultDisplayName(sources[0]?.target ?? "AI namespace"),
-          description: builderDescription || undefined,
-          tags: builderTags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
-          directoryEnabled: builderVisibility === "public" && builderDirectoryEnabled,
-          sources
-        })
-      });
-      if (!response.ok) throw new Error(await readResponseError(response));
-      const body = (await response.json()) as { job: HostedExtractionJob };
-      setExtractJob(body.job);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function createSchedule() {
-    setBusy("schedule");
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE}/api/hosted/schedules`, {
-        method: "POST",
-        headers: authHeaders(authToken, { "content-type": "application/json" }),
-        body: JSON.stringify({
-          target: scheduleTarget,
-          namespace: scheduleNamespace || undefined,
-          intervalHours: scheduleInterval,
-          webhookUrl: webhookUrl || undefined,
-          webhookSecret: webhookSecret || undefined,
-          active: true
-        })
-      });
-      if (!response.ok) throw new Error(await readResponseError(response));
-      setWebhookSecret("");
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function toggleSchedule(schedule: HostedSchedule) {
-    setBusy(schedule.id);
-    setError(null);
-    try {
-      const response = await fetch(`${API_BASE}/api/hosted/schedules/${encodeURIComponent(schedule.id)}`, {
-        method: "PATCH",
-        headers: authHeaders(authToken, { "content-type": "application/json" }),
-        body: JSON.stringify({ active: !schedule.active })
-      });
-      if (!response.ok) throw new Error(await readResponseError(response));
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    <div className="panel namespaceDashboard">
-      {error ? <div className="error">{error}</div> : null}
-      <section className="namespacePanel">
-        <div className="sectionHead">
-          <h2>Your ContextMCP Namespaces</h2>
-          <span>{namespaces.length} namespaces</span>
-        </div>
-        <div className="namespaceList">
-          {namespaces.map((item) => (
-            <button key={item.namespace} className={selected?.namespace === item.namespace ? "selected" : ""} onClick={() => setSelected(item)}>
-              <strong>{item.displayName || item.namespace}</strong>
-              <code>{item.namespace}</code>
-              <span>{item.visibility} · {item.artifactCount} artifacts · {item.directoryEnabled ? "directory" : "unlisted"}</span>
-            </button>
-          ))}
-          {!namespaces.length ? <div className="subEmpty">Publish a run or build a hosted namespace to create your first agent context.</div> : null}
-        </div>
-      </section>
-
-      {selected ? (
-        <section className="namespacePanel">
-          <div className="sectionHead">
-            <h2>{selected.displayName || selected.namespace}</h2>
-            <button onClick={() => navigator.clipboard.writeText(selected.mcpUrl)}>
-              <Clipboard size={14} />
-              Copy MCP URL
-            </button>
-          </div>
-          <div className="namespaceMeta">
-            <div><span>visibility</span><strong>{selected.visibility}</strong></div>
-            <div><span>sources</span><strong>{selected.sourceCount ?? selected.sources?.length ?? 1}</strong></div>
-            <div><span>updated</span><strong>{formatDateTime(selected.updatedAt)}</strong></div>
-            <div><span>size</span><strong>{formatBytes(selected.byteLength)}</strong></div>
-          </div>
-          <code>{selected.mcpUrl}</code>
-          <NamespaceSourceList sources={selected.sources ?? []} />
-          <div className="tokenBox">
-            <div className="sectionHead">
-              <h2>Read Tokens</h2>
-              <span>hashed at rest</span>
-            </div>
-            <div className="tokenCreate">
-              <input value={newTokenLabel} onChange={(event) => setNewTokenLabel(event.target.value)} />
-              <button onClick={createToken} disabled={busy === "token"}>
-                <KeyRound size={14} />
-                Create token
-              </button>
-            </div>
-            {freshToken ? (
-              <label className="freshToken">
-                <span>New token</span>
-                <code>{freshToken}</code>
-                <button onClick={() => navigator.clipboard.writeText(freshToken)}>
-                  <Clipboard size={14} />
-                  Copy
-                </button>
-              </label>
-            ) : null}
-            <div className="tokenList">
-              {tokens.map((token) => (
-                <div key={token.id}>
-                  <strong>{token.label}</strong>
-                  <span>{token.revoked ? "revoked" : "active"} · {token.hashPrefix}</span>
-                  <button onClick={() => revokeToken(token.id)} disabled={token.revoked || busy === token.id}>Revoke</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="namespacePanel">
-        <div className="sectionHead">
-          <h2>Hosted Namespace Builder</h2>
-          <span>{builderSources.length}/5 sources</span>
-        </div>
-        <div className="namespaceBuilderSources">
-          {builderSources.map((source, index) => (
-            <article key={index} className="namespaceSourceRow">
-              <label className="wide">
-                <span>Source URL</span>
-                <input value={source.target} onChange={(event) => updateBuilderSource(index, { target: event.target.value })} placeholder="https://docs.example.com/" />
-              </label>
-              <label>
-                <span>Label</span>
-                <input value={source.label} onChange={(event) => updateBuilderSource(index, { label: event.target.value })} placeholder="Docs" />
-              </label>
-              <label>
-                <span>Mode</span>
-                <select value={source.mode} onChange={(event) => updateBuilderSource(index, { mode: event.target.value as "auto" | "web" | "walrus" })}>
-                  <option value="auto">Auto</option>
-                  <option value="web">Web</option>
-                  <option value="walrus">Walrus</option>
-                </select>
-              </label>
-              <button type="button" onClick={() => removeBuilderSource(index)} disabled={builderSources.length <= 1}>
-                <X size={14} />
-              </button>
-            </article>
-          ))}
-        </div>
-        <button className="secondary" type="button" onClick={addBuilderSource} disabled={builderSources.length >= 5}>
-          <Plus size={15} />
-          Add source
-        </button>
-        <div className="namespaceForm">
-          <label className="wide">
-            <span>Namespace</span>
-            <input value={builderNamespace} onChange={(event) => setBuilderNamespace(event.target.value)} placeholder="optional custom namespace" />
-          </label>
-          <label>
-            <span>Display name</span>
-            <input value={builderDisplayName} onChange={(event) => setBuilderDisplayName(event.target.value)} />
-          </label>
-          <label className="wide">
-            <span>Description</span>
-            <input value={builderDescription} onChange={(event) => setBuilderDescription(event.target.value)} placeholder="optional" />
-          </label>
-          <label>
-            <span>Tags</span>
-            <input value={builderTags} onChange={(event) => setBuilderTags(event.target.value)} />
-          </label>
-        </div>
-        <div className="namespaceControls">
-          <div className="segmented compact">
-            <button className={builderVisibility === "private" ? "selected" : ""} onClick={() => setBuilderVisibility("private")}>
-              Private
-            </button>
-            <button className={builderVisibility === "public" ? "selected" : ""} onClick={() => setBuilderVisibility("public")}>
-              Public
-            </button>
-          </div>
-          <label className="inlineCheck">
-            <input type="checkbox" checked={builderDirectoryEnabled} disabled={builderVisibility !== "public"} onChange={(event) => setBuilderDirectoryEnabled(event.target.checked)} />
-            Directory
-          </label>
-        </div>
-        <button className="secondary" onClick={startNamespaceBuild} disabled={busy === "extract"}>
-          <Server size={15} />
-          {busy === "extract" ? "Building" : "Build namespace"}
-        </button>
-        {extractJob ? (
-          <div className="namespaceBuildResult">
-            <div className="namespaceMeta">
-              <div><span>namespace</span><strong>{extractJob.namespace}</strong></div>
-              <div><span>status</span><strong>{extractJob.status}</strong></div>
-              <div><span>sources</span><strong>{extractJob.sourceCount ?? extractJob.sources?.length ?? 1}</strong></div>
-            </div>
-            <NamespaceSourceList sources={(extractJob.result?.sources as HostedNamespaceSource[] | undefined) ?? extractJob.sources ?? []} />
-            {extractJob.result?.mcpUrl ? (
-              <label className="freshToken">
-                <span>MCP URL</span>
-                <code>{String(extractJob.result.mcpUrl)}</code>
-                <button onClick={() => copyText(String(extractJob.result?.mcpUrl ?? ""))}>
-                  <Clipboard size={14} />
-                  Copy
-                </button>
-              </label>
-            ) : null}
-            {extractJob.result?.readToken ? (
-              <label className="freshToken">
-                <span>Read token</span>
-                <code>{String(extractJob.result.readToken)}</code>
-                <button onClick={() => copyText(String(extractJob.result?.readToken ?? ""))}>
-                  <Clipboard size={14} />
-                  Copy
-                </button>
-              </label>
-            ) : null}
-            {extractJob.result?.snippets ? <div className="snippetGrid">{Object.entries(extractJob.result.snippets).map(([label, snippet]) => <article key={label}><strong>{formatSnippetLabel(label)}</strong><pre>{JSON.stringify(snippet, null, 2)}</pre></article>)}</div> : null}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="namespacePanel">
-        <div className="sectionHead">
-          <h2>Scheduled Re-scrape</h2>
-          <span>{schedules.length} schedules</span>
-        </div>
-        <div className="namespaceForm">
-          <label className="wide">
-            <span>Target URL</span>
-            <input value={scheduleTarget} onChange={(event) => setScheduleTarget(event.target.value)} />
-          </label>
-          <label>
-            <span>Namespace</span>
-            <input value={scheduleNamespace} onChange={(event) => setScheduleNamespace(event.target.value)} placeholder="optional" />
-          </label>
-          <label>
-            <span>Every hours</span>
-            <input type="number" min={1} max={720} value={scheduleInterval} onChange={(event) => setScheduleInterval(Number(event.target.value) || 24)} />
-          </label>
-          <label className="wide">
-            <span>Webhook URL</span>
-            <input value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} placeholder="optional https://..." />
-          </label>
-          <label>
-            <span>Webhook secret</span>
-            <input value={webhookSecret} onChange={(event) => setWebhookSecret(event.target.value)} placeholder="optional signing secret" />
-          </label>
-        </div>
-        <button className="secondary" onClick={createSchedule} disabled={busy === "schedule"}>
-          <CalendarClock size={15} />
-          {busy === "schedule" ? "Scheduling" : "Create schedule"}
-        </button>
-        <div className="scheduleList">
-          {schedules.map((schedule) => (
-            <article key={schedule.id}>
-              <div>
-                <strong>{schedule.namespace}</strong>
-                <span>{schedule.target}</span>
-                <small>next {formatDateTime(schedule.nextRunAt)} · every {schedule.intervalHours}h</small>
-              </div>
-              <button onClick={() => void toggleSchedule(schedule)} disabled={busy === schedule.id}>{schedule.active ? "Pause" : "Resume"}</button>
-            </article>
-          ))}
-          {!schedules.length ? <div className="subEmpty">No scheduled re-scrapes yet.</div> : null}
-        </div>
-      </section>
-
-      <section className="namespacePanel">
-        <div className="sectionHead">
-          <h2>Alerts</h2>
-          <span>{alerts.length} recent</span>
-        </div>
-        <div className="alertList">
-          {alerts.map((alert) => (
-            <article key={alert.id}>
-              <Bell size={15} />
-              <div>
-                <strong>{alert.title}</strong>
-                <span>{alert.message}</span>
-                <small>{formatDateTime(alert.createdAt)} · {alert.namespace}</small>
-              </div>
-            </article>
-          ))}
-          {!alerts.length ? <div className="subEmpty">No alerts yet. Scheduled runs will appear here after cron creates a diff.</div> : null}
-        </div>
-      </section>
-
-      <section className="namespacePanel">
-        <div className="sectionHead">
-          <h2>Public Directory</h2>
-          <span>{directory.length} public</span>
-        </div>
-        <div className="namespaceList directory">
-          {directory.map((item) => (
-            <button key={item.namespace} onClick={() => navigator.clipboard.writeText(item.mcpUrl)}>
-              <strong>{item.displayName || item.namespace}</strong>
-              <code>{item.namespace}</code>
-              <span>{item.tags?.join(", ") || "public context"} · copy MCP URL</span>
-            </button>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function NamespaceSourceList({ sources }: { sources: HostedNamespaceSource[] }) {
-  if (!sources.length) return null;
-  return (
-    <div className="namespaceSourceList">
-      {sources.map((source, index) => (
-        <article key={source.id || `${source.target}-${index}`}>
-          <div>
-            <strong>{source.label || defaultDisplayName(source.target)}</strong>
-            <span>{source.target}</span>
-            {source.error ? <small>{source.error}</small> : null}
-          </div>
-          <div className="sourceBadges">
-            <span>{source.kind ?? source.mode ?? "auto"}</span>
-            {source.engine ? <span>{source.engine}</span> : null}
-            {source.walrusProvenance || source.kind === "walrus" || source.mode === "walrus" ? <span>walrus provenance</span> : null}
-            {typeof source.pageCount === "number" ? <span>{source.pageCount} pages</span> : null}
-            {source.status ? <span>{source.status}</span> : null}
-          </div>
-        </article>
-      ))}
-    </div>
   );
 }
 
