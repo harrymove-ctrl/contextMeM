@@ -1117,15 +1117,19 @@ async function updateNamespaceArtifact(request: Request, env: WorkerEnv, namespa
     .first<{ namespace: string; owner_id: string; current_version_id: string; byte_length: number; manifest_json: string | null }>();
   if (!row) return json({ error: "Namespace not found." }, 404);
 
-  const providedOwner = request.headers.get("x-memwal-account-id") ?? new URL(request.url).searchParams.get("ownerId") ?? "";
+  // Authorize the edit against a VERIFIED owner, never a self-asserted header (#23):
+  //  - the trusted server-to-server proxy (holds the import secret), or
+  //  - a hosted delegate whose secret matches its trust-on-first-use binding, or
+  //  - the demo owner derived from the caller's own request.
   const callerDemoOwner = demoOwnerId(request);
   const importAuth = requireImportAuthorization(request, env);
+  const verifiedOwner = await resolveDelegateOwner(request, env);
   const ownerMatch =
     importAuth.ok ||
-    (providedOwner && providedOwner === row.owner_id) ||
+    (verifiedOwner !== undefined && verifiedOwner === row.owner_id) ||
     (row.owner_id.startsWith("demo:") && row.owner_id === callerDemoOwner);
   if (!ownerMatch) {
-    return json({ error: "You do not own this namespace. Pass x-memwal-account-id or the import token." }, 403);
+    return json({ error: "You do not own this namespace. Pass a verified x-memwal-account-id delegate or the import token." }, 403);
   }
 
   const store = new CloudflareNamespaceStore(env);
@@ -1517,6 +1521,65 @@ function normalizeDelegateSecret(value: string): string {
   return value.replace(/^Bearer\s+/i, "").trim();
 }
 
+// Verify the hosted delegate identity so a spoofed `x-memwal-account-id` header
+// cannot impersonate another owner (#23). The Worker has no signup/session, so we
+// bind each hosted owner to the FIRST delegate secret we see (trust-on-first-use)
+// and reject any later request that presents a different secret for that owner.
+// Returns the canonical hosted owner id when the delegate is verified (or freshly
+// bound), or undefined when no delegate is present or the secret does not match.
+// The salted hash (sha256(ownerId:secret)) means the raw delegate secret is never
+// stored.
+async function resolveDelegateOwner(request: Request, env: WorkerEnv): Promise<string | undefined> {
+  const auth = readHostedRunAuth(request);
+  if (!auth) return undefined;
+  const rawSecret = request.headers.get("x-memwal-authorization") ?? request.headers.get("x-memwal-bearer") ?? "";
+  const secret = normalizeDelegateSecret(rawSecret);
+  if (secret.length < 12) return undefined;
+  const secretHash = await sha256Hex(`${auth.ownerId}:${secret}`);
+  const now = new Date().toISOString();
+  const existing = await env.CONTEXTMEM_DB.prepare(
+    `SELECT secret_hash FROM contextmem_hosted_delegates WHERE owner_id = ?`
+  )
+    .bind(auth.ownerId)
+    .first<{ secret_hash: string }>();
+  if (!existing) {
+    // Trust on first use: bind this owner to the delegate secret presented now.
+    await env.CONTEXTMEM_DB.prepare(
+      `INSERT INTO contextmem_hosted_delegates (owner_id, secret_hash, created_at, last_seen_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(owner_id) DO NOTHING`
+    )
+      .bind(auth.ownerId, secretHash, now, now)
+      .run();
+    // Re-read so a concurrent first-write race resolves to whichever secret won.
+    const bound = await env.CONTEXTMEM_DB.prepare(
+      `SELECT secret_hash FROM contextmem_hosted_delegates WHERE owner_id = ?`
+    )
+      .bind(auth.ownerId)
+      .first<{ secret_hash: string }>();
+    return bound && constantTimeEqual(bound.secret_hash, secretHash) ? auth.ownerId : undefined;
+  }
+  if (!constantTimeEqual(existing.secret_hash, secretHash)) return undefined;
+  await env.CONTEXTMEM_DB.prepare(`UPDATE contextmem_hosted_delegates SET last_seen_at = ? WHERE owner_id = ?`)
+    .bind(now, auth.ownerId)
+    .run();
+  return auth.ownerId;
+}
+
+// Resolve the authoritative owner for an owner-scoped route. A trusted
+// server-to-server caller (one that holds the import secret — i.e. the local Fastify
+// proxy, which has already verified its own user's session) may delegate an explicit
+// owner id. Everyone else is scoped to their verified hosted delegate. The `?ownerId=`
+// param is NEVER trusted on its own. Returns undefined when no trustworthy owner is
+// available, so callers fail closed instead of falling back to a shared "anonymous"
+// bucket that would leak cross-owner rows.
+async function resolveScopedOwner(request: Request, env: WorkerEnv): Promise<string | undefined> {
+  if (requireImportAuthorization(request, env).ok) {
+    const delegated = new URL(request.url).searchParams.get("ownerId")?.trim();
+    if (delegated) return delegated;
+  }
+  return resolveDelegateOwner(request, env);
+}
+
 async function createDemoExtraction(request: Request, env: WorkerEnv, ctx: WorkerExecutionContext): Promise<Response> {
   const input = demoExtractionCreateSchema.parse(await request.json().catch(() => ({})));
   const target = validatePublicDemoTarget(input.sample ? demoSampleTarget(env) : input.target ?? demoSampleTarget(env));
@@ -1701,7 +1764,10 @@ async function createSchedule(request: Request, env: WorkerEnv): Promise<Respons
 }
 
 async function listSchedules(request: Request, env: WorkerEnv): Promise<Response> {
-  const ownerId = new URL(request.url).searchParams.get("ownerId")?.trim() || "anonymous";
+  // Fail closed: only a verified owner (trusted-proxy delegation or a verified hosted
+  // delegate) is scoped here; never default to a shared "anonymous" bucket (#23).
+  const ownerId = await resolveScopedOwner(request, env);
+  if (!ownerId) return json({ schedules: [] });
   const result = await env.CONTEXTMEM_DB.prepare(
     `SELECT id, owner_id, namespace, target, interval_hours, webhook_url, webhook_secret, active, last_run_at, next_run_at, created_at, updated_at
      FROM contextmem_schedules
@@ -1739,7 +1805,9 @@ async function updateSchedule(request: Request, env: WorkerEnv, scheduleId: stri
 }
 
 async function listAlerts(request: Request, env: WorkerEnv): Promise<Response> {
-  const ownerId = new URL(request.url).searchParams.get("ownerId")?.trim() || "anonymous";
+  // Fail closed: see listSchedules — never default to a shared "anonymous" bucket (#23).
+  const ownerId = await resolveScopedOwner(request, env);
+  if (!ownerId) return json({ alerts: [] });
   const result = await env.CONTEXTMEM_DB.prepare(
     `SELECT id, owner_id, schedule_id, namespace, target, title, message, diff_json, read_at, created_at
      FROM contextmem_alerts
