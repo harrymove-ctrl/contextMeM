@@ -562,7 +562,7 @@ describe("ContextMeM hosted namespace Worker", () => {
   });
 
   it("runs public demo extraction with quota, event status, and clear target validation", async () => {
-    const env = createTestEnv();
+    const env = { ...createTestEnv(), CONTEXTMEM_DEMO_DAILY_LIMIT: "1" };
     const restoreFetch = mockFetch({
       "https://demo-product.wal.app/": "<html><head><title>Demo Site</title></head><body><a href=\"/about\">About</a></body></html>",
       "https://demo-product.wal.app/about": "<html><head><title>About</title></head><body>Demo about page</body></html>",
@@ -654,6 +654,35 @@ describe("ContextMeM hosted namespace Worker", () => {
       const authedBody = (await authedRetry.json()) as { job: { status: string; result?: { share?: { id: string } } } };
       expect(authedBody.job.status).toBe("completed");
       expect(authedBody.job.result?.share?.id).toMatch(/^shr_/);
+    } finally {
+      restoreFetch();
+    }
+  });
+
+  it("disables the anonymous demo cap when CONTEXTMEM_DEMO_DAILY_LIMIT is 0 (showcase mode)", async () => {
+    const env = { ...createTestEnv(), CONTEXTMEM_DEMO_DAILY_LIMIT: "0" };
+    const restoreFetch = mockFetch({
+      "https://demo-product.wal.app/": "<html><head><title>Demo Site</title></head><body><a href=\"/about\">About</a></body></html>",
+      "https://demo-product.wal.app/about": "<html><head><title>About</title></head><body>Demo about page</body></html>",
+      "https://demo-product.wal.app/robots.txt": "User-agent: *\nAllow: /",
+      "https://demo-product.wal.app/sitemap.xml": "<urlset></urlset>"
+    });
+    try {
+      const { handleWorkerRequest } = await worker();
+      const build = () => handleWorkerRequest(
+        new Request("https://contextmem.test/api/demo/extractions", {
+          method: "POST",
+          headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.99" },
+          body: JSON.stringify({ target: "https://demo-product.wal.app/" })
+        }),
+        env
+      );
+      const first = await build();
+      expect(first.status).toBe(202);
+      const second = await build();
+      expect(second.status).toBe(202); // not 429 — cap disabled
+      const third = await build();
+      expect(third.status).toBe(202);
     } finally {
       restoreFetch();
     }

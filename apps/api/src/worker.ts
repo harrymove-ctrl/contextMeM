@@ -45,6 +45,10 @@ export type WorkerEnv = {
   CONTEXTMEM_NAMESPACE_IMPORT_TOKEN?: string;
   CONTEXTMEM_WORKER_BASE_URL?: string;
   CONTEXTMEM_DEMO_SAMPLE_TARGET?: string;
+  // Anonymous demo builds allowed per IP per day. Unset/blank → 50. "0" disables
+  // the cap entirely (showcase mode). Bypassed for the bundled sample target and
+  // for any request carrying a delegate (those are never rate-limited).
+  CONTEXTMEM_DEMO_DAILY_LIMIT?: string;
   CONTEXTMEM_WEBHOOK_SECRET?: string;
   MEMWAL_MCP_URL?: string;
   MEMWAL_API_URL?: string;
@@ -705,6 +709,7 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     if (request.method === "GET" && hostedRunRoute.action === "artifact-file") return getHostedRunArtifactFile(request, env, hostedRunRoute.runId);
     if (request.method === "GET" && hostedRunRoute.action === "publish-readiness") return getHostedRunPublishReadiness(request, env, hostedRunRoute.runId);
     if (request.method === "POST" && hostedRunRoute.action === "share") return shareHostedRun(request, env, hostedRunRoute.runId);
+    if (request.method === "POST" && hostedRunRoute.action === "hosted/import") return importHostedRun(request, env, hostedRunRoute.runId);
     if (request.method === "POST" && hostedRunRoute.action === "ai-query") return aiQueryRun(request, env, hostedRunRoute.runId);
   }
   if (request.method === "POST" && url.pathname === "/api/demo/extractions") {
@@ -1429,14 +1434,27 @@ async function getHostedRunArtifactFile(request: Request, env: WorkerEnv, runId:
 async function getHostedRunPublishReadiness(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
   const job = await requireRunReadAccess(request, env, runId);
   const [artifact, files] = await Promise.all([artifactManifestForJob(env, job).catch(() => undefined), new CloudflareNamespaceStore(env).listArtifacts(job.namespace)]);
-  const paths = new Set(files.map((file) => file.path));
-  const routeCount = Array.isArray(artifact?.pages) ? artifact.pages.length : 0;
+  const fileMap = new Map(files.map((file) => [file.path, file]));
+  // Mirror packages/core buildPublishReadiness so the hosted (Worker) shape matches
+  // the local (Fastify) shape the PublishPanel expects — required/optional/warnings/commands/files.
+  const requiredPaths = ["/index.html", "/llms.txt", "/ws-resources.json", "/context/manifest.json", "/context/sitemap.json", "/context/site-structure.json", "/context/images.json"];
+  const optionalPaths = ["/context/brand.json", "/context/styleguide.json", "/context/design-system.json", "/context/figma.tokens.json", "/context/tokens.css", "/context/resources.json", "/context/discovery.json", "/context/screenshots.json", "/context/component-previews.json"];
+  const required = requiredPaths.map((filePath) => ({ path: filePath, exists: fileMap.has(filePath), size: fileMap.get(filePath)?.size }));
+  const optional = optionalPaths.map((filePath) => ({ path: filePath, exists: fileMap.has(filePath), size: fileMap.get(filePath)?.size }));
+  const warnings = required.filter((file) => !file.exists).map((file) => `Missing required package file: ${file.path}`);
+  if (!optional.some((file) => file.path === "/context/design-system.json" && file.exists)) warnings.push("Design-system export is optional, but absent from this package.");
+  if (!optional.some((file) => file.path === "/context/screenshots.json" && file.exists)) warnings.push("Screenshot previews are optional, but absent from this package.");
+  const routeCount = Array.isArray(artifact?.pages) ? artifact.pages.length : files.filter((file) => file.path === "/index.html" || file.path.startsWith("/context/")).length;
   return json({
-    ready: paths.has("/llms.txt") && paths.has("/context/manifest.json"),
+    ready: required.every((file) => file.exists),
     routeCount,
     artifactCount: files.length,
     totalBytes: files.reduce((sum, file) => sum + Number(file.size || 0), 0),
-    missing: [!paths.has("/llms.txt") ? "/llms.txt" : undefined, !paths.has("/context/manifest.json") ? "/context/manifest.json" : undefined].filter(Boolean)
+    required,
+    optional,
+    warnings,
+    commands: { publish: "site-builder publish --epochs 1 ." },
+    files: files.map(hostedArtifactFileRecord)
   });
 }
 
@@ -1483,6 +1501,50 @@ async function shareHostedRun(request: Request, env: WorkerEnv, runId: string): 
     files
   };
   return json({ share: shareLinkFromImport(shareId, shareNamespace, shareInput, imported, now, request, env), url: `${workerBaseUrl(request, env)}/share/${shareId}` }, 201);
+}
+
+// Publish a finished run's package as a hosted MCP namespace (public or private).
+// The hosted parallel of the Fastify-only POST /api/runs/:id/hosted/import: it
+// existed only on the local dev server, so the prod Worker 404'd this button. Mirrors
+// shareHostedRun but writes to the caller-chosen namespace/visibility. Public imports
+// are redacted before storage; private imports are Seal-encrypted by storeNamespaceImport.
+async function importHostedRun(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const job = await requireHostedRunAccess(request, env, runId);
+  const input = z
+    .object({
+      namespace: z.string().min(1).max(200).optional(),
+      visibility: z.enum(["private", "public"]).optional(),
+      displayName: z.string().max(160).optional(),
+      description: z.string().max(600).optional(),
+      tags: z.array(z.string()).optional(),
+      directoryEnabled: z.boolean().optional()
+    })
+    .parse(await request.json().catch(() => ({})));
+  const visibility = input.visibility ?? "private";
+  const rawFiles = await namespaceFiles(env, job.namespace);
+  const files = visibility === "public" ? redactImportFiles(rawFiles) : rawFiles;
+  const rawManifest = await artifactManifestForJob(env, job).catch(() => ({ target: job.target }));
+  const result = await storeNamespaceImport(
+    {
+      namespace: input.namespace || job.namespace,
+      visibility,
+      ownerId: job.ownerId,
+      displayName: input.displayName ?? job.displayName ?? displayNameFromTarget(job.target),
+      description: input.description ?? job.description,
+      tags: input.tags?.length ? input.tags : ["hosted", "contextmem"],
+      sourceType: "import",
+      directoryEnabled: visibility === "public" && Boolean(input.directoryEnabled),
+      target: job.target,
+      sourceRunId: job.id,
+      buildKind: job.buildKind,
+      sources: job.sources,
+      manifest: visibility === "public" ? redactUnknown(rawManifest) : rawManifest,
+      files
+    },
+    request,
+    env
+  );
+  return json(result, 201);
 }
 
 async function aiQueryRun(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
@@ -4669,13 +4731,22 @@ function isPrivateIpv4(host: string): boolean {
   return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || a === 0;
 }
 
+function demoDailyLimit(env: WorkerEnv): number {
+  const raw = env.CONTEXTMEM_DEMO_DAILY_LIMIT;
+  if (raw === undefined || raw === "") return 50;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 50;
+}
+
 async function consumeDemoQuota(request: Request, env: WorkerEnv): Promise<void> {
+  const limit = demoDailyLimit(env);
+  if (limit <= 0) return; // 0 disables the anonymous demo cap entirely (showcase mode)
   const ip = clientIp(request);
   const day = new Date().toISOString().slice(0, 10);
   const ipHash = await sha256Hex(ip);
   const key = `${day}:${ipHash}`;
   const existing = await env.CONTEXTMEM_DB.prepare(`SELECT bucket_key, count FROM contextmem_demo_limits WHERE bucket_key = ?`).bind(key).first<{ bucket_key: string; count: number }>();
-  if (existing && Number(existing.count) >= 1) throw statusError("Demo limit reached for today. Import MemWal credentials to unlock unlimited builds.", 429, "DEMO_LIMIT_EXCEEDED", "Open /app/settings, paste your MemWal account ID and delegate private key, then run the build again — the demo quota is bypassed once the delegate is attached.");
+  if (existing && Number(existing.count) >= limit) throw statusError(`Demo limit reached for today (${limit}/day). Import MemWal credentials to unlock unlimited builds.`, 429, "DEMO_LIMIT_EXCEEDED", "Open /app/settings, paste your MemWal account ID and delegate private key, then run the build again — the demo quota is bypassed once the delegate is attached.");
   const now = new Date().toISOString();
   await env.CONTEXTMEM_DB.prepare(
     `INSERT INTO contextmem_demo_limits (bucket_key, ip_hash, day, count, updated_at)
