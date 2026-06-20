@@ -749,6 +749,105 @@ describe("ContextMeM hosted namespace Worker", () => {
       restoreFetch();
     }
   });
+
+  it("binds a hosted owner to its first delegate secret and blocks a spoofed x-memwal-account-id (#23)", async () => {
+    const env = createTestEnv();
+    const { handleWorkerRequest, CloudflareNamespaceStore } = await worker();
+    const namespace = "web:owned-by-acct-a.com";
+
+    const imported = await handleWorkerRequest(
+      new Request("https://contextmem.test/api/namespaces/import", {
+        method: "POST",
+        headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+        body: JSON.stringify({
+          namespace,
+          visibility: "private",
+          ownerId: "hosted:acct-a",
+          target: "https://demo-product.wal.app/",
+          sourceRunId: "run_fixture",
+          manifest: { target: "https://demo-product.wal.app/", pages: [] },
+          files: [
+            { path: "/site/page.md", contentType: "text/markdown; charset=utf-8", encoding: "utf8", content: "# original" }
+          ]
+        })
+      }),
+      env
+    );
+    expect(imported.status).toBe(201);
+
+    const editUrl = `https://contextmem.test/api/namespaces/${encodeURIComponent(namespace)}/artifact-edit`;
+    const editBody = JSON.stringify({ path: "/site/page.md", content: "# edited by owner" });
+
+    // First sighting of acct-a with its delegate secret binds (trust-on-first-use) and succeeds.
+    const ownerEdit = await handleWorkerRequest(
+      new Request(editUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-memwal-account-id": "acct-a",
+          "x-memwal-authorization": "Bearer delegate-secret-aaaa"
+        },
+        body: editBody
+      }),
+      env
+    );
+    expect(ownerEdit.status).toBe(200);
+    const stored = await new CloudflareNamespaceStore(env).readArtifact(namespace, "/site/page.md");
+    expect(stored?.content).toContain("edited by owner");
+
+    // An attacker who guesses owner acct-a but presents a DIFFERENT secret is rejected.
+    const spoofedEdit = await handleWorkerRequest(
+      new Request(editUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-memwal-account-id": "acct-a",
+          "x-memwal-authorization": "Bearer attacker-secret-zzzz"
+        },
+        body: JSON.stringify({ path: "/site/page.md", content: "# hijacked" })
+      }),
+      env
+    );
+    expect(spoofedEdit.status).toBe(403);
+    const afterSpoof = await new CloudflareNamespaceStore(env).readArtifact(namespace, "/site/page.md");
+    expect(afterSpoof?.content).not.toContain("hijacked");
+  });
+
+  it("scopes schedules/alerts to a delegated owner and fails closed without one (#23)", async () => {
+    const env = createTestEnv();
+    const { handleWorkerRequest } = await worker();
+
+    // Seed two owners' schedules via the trusted server-to-server proxy (import token).
+    for (const ownerId of ["hosted:acct-a", "hosted:acct-b"]) {
+      const created = await handleWorkerRequest(
+        new Request("https://contextmem.test/api/schedules", {
+          method: "POST",
+          headers: { authorization: "Bearer import-secret", "content-type": "application/json" },
+          body: JSON.stringify({ ownerId, target: "https://demo-product.wal.app/", intervalHours: 1 })
+        }),
+        env
+      );
+      expect(created.status).toBe(201);
+    }
+
+    // Trusted proxy delegating an explicit owner sees only that owner's rows.
+    const scopedToA = await handleWorkerRequest(
+      new Request("https://contextmem.test/api/schedules?ownerId=hosted%3Aacct-a", {
+        headers: { authorization: "Bearer import-secret" }
+      }),
+      env
+    );
+    const scopedBody = (await scopedToA.json()) as { schedules: Array<{ ownerId?: string }> };
+    expect(scopedBody.schedules).toHaveLength(1);
+
+    // Import token but NO owner delegated → fail closed to an empty list (no anonymous dump).
+    const noOwner = await handleWorkerRequest(
+      new Request("https://contextmem.test/api/schedules", { headers: { authorization: "Bearer import-secret" } }),
+      env
+    );
+    const noOwnerBody = (await noOwner.json()) as { schedules: unknown[] };
+    expect(noOwnerBody.schedules).toHaveLength(0);
+  });
 });
 
 async function importFixtureNamespace(env: WorkerEnv, visibility: "private" | "public", options: Record<string, unknown> = {}) {
@@ -854,6 +953,7 @@ class MemoryD1Database {
   scheduleRuns = new Map<string, Record<string, unknown>>();
   alerts = new Map<string, Record<string, unknown>>();
   webhookDeliveries = new Map<string, Record<string, unknown>>();
+  hostedDelegates = new Map<string, Record<string, unknown>>();
   artifacts: Array<Record<string, unknown>> = [];
 
   prepare(query: string) {
@@ -888,6 +988,9 @@ class MemoryD1Statement {
     }
     if (query.includes("from contextmem_schedules") && query.includes("where id = ?")) {
       return (this.db.schedules.get(String(this.values[0])) as T | undefined) ?? null;
+    }
+    if (query.includes("from contextmem_hosted_delegates") && query.includes("where owner_id = ?")) {
+      return (this.db.hostedDelegates.get(String(this.values[0])) as T | undefined) ?? null;
     }
     if (query.includes("from contextmem_namespaces") && query.includes("where namespace = ?")) {
       return (this.db.namespaces.get(String(this.values[0])) as T | undefined) ?? null;
@@ -1067,6 +1170,16 @@ class MemoryD1Statement {
     } else if (query.startsWith("insert into contextmem_alerts")) {
       const [id, owner_id, schedule_id, namespace, target, title, message, diff_json, created_at] = this.values;
       this.db.alerts.set(String(id), { id, owner_id, schedule_id, namespace, target, title, message, diff_json, read_at: null, created_at });
+    } else if (query.startsWith("insert into contextmem_hosted_delegates")) {
+      const [owner_id, secret_hash, created_at, last_seen_at] = this.values;
+      // ON CONFLICT(owner_id) DO NOTHING — keep the first binding.
+      if (!this.db.hostedDelegates.has(String(owner_id))) {
+        this.db.hostedDelegates.set(String(owner_id), { owner_id, secret_hash, created_at, last_seen_at });
+      }
+    } else if (query.startsWith("update contextmem_hosted_delegates")) {
+      const [last_seen_at, owner_id] = this.values;
+      const row = this.db.hostedDelegates.get(String(owner_id));
+      if (row) row.last_seen_at = last_seen_at;
     } else if (query.startsWith("insert into contextmem_webhook_deliveries")) {
       const [id, alert_id, webhook_url, created_at, updated_at] = this.values;
       this.db.webhookDeliveries.set(String(id), { id, alert_id, webhook_url, status: "queued", attempts: 0, created_at, updated_at });

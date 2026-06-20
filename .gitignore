@@ -5,6 +5,9 @@ coverage/
 .env
 .env.*
 !.env.example
+# Cloudflare Worker local secrets (HARBOR_*, MEMWAL_*, import token) — never commit.
+.dev.vars
+**/.dev.vars
 runs/
 artifacts/
 *.tsbuildinfo
