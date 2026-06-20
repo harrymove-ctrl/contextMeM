@@ -42,9 +42,13 @@ export default function Navigation10({
         </button>
 
         <button className="rbNav10Live" type="button" onClick={onOpenConsole}>
-          <span />
-          Mainnet Walrus Sites only
-          <ArrowDownRight size={14} />
+          <span className="rbNav10LiveLabel">
+            <span className="rbNav10LiveDot" />
+            Open ContextMeM
+          </span>
+          <span className="rbNav10LiveArrow">
+            <ArrowDownRight size={14} />
+          </span>
         </button>
 
         <div className="rbNav10Actions">
