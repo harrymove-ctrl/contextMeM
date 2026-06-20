@@ -661,7 +661,10 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     const ns = decodeURIComponent(url.pathname.slice("/api/memwal/facts/".length));
     // Tier 1: bundled demo facts (public, edge-cacheable).
     const seeded = SEED_FACTS[ns];
-    if (seeded) return jsonCached({ namespace: ns, source: "seed", facts: seeded, proof: SEED_PROOFS[ns] ?? null }, 300);
+    if (seeded) {
+      if (wantsMarkdown(request)) return markdown(factsToMarkdown(ns, seeded), 200, 300);
+      return jsonCached({ namespace: ns, source: "seed", facts: seeded, proof: SEED_PROOFS[ns] ?? null }, 300);
+    }
     // Tier 2: real built namespace — public for public namespaces, read-token for private.
     const auth = await store.authorizeNamespace(ns, readAccessToken(request));
     if (!auth.ok) return json({ error: auth.message }, auth.status);
@@ -675,6 +678,9 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
       if (manifest && typeof manifest === "object") facts = (manifest as Record<string, unknown>).facts;
     }
     if (!facts) return json({ error: `No facts artifact for namespace "${ns}".` }, 404);
+    if (wantsMarkdown(request)) {
+      return auth.summary.visibility === "public" ? markdown(factsToMarkdown(ns, facts), 200, 300) : markdown(factsToMarkdown(ns, facts));
+    }
     const payload = { namespace: ns, source: "r2", facts };
     return auth.summary.visibility === "public" ? jsonCached(payload, 300) : json(payload);
   }
@@ -3704,6 +3710,70 @@ function factsFallbackRecall(namespace: string, query: string): { results: Array
   return { results };
 }
 
+// ── Markdown serializers (for ?format=markdown) ──────────────────────────────
+// These mirror the landing playground's client-side rendering so the surface is
+// consistent whether an agent renders the JSON itself or asks the API for md.
+function recallToMarkdown(body: { namespace?: string; query?: string; result?: unknown }): string {
+  const head = `### Recall — ${body.namespace ?? ""}`;
+  const result = body.result as { results?: Array<{ text?: unknown }>; context?: unknown; answer?: unknown } | undefined;
+  if (result && Array.isArray(result.results) && result.results.length) {
+    const lines = result.results.map((r) => `- ${typeof r?.text === "string" ? r.text : JSON.stringify(r)}`).join("\n");
+    return `${head}\n\n${lines}\n`;
+  }
+  const ctx = typeof result?.context === "string" ? result.context : typeof result?.answer === "string" ? result.answer : "";
+  if (ctx) return `${head}\n\n${ctx}\n`;
+  return `${head}\n\n\`\`\`json\n${JSON.stringify(body.result ?? {}, null, 2)}\n\`\`\`\n`;
+}
+
+function chatToMarkdown(body: { data?: { answer?: unknown; key_points?: unknown }; confidence?: unknown; sources?: unknown }): string {
+  const answer = typeof body.data?.answer === "string" ? body.data.answer : "";
+  const pct = typeof body.confidence === "number" ? Math.round(body.confidence * 100) : null;
+  const head = pct === null ? "### Answer" : `### Answer _(confidence ${pct}%)_`;
+  let out = `${head}\n\n${answer || "_No answer returned._"}\n`;
+  const keyPoints = Array.isArray(body.data?.key_points) ? body.data!.key_points.filter((k): k is string => typeof k === "string" && !!k.trim()) : [];
+  if (keyPoints.length) out += `\n**Key points**\n${keyPoints.map((k) => `- ${k}`).join("\n")}\n`;
+  const sources = Array.isArray(body.sources) ? body.sources : [];
+  if (sources.length) {
+    const lines = sources
+      .map((s) => {
+        const path = typeof (s as { routePath?: unknown })?.routePath === "string" ? (s as { routePath: string }).routePath : "";
+        const quote = typeof (s as { quote?: unknown })?.quote === "string" ? (s as { quote: string }).quote : "";
+        return `- ${path}${quote ? ` — ${quote}` : ""}`;
+      })
+      .filter((l) => l.trim() !== "-")
+      .join("\n");
+    if (lines) out += `\n**Sources**\n${lines}\n`;
+  }
+  return out;
+}
+
+function factsToMarkdown(namespace: string, facts: unknown): string {
+  const f = (facts && typeof facts === "object" ? facts : {}) as {
+    identity?: { name?: string; oneLiner?: string; category?: string };
+    topics?: Array<{ label?: string }>;
+    entities?: Array<{ type?: string; name?: string; description?: string; salience?: number }>;
+    claims?: Array<{ text?: string }>;
+    stats?: Array<{ label?: string; valueRaw?: string }>;
+    questions?: Array<{ question?: string; answer?: string }>;
+  };
+  const title = f.identity?.name?.trim() || namespace;
+  const out: string[] = [`# ${title}`];
+  if (f.identity?.oneLiner) out.push("", f.identity.oneLiner);
+  if (f.identity?.category) out.push("", `**Category:** ${f.identity.category}`);
+  const topics = (f.topics ?? []).map((t) => t?.label).filter((l): l is string => !!l);
+  if (topics.length) out.push("", "## Topics", topics.map((t) => `- ${t}`).join("\n"));
+  const entities = [...(f.entities ?? [])].sort((a, b) => (b?.salience ?? 0) - (a?.salience ?? 0)).filter((e) => !!e?.name);
+  if (entities.length) out.push("", "## Entities", entities.map((e) => `- **${e.name}**${e.type ? ` (${e.type})` : ""}${e.description ? ` — ${e.description}` : ""}`).join("\n"));
+  const claims = (f.claims ?? []).map((c) => c?.text).filter((t): t is string => !!t);
+  if (claims.length) out.push("", "## Claims", claims.map((c) => `- ${c}`).join("\n"));
+  const stats = (f.stats ?? []).filter((s) => !!s?.label && !!s?.valueRaw);
+  if (stats.length) out.push("", "## Stats", stats.map((s) => `- ${s.label}: ${s.valueRaw}`).join("\n"));
+  const qa = (f.questions ?? []).filter((q) => !!q?.question && !!q?.answer);
+  if (qa.length) out.push("", "## Q&A", qa.map((q) => `**Q: ${q.question}**\n\n${q.answer}`).join("\n\n"));
+  if (out.length === 1) return `# ${title}\n\n\`\`\`json\n${JSON.stringify(facts ?? {}, null, 2)}\n\`\`\`\n`;
+  return out.join("\n") + "\n";
+}
+
 // POST /api/memwal/recall { namespace, query } — recall via the server-side delegate.
 async function memwalRecall(request: Request, env: WorkerEnv): Promise<Response> {
   let body: { namespace?: unknown; query?: unknown };
@@ -3717,17 +3787,22 @@ async function memwalRecall(request: Request, env: WorkerEnv): Promise<Response>
   if (!namespace || !query) return json({ error: "namespace and query are required." }, 400);
   const { url, privateKey, accountId } = resolveMemwalCreds(request, env);
   // Try real Walrus Memory recall when we have a valid delegate.
+  const asMarkdown = wantsMarkdown(request);
   if (isMemwalSeed(privateKey) && accountId) {
     try {
       const result = await new MemWalMcpClient({ url, privateKey, accountId }).recallSiteContext(namespace, query);
-      return json({ namespace, query, source: "walrus-memory", result });
+      const payload = { namespace, query, source: "walrus-memory" as const, result };
+      return asMarkdown ? markdown(recallToMarkdown(payload)) : json(payload);
     } catch {
       /* fall through to the facts fallback so the Memory tab still answers */
     }
   }
   // Fallback: answer from the namespace's verified facts (no delegate required).
   const fallback = factsFallbackRecall(namespace, query);
-  if (fallback) return json({ namespace, query, source: "facts", result: fallback });
+  if (fallback) {
+    const payload = { namespace, query, source: "facts" as const, result: fallback };
+    return asMarkdown ? markdown(recallToMarkdown(payload)) : json(payload);
+  }
   return json({ error: "Walrus Memory recall needs a valid 64-char hex delegate. Re-import your delegate in Settings, or set MEMWAL_PRIVATE_KEY + MEMWAL_ACCOUNT_ID on the Worker." }, 503);
 }
 
@@ -3903,7 +3978,8 @@ async function memwalChat(request: Request, env: WorkerEnv): Promise<Response> {
     ? recallHits.map((h, index) => ({ url: "", routePath: `walrus-memory#${index + 1}`, quote: h.text.slice(0, 280), blobId: typeof h.distance === "number" ? `distance ${h.distance.toFixed(3)}` : undefined }))
     : (factsFallbackRecall(namespace, query)?.results ?? []).slice(0, 4).map((r, index) => ({ url: "", routePath: `verified-fact#${index + 1}`, quote: r.text.slice(0, 280) }));
 
-  return json({ namespace, target: subject, source, data, confidence, usedProvider, sources });
+  const payload = { namespace, target: subject, source, data, confidence, usedProvider, sources };
+  return wantsMarkdown(request) ? markdown(chatToMarkdown(payload)) : json(payload);
 }
 
 function maybeWithMemWalRecall(store: CloudflareNamespaceStore, env: WorkerEnv, request: Request): HostedNamespaceStore {
@@ -5573,6 +5649,27 @@ function jsonCached(value: unknown, maxAgeSeconds = 300): Response {
       headers: {
         "content-type": "application/json; charset=utf-8",
         "cache-control": `public, max-age=${maxAgeSeconds}, must-revalidate`
+      }
+    })
+  );
+}
+
+// Coding agents often prefer to paste recall/chat/facts straight into a prompt
+// as Markdown rather than parse a JSON envelope. Opt in with ?format=markdown
+// (alias ?format=md). Keyed off the query param only — never the Accept header —
+// so cached responses don't need a Vary and can't be poisoned across formats.
+function wantsMarkdown(request: Request): boolean {
+  const fmt = new URL(request.url).searchParams.get("format")?.toLowerCase();
+  return fmt === "markdown" || fmt === "md";
+}
+
+function markdown(text: string, status = 200, maxAgeSeconds?: number): Response {
+  return cors(
+    new Response(text, {
+      status,
+      headers: {
+        "content-type": "text/markdown; charset=utf-8",
+        "cache-control": maxAgeSeconds ? `public, max-age=${maxAgeSeconds}, must-revalidate` : "no-store"
       }
     })
   );

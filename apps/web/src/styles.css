@@ -10239,3 +10239,97 @@ textarea:focus {
 /* ── Runs catalog row: proof badge ─────────────────────────────────────────── */
 .runRowEnd { display: flex; justify-content: flex-end; }
 .runProofBadge { font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; padding: 2px 8px; border-radius: 999px; background: var(--cm-teal); color: #fff; }
+
+/* ── Memory API playground (landing, Firecrawl/context.dev-style) ──────────── */
+.memPlay { max-width: 1120px; margin: 8px auto 0; padding: 40px 24px 12px; }
+.memPlayHead { text-align: center; max-width: 660px; margin: 0 auto 26px; }
+.memPlayKicker {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+  border: 1px solid var(--cm-border); border-radius: 999px; background: var(--cm-frame);
+  color: #5c7a16; font-size: 12px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+}
+.memPlayHead h2 { margin: 14px 0 8px; font-size: clamp(22px, 3.4vw, 32px); line-height: 1.1; color: var(--cm-ink); }
+.memPlayHead p { margin: 0; color: var(--cm-muted); font-size: 15px; }
+.memPlayBody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+@media (max-width: 880px) { .memPlayBody { grid-template-columns: 1fr; } }
+.memPlayControls {
+  display: flex; flex-direction: column; gap: 14px; padding: 18px;
+  background: var(--cm-frame); border: 1px solid var(--cm-border); border-radius: 16px; box-shadow: var(--cm-soft-shadow);
+}
+.memPlayVerbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.memPlayVerb {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px;
+  border: 1px solid var(--cm-border); border-radius: 999px; background: #fff; color: var(--cm-muted);
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.16s ease;
+}
+.memPlayVerb:hover { border-color: var(--cm-border-strong); color: var(--cm-ink); }
+.memPlayVerb.selected { background: var(--cm-accent); border-color: var(--cm-accent); color: #1b2207; }
+.memPlayNs { display: flex; flex-wrap: wrap; gap: 7px; }
+.memPlayInput {
+  display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px;
+  border: 1px solid var(--cm-border); border-radius: 12px; background: #fff;
+}
+.memPlayInput svg { color: var(--cm-muted); flex: none; }
+.memPlayInput input { flex: 1; border: 0; outline: none; background: transparent; font-size: 14px; color: var(--cm-ink); min-width: 0; }
+.memPlayInput input:disabled { color: var(--cm-muted); }
+.memPlayInput button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border: 0; border-radius: 9px;
+  background: var(--cm-ink); color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; flex: none;
+}
+.memPlayInput button:hover:not(:disabled) { background: #000; }
+.memPlayInput button:disabled { opacity: 0.6; cursor: default; }
+.memPlayGate {
+  display: flex; align-items: center; gap: 12px; padding: 14px;
+  border: 1px dashed var(--cm-border-strong); border-radius: 12px; background: rgba(168, 217, 70, 0.08);
+}
+.memPlayGate > svg:first-child { color: #5c7a16; flex: none; }
+.memPlayGate strong { display: block; font-size: 14px; color: var(--cm-ink); }
+.memPlayGate span { display: block; font-size: 13px; color: var(--cm-muted); margin-top: 2px; }
+.memPlayGateCta {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border: 0; border-radius: 9px;
+  background: var(--cm-accent); color: #1b2207; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; flex: none;
+}
+.memPlayError { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--cm-coral); }
+.memPlaySnippet { border: 1px solid var(--cm-border); border-radius: 12px; overflow: hidden; margin-top: 2px; }
+.memPlaySnippetTabs {
+  display: flex; align-items: center; gap: 2px; padding: 6px 8px;
+  background: #11141b; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.memPlaySnippetTabs button {
+  padding: 5px 10px; border: 0; border-radius: 7px; background: transparent;
+  color: rgba(255, 255, 255, 0.55); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.memPlaySnippetTabs button.selected { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.memPlayCopy { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: rgba(255, 255, 255, 0.7) !important; }
+.memPlayCopy:hover { color: #fff !important; }
+.memPlayCode {
+  margin: 0; padding: 14px 16px; background: var(--cm-graph-bg); color: #e4ead2;
+  font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre;
+}
+.memPlayCode code, .memPlayRespBody code { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+.memPlayResponse {
+  display: flex; flex-direction: column; border: 1px solid var(--cm-border); border-radius: 16px;
+  overflow: hidden; background: var(--cm-graph-bg); min-height: 320px;
+}
+.memPlayRespHead {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px;
+  background: #11141b; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.memPlayRespTabs { display: flex; gap: 2px; }
+.memPlayRespTabs button {
+  padding: 5px 11px; border: 0; border-radius: 7px; background: transparent;
+  color: rgba(255, 255, 255, 0.55); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.memPlayRespTabs button.selected { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.memPlaySource { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+.memPlaySource.live { background: rgba(168, 217, 70, 0.16); color: #a8d946; }
+.memPlaySource.facts { background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.7); }
+.memPlayRespBody {
+  flex: 1; margin: 0; padding: 16px; color: #e4ead2; font-size: 12.5px; line-height: 1.65;
+  overflow: auto; white-space: pre-wrap; word-break: break-word;
+}
+.memPlayFoot {
+  display: flex; align-items: center; justify-content: center; gap: 7px; margin: 18px auto 0;
+  max-width: 720px; text-align: center; font-size: 12.5px; color: var(--cm-muted);
+}
+.memPlayFoot svg { color: #5c7a16; flex: none; }
