@@ -2404,6 +2404,292 @@ function DemoPreviewAppPanel({ preview, onBackHome }: { preview: DemoPreviewStat
   );
 }
 
+// Public Worker origin for copy-paste snippets. Hardcoded (NOT API_BASE) so a
+// curl copied during local preview still runs for an external developer —
+// API_BASE is localhost:8791 in dev, which nobody else can reach.
+const PUBLIC_API_ORIGIN = "https://contextmem-backend.petlofi.workers.dev";
+
+type PlaygroundVerb = "recall" | "ask" | "knowledge" | "remember";
+
+const PLAYGROUND_VERBS: Array<{ id: PlaygroundVerb; label: string; hint: string; icon: React.ComponentType<{ size?: number }> }> = [
+  { id: "recall", label: "recall", hint: "Read stored memory for a query", icon: Search },
+  { id: "ask", label: "ask", hint: "Grounded RAG answer over the namespace", icon: MessageSquare },
+  { id: "knowledge", label: "knowledge", hint: "The verified knowledge graph", icon: Boxes },
+  { id: "remember", label: "remember", hint: "Write a memory (needs an account)", icon: Brain }
+];
+
+// Build a copyable snippet for a verb in cURL / TypeScript / Python, always
+// against the PUBLIC origin. `remember` has no hosted route yet, so its snippet
+// is clearly marked as private-beta rather than shipped as a runnable call.
+function playgroundSnippet(lang: "curl" | "ts" | "python", verb: PlaygroundVerb, namespace: string, query: string): string {
+  const ns = namespace || "demo:anthropic";
+  const q = (query || "What is this and who is it for?").replace(/"/g, '\\"');
+  const o = PUBLIC_API_ORIGIN;
+  if (verb === "knowledge") {
+    const path = `/api/memwal/facts/${ns}`;
+    if (lang === "curl") return `curl ${o}${path}`;
+    if (lang === "ts") return `const res = await fetch("${o}${path}");\nconst { facts, proof } = await res.json();`;
+    return `import requests\nfacts = requests.get("${o}${path}").json()`;
+  }
+  if (verb === "remember") {
+    if (lang === "curl") return `# remember (write) is in private beta — needs an API key\ncurl -X POST ${o}/api/memory \\\n  -H "authorization: Bearer <YOUR_API_KEY>" \\\n  -H "content-type: application/json" \\\n  -d '{"namespace":"${ns}","text":"...","private":true}'`;
+    if (lang === "ts") return `// remember (write) is in private beta — needs an API key\nawait fetch("${o}/api/memory", {\n  method: "POST",\n  headers: { authorization: "Bearer <YOUR_API_KEY>", "content-type": "application/json" },\n  body: JSON.stringify({ namespace: "${ns}", text: "...", private: true })\n});`;
+    return `# remember (write) is in private beta — needs an API key\nimport requests\nrequests.post("${o}/api/memory",\n  headers={"authorization": "Bearer <YOUR_API_KEY>"},\n  json={"namespace": "${ns}", "text": "...", "private": True})`;
+  }
+  const path = verb === "ask" ? "/api/memwal/chat" : "/api/memwal/recall";
+  const payload = verb === "ask"
+    ? `{"namespace":"${ns}","messages":[{"role":"user","content":"${q}"}]}`
+    : `{"namespace":"${ns}","query":"${q}"}`;
+  if (lang === "curl") return `curl -X POST ${o}${path} \\\n  -H "content-type: application/json" \\\n  -d '${payload}'`;
+  if (lang === "ts") return `const res = await fetch("${o}${path}", {\n  method: "POST",\n  headers: { "content-type": "application/json" },\n  body: JSON.stringify(${payload})\n});\nconst data = await res.json();`;
+  return `import requests\ndata = requests.post("${o}${path}",\n  json=${payload}).json()`;
+}
+
+// Render a recall/ask/knowledge response as LLM-ready markdown (the format an
+// agent would actually paste into a prompt), degrading to fenced JSON.
+function playgroundMarkdown(verb: PlaygroundVerb, body: any): string {
+  if (!body) return "";
+  const fence = (v: unknown) => "```json\n" + JSON.stringify(v, null, 2) + "\n```";
+  try {
+    if (verb === "ask") {
+      const answer = body?.data?.answer ?? body?.answer ?? "";
+      const points: string[] = body?.data?.key_points ?? body?.key_points ?? [];
+      const conf = typeof body?.confidence === "number" ? ` _(confidence ${Math.round(body.confidence * 100)}%)_` : "";
+      let md = `### Answer${conf}\n\n${answer || "_(no answer)_"}\n`;
+      if (Array.isArray(points) && points.length) md += `\n**Key points**\n${points.map((p) => `- ${p}`).join("\n")}\n`;
+      return md;
+    }
+    if (verb === "knowledge") {
+      const f = body?.facts ?? {};
+      const id = f?.identity ?? {};
+      let md = `### ${id?.name ?? "Knowledge graph"}\n`;
+      if (id?.oneLiner) md += `\n${id.oneLiner}\n`;
+      const topics = (f?.topics ?? []).map((t: any) => t?.label).filter(Boolean);
+      if (topics.length) md += `\n**Topics:** ${topics.slice(0, 12).join(", ")}\n`;
+      const ents = Array.isArray(f?.entities) ? f.entities : [];
+      if (ents.length) md += `\n**Entities (${ents.length}):** ${ents.slice(0, 8).map((e: any) => e?.name).filter(Boolean).join(", ")}\n`;
+      return md || fence(f);
+    }
+    const result = body?.result;
+    if (result && Array.isArray(result.results) && result.results.length) {
+      const lines = result.results.map((r: any) => `- ${typeof r?.text === "string" ? r.text : JSON.stringify(r)}`).join("\n");
+      return `### Recall — ${body?.namespace ?? ""}\n\n${lines}\n`;
+    }
+    const text = typeof result === "string" ? result : (result?.context ?? result?.answer ?? "");
+    if (text) return `### Recall — ${body?.namespace ?? ""}\n\n${text}\n`;
+    return fence(result ?? body);
+  } catch {
+    return fence(body);
+  }
+}
+
+// Firecrawl/context.dev-style "try it" surface for the landing page: paste a
+// question, pick a verb, run it live against a curated public namespace (all
+// zero-auth), then copy the exact call. Read verbs (recall/ask/knowledge) hit
+// the existing /api/memwal/* routes; `remember` is gated to an account CTA
+// because the hosted write route does not exist yet.
+function MemoryPlayground({ onRequestAccess }: { onRequestAccess?: () => void }) {
+  const [namespaces, setNamespaces] = useState<Array<{ namespace: string; label: string }>>([]);
+  const [namespace, setNamespace] = useState("");
+  const [verb, setVerb] = useState<PlaygroundVerb>("recall");
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [body, setBody] = useState<any>(null);
+  const [source, setSource] = useState<string | null>(null);
+  const [respTab, setRespTab] = useState<"markdown" | "json">("markdown");
+  const [snippetTab, setSnippetTab] = useState<"curl" | "ts" | "python">("curl");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/memwal/namespaces`, { headers: authHeaders("") });
+        if (!r.ok) return;
+        const b = (await r.json()) as { namespaces?: Array<{ namespace: string; label: string }> };
+        const list = b.namespaces ?? [];
+        setNamespaces(list);
+        setNamespace((c) => c || list[0]?.namespace || "");
+      } catch {
+        /* no curated chips — the playground still renders, snippets still copyable */
+      }
+    })();
+  }, []);
+
+  async function run() {
+    if (verb === "remember") {
+      onRequestAccess?.();
+      return;
+    }
+    const ns = namespace.trim();
+    if (!ns) {
+      setError("Pick a namespace first.");
+      return;
+    }
+    const q = query.trim() || "What is this and who is it for?";
+    setBusy(true);
+    setError(null);
+    setBody(null);
+    setSource(null);
+    try {
+      let res: Response;
+      if (verb === "knowledge") {
+        res = await fetch(`${API_BASE}/api/memwal/facts/${encodeURIComponent(ns)}`, { headers: authHeaders("") });
+      } else if (verb === "ask") {
+        res = await fetch(`${API_BASE}/api/memwal/chat`, {
+          method: "POST",
+          headers: authHeaders("", { "content-type": "application/json" }),
+          body: JSON.stringify({ namespace: ns, messages: [{ role: "user", content: q }] })
+        });
+      } else {
+        res = await fetch(`${API_BASE}/api/memwal/recall`, {
+          method: "POST",
+          headers: authHeaders("", { "content-type": "application/json" }),
+          body: JSON.stringify({ namespace: ns, query: q })
+        });
+      }
+      const text = await res.text();
+      let parsed: any = {};
+      try {
+        parsed = text ? JSON.parse(text) : {};
+      } catch {
+        parsed = { raw: text };
+      }
+      if (!res.ok) throw new Error(parsed?.error || `Request failed (${res.status}).`);
+      setBody(parsed);
+      setSource(typeof parsed?.source === "string" ? parsed.source : verb === "knowledge" ? "facts" : null);
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      setError(/Failed to fetch/i.test(raw) ? "Can't reach the API right now — try again in a moment." : raw);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const snippet = playgroundSnippet(snippetTab, verb, namespace, query);
+  async function copySnippet() {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+
+  const sourceBadge = source === "walrus-memory"
+    ? { label: "Walrus Memory · live recall", tone: "live" }
+    : source === "facts"
+      ? { label: "Curated facts · keyword-ranked", tone: "facts" }
+      : null;
+
+  return (
+    <section className="memPlay" id="playground" aria-label="Memory API playground">
+      <div className="memPlayHead">
+        <span className="memPlayKicker"><Sparkles size={15} /> Memory API</span>
+        <h2>Paste a question. Get agent-ready context.</h2>
+        <p>Zero-auth, runs live against curated public namespaces. When you like the result, copy the exact call.</p>
+      </div>
+
+      <div className="memPlayBody">
+        <div className="memPlayControls">
+          <div className="memPlayVerbs" role="tablist">
+            {PLAYGROUND_VERBS.map((v) => {
+              const Icon = v.icon;
+              return (
+                <button key={v.id} type="button" className={`memPlayVerb ${verb === v.id ? "selected" : ""}`} onClick={() => setVerb(v.id)} title={v.hint}>
+                  <Icon size={14} /> {v.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {namespaces.length ? (
+            <div className="memPlayNs">
+              {namespaces.map((ns) => (
+                <button key={ns.namespace} type="button" className={`memoryNsChip ${namespace === ns.namespace ? "selected" : ""}`} onClick={() => setNamespace(ns.namespace)}>
+                  <Database size={13} /> <span>{ns.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {verb === "remember" ? (
+            <div className="memPlayGate">
+              <ShieldCheck size={18} />
+              <div>
+                <strong>Writing memory is in private beta.</strong>
+                <span>recall · ask · knowledge are live now. Writing your own memory to Walrus — optionally Seal-encrypted — needs an account.</span>
+              </div>
+              <button type="button" className="memPlayGateCta" onClick={() => onRequestAccess?.()}>
+                Get access <ArrowDownRight size={15} />
+              </button>
+            </div>
+          ) : (
+            <div className="memPlayInput">
+              <Search size={16} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={verb === "knowledge" ? "knowledge needs no query — pick a namespace, then Run" : "Ask anything about the selected namespace"}
+                disabled={verb === "knowledge"}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void run();
+                }}
+              />
+              <button type="button" onClick={() => void run()} disabled={busy}>
+                {busy ? <LoaderCircle className="spinIcon" size={15} /> : <Play size={15} />} Run
+              </button>
+            </div>
+          )}
+
+          {error ? (
+            <div className="memPlayError">
+              <AlertCircle size={15} /> {error}
+            </div>
+          ) : null}
+
+          <div className="memPlaySnippet">
+            <div className="memPlaySnippetTabs">
+              {(["curl", "ts", "python"] as const).map((t) => (
+                <button key={t} type="button" className={snippetTab === t ? "selected" : ""} onClick={() => setSnippetTab(t)}>
+                  {t === "curl" ? "cURL" : t === "ts" ? "TypeScript" : "Python"}
+                </button>
+              ))}
+              <button type="button" className="memPlayCopy" onClick={() => void copySnippet()}>
+                <Clipboard size={13} /> {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <pre className="memPlayCode">
+              <code>{snippet}</code>
+            </pre>
+          </div>
+        </div>
+
+        <div className="memPlayResponse">
+          <div className="memPlayRespHead">
+            <div className="memPlayRespTabs">
+              {(["markdown", "json"] as const).map((t) => (
+                <button key={t} type="button" className={respTab === t ? "selected" : ""} onClick={() => setRespTab(t)}>
+                  {t === "json" ? "JSON" : "Markdown"}
+                </button>
+              ))}
+            </div>
+            {sourceBadge ? <span className={`memPlaySource ${sourceBadge.tone}`}>{sourceBadge.label}</span> : null}
+          </div>
+          <pre className="memPlayRespBody">
+            <code>{busy ? "Running…" : !body ? "// Run a verb to see the response here." : respTab === "json" ? JSON.stringify(body, null, 2) : playgroundMarkdown(verb, body) || "// (empty)"}</code>
+          </pre>
+        </div>
+      </div>
+
+      <p className="memPlayFoot">
+        <ShieldCheck size={14} /> Public namespaces answer from verified facts (keyword-ranked). Live semantic Walrus recall and writing your own memory need an account.
+      </p>
+    </section>
+  );
+}
+
 function LandingPage({
   target,
   setTarget,
@@ -2604,6 +2890,8 @@ function LandingPage({
           </div>
         </div>
       </section>
+
+      <MemoryPlayground onRequestAccess={onOpenApp} />
 
       <section ref={headlineRef} className="headlineReveal">
         <p>
