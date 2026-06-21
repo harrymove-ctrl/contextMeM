@@ -11411,3 +11411,89 @@ textarea:focus {
 .factsEntityMentions { font-family: var(--cm-mono); font-size: 10.5px; }
 .factsEntityDesc { font-size: 13px; line-height: 1.5; color: #4a5563; }
 .factsSalienceTrack { height: 5px; background: rgba(17, 20, 22, 0.06); margin-top: 3px; }
+
+/* Markdown rendering inside AI answer cards (grounded chat ANSWER / KEY POINTS,
+   run AI summary). The model returns markdown — render bold, nested bullet
+   lists, inline code, tables and links cleanly instead of flattening to a
+   run-on paragraph. Scoped to the answer surfaces only. */
+.aiTextAnswer { display: grid; gap: 9px; }
+.aiTextAnswer > :first-child { margin-top: 0; }
+.aiTextAnswer > :last-child { margin-bottom: 0; }
+.aiTextAnswer p,
+.aiTextAnswer li { margin: 0; color: #263244; font-size: 14px; line-height: 1.6; }
+.aiTextAnswer strong,
+.aiAnswerList strong { font-weight: 680; color: var(--cm-ink); }
+.aiTextAnswer em { font-style: italic; }
+.aiTextAnswer a,
+.aiAnswerList a { color: var(--olive); text-decoration: underline; text-underline-offset: 2px; }
+.aiTextAnswer a:hover,
+.aiAnswerList a:hover { color: var(--mint); }
+.aiTextAnswer ul,
+.aiTextAnswer ol { display: grid; gap: 6px; margin: 2px 0; padding-left: 20px; }
+.aiTextAnswer ul { list-style: disc; }
+.aiTextAnswer ol { list-style: decimal; }
+.aiTextAnswer li::marker { color: var(--olive); }
+.aiTextAnswer li > ul,
+.aiTextAnswer li > ol { margin-top: 6px; }
+.aiTextAnswer li > ul { list-style: circle; }
+.aiTextAnswer li p { margin: 0; }
+.aiTextAnswer h1,
+.aiTextAnswer h2,
+.aiTextAnswer h3,
+.aiTextAnswer h4 {
+  margin: 4px 0 0;
+  font-family: var(--cm-display);
+  font-weight: 640;
+  letter-spacing: -0.01em;
+  color: var(--cm-ink);
+  line-height: 1.3;
+}
+.aiTextAnswer h1 { font-size: 17px; }
+.aiTextAnswer h2 { font-size: 15.5px; }
+.aiTextAnswer h3,
+.aiTextAnswer h4 { font-size: 14px; }
+.aiTextAnswer :not(pre) > code,
+.aiAnswerList :not(pre) > code {
+  font-family: var(--cm-mono);
+  font-size: 12px;
+  padding: 1.5px 5px;
+  border-radius: 5px;
+  background: rgba(17, 20, 22, 0.05);
+  border: 1px solid var(--cm-border);
+  color: #1f4d2e;
+}
+.aiTextAnswer pre {
+  margin: 2px 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border-radius: 10px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+}
+.aiTextAnswer pre code { font-family: var(--cm-mono); font-size: 12.5px; line-height: 1.55; color: #e2e8f0; }
+.aiTextAnswer blockquote {
+  margin: 2px 0;
+  padding: 4px 0 4px 12px;
+  border-left: 3px solid var(--lime-soft);
+  color: var(--cm-muted);
+}
+.aiTextAnswer table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.aiTextAnswer th,
+.aiTextAnswer td {
+  padding: 7px 10px;
+  border: 1px solid var(--cm-border);
+  text-align: left;
+  vertical-align: top;
+}
+.aiTextAnswer th { font-family: var(--cm-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cm-muted); background: rgba(17, 20, 22, 0.03); }
+.aiTextAnswer hr { border: none; border-top: 1px solid var(--cm-border); margin: 4px 0; }
+
+/* KEY POINTS list — markdown rendered inline inside each <li>. */
+.aiAnswerList { display: grid; gap: 7px; margin: 0; padding-left: 20px; list-style: disc; }
+.aiAnswerList li { margin: 0; color: #263244; font-size: 14px; line-height: 1.55; }
+.aiAnswerList li::marker { color: var(--olive); }
+.aiAnswerList li :not(pre) > code { font-family: var(--cm-mono); font-size: 12px; padding: 1.5px 5px; border-radius: 5px; background: rgba(17, 20, 22, 0.05); border: 1px solid var(--cm-border); color: #1f4d2e; }

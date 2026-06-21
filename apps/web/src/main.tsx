@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AlertCircle, ArrowDownRight, Bell, Boxes, Brain, CalendarClock, CheckCircle2, ChevronDown, Clipboard, Code2, Cpu, Database, Download, ExternalLink, Eye, FileText, FolderOpen, GitCompare, Globe2, Hash, History, Home, Image, KeyRound, LayoutGrid, ListTree, LoaderCircle, Maximize2, MessageSquare, Palette, Play, Plus, Search, Server, Settings, Share2, ShieldCheck, Sparkles, UserCheck, X, Zap } from "lucide-react";
 import Auth1 from "./components/blocks/auth-1.js";
@@ -4763,6 +4763,22 @@ function MarkdownLink(props: MarkdownAnchorProps) {
   );
 }
 
+// Render model-authored answer text as markdown — bold, nested bullet lists,
+// inline code, tables, links — instead of flattening it into one run-on
+// paragraph with literal `**`/`-` characters. `inline` unwraps the top-level
+// <p> so short single-line items (e.g. key points) sit directly inside their
+// <li>. Some answers arrive with escaped "\n", so normalise those first.
+const MARKDOWN_INLINE_COMPONENTS: Components = { a: MarkdownLink, p: ({ children }) => <>{children}</> };
+const MARKDOWN_BLOCK_COMPONENTS: Components = { a: MarkdownLink };
+function MarkdownText({ children, inline = false }: { children: string; inline?: boolean }) {
+  const normalized = children.replace(/\\r\\n|\\r|\\n/g, "\n");
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={inline ? MARKDOWN_INLINE_COMPONENTS : MARKDOWN_BLOCK_COMPONENTS}>
+      {normalized}
+    </ReactMarkdown>
+  );
+}
+
 type SdkCredentialImportFormProps = {
   authenticated: boolean;
   authBusy: boolean;
@@ -5642,7 +5658,9 @@ function AiQueryPanel({
 }
 
 function AiResultData({ data }: { data: Record<string, unknown> }) {
-  const entries = Object.entries(data ?? {});
+  // Drop empty sections (e.g. no key points) entirely rather than rendering a
+  // card with a lonely "No items found." placeholder.
+  const entries = Object.entries(data ?? {}).filter(([, value]) => !isEmptyAiValue(value));
   if (!entries.length) return <div className="subEmpty aiResultEmpty">No structured data returned.</div>;
 
   return (
@@ -5660,14 +5678,15 @@ function AiResultData({ data }: { data: Record<string, unknown> }) {
 function AiResultValue({ value }: { value: unknown }) {
   if (Array.isArray(value)) {
     const items = value.map((item) => stringifyAiValue(item)).filter(Boolean);
-    return items.length ? (
-      <ul>
+    if (!items.length) return null;
+    return (
+      <ul className="aiAnswerList">
         {items.map((item, index) => (
-          <li key={`${item}-${index}`}>{item}</li>
+          <li key={`${item}-${index}`}>
+            <MarkdownText inline>{item}</MarkdownText>
+          </li>
         ))}
       </ul>
-    ) : (
-      <p className="mutedText">No items found.</p>
     );
   }
 
@@ -5676,12 +5695,10 @@ function AiResultValue({ value }: { value: unknown }) {
   }
 
   const text = stringifyAiValue(value);
-  if (!text) return <p className="mutedText">No answer returned.</p>;
+  if (!text) return null;
   return (
     <div className="aiTextAnswer">
-      {splitAiParagraphs(text).map((paragraph, index) => (
-        <p key={`${paragraph}-${index}`}>{paragraph}</p>
-      ))}
+      <MarkdownText>{text}</MarkdownText>
     </div>
   );
 }
@@ -5693,12 +5710,12 @@ function stringifyAiValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function splitAiParagraphs(text: string): string[] {
-  return text
-    .replaceAll(/\\n/g, "\n")
-    .split(/\n{2,}/g)
-    .map((part) => part.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
+function isEmptyAiValue(value: unknown): boolean {
+  if (value == null) return true;
+  if (typeof value === "string") return value.trim().length === 0;
+  if (Array.isArray(value)) return value.map((item) => stringifyAiValue(item)).filter(Boolean).length === 0;
+  if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length === 0;
+  return false;
 }
 
 function formatAiFieldLabel(value: string): string {
