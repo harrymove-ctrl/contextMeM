@@ -1325,15 +1325,15 @@ function ContextMemExperience() {
 
   async function remember() {
     if (!run) return;
-    if (!hasMemWalDelegate) {
-      setError("Import Walrus Memory SDK credentials before remembering context.");
-      return;
-    }
     if (isHostedApiBase) {
       setMemwalNotice({
         tone: "info",
-        message: "Remember/recall round-trip needs the local ContextMeM API. On the public site the share page already exposes verified context via the hosted MCP namespace shown in the result."
+        message: "This run's verified context is already stored and answerable here — use Recall or Memory query above, or the MCP namespace shown in the result. Writing it into the Walrus Memory vector store runs on local ContextMeM (rolling out to the hosted site)."
       });
+      return;
+    }
+    if (!hasMemWalDelegate) {
+      setError("Import Walrus Memory SDK credentials before remembering context.");
       return;
     }
     setBusy(true);
@@ -1511,6 +1511,7 @@ function ContextMemExperience() {
       customDisplayName={customDisplayName}
       setCustomDisplayName={setCustomDisplayName}
       isHostedApiBase={isHostedApiBase}
+      notice={memwalNotice}
     />
   );
 
@@ -1599,7 +1600,7 @@ function ContextMemExperience() {
         element={renderShell(
           "Walrus Memory",
           "Recall and remember verified context namespaces from the active package.",
-          <MemoryAppPage artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={sessionToken} onRemember={remember} busy={busy} />,
+          <MemoryAppPage artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={sessionToken} onRemember={remember} busy={busy} notice={memwalNotice} />,
           true
         )}
       />
@@ -3170,7 +3171,8 @@ function BuildConsolePage({
   setCustomNamespace,
   customDisplayName,
   setCustomDisplayName,
-  isHostedApiBase
+  isHostedApiBase,
+  notice
 }: {
   target: string;
   setTarget: React.Dispatch<React.SetStateAction<string>>;
@@ -3203,6 +3205,7 @@ function BuildConsolePage({
   customDisplayName: string;
   setCustomDisplayName: React.Dispatch<React.SetStateAction<string>>;
   isHostedApiBase: boolean;
+  notice?: MemWalNotice | null;
 }) {
   const visibleTab = buildTabs.some(([label]) => label === activeTab) ? activeTab : "Markdown";
   const [resultsExpanded, setResultsExpanded] = useState(false);
@@ -3387,12 +3390,14 @@ function BuildConsolePage({
           </div>
         </details>
 
-        {hasMemWalDelegate && run ? (
-          <button className="secondary" disabled={!run || busy || !hasMemWalDelegate} onClick={onRemember}>
+        {(hasMemWalDelegate || isHostedApiBase) && run ? (
+          <button className="secondary" disabled={!run || busy || (!hasMemWalDelegate && !isHostedApiBase)} onClick={onRemember}>
             <Brain size={17} />
             Remember in Walrus Memory
           </button>
         ) : null}
+
+        {notice ? <MemWalNoticeCard notice={notice} /> : null}
 
         {hostedBuildResult ? <HostedBuildBanner result={hostedBuildResult} /> : null}
 
@@ -3926,7 +3931,8 @@ function MemoryAppPage({
   refreshHistory,
   authToken,
   onRemember,
-  busy
+  busy,
+  notice
 }: {
   artifact: ArtifactManifest | null;
   run: RunResponse | null;
@@ -3935,10 +3941,11 @@ function MemoryAppPage({
   authToken: string;
   onRemember: () => void;
   busy: boolean;
+  notice?: MemWalNotice | null;
 }) {
   return (
     <section className="appPanelStack">
-      {artifact && run ? <MemWalPanel artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={authToken} onRemember={onRemember} rememberBusy={busy} /> : <MemoryExplorerPanel authToken={authToken} />}
+      {artifact && run ? <MemWalPanel artifact={artifact} run={run} history={history} refreshHistory={refreshHistory} authToken={authToken} onRemember={onRemember} rememberBusy={busy} notice={notice} /> : <MemoryExplorerPanel authToken={authToken} />}
     </section>
   );
 }
@@ -4162,6 +4169,17 @@ function ResultPane({
   onStartRun?: () => void;
   canStart?: boolean;
 }) {
+  // Live elapsed-time ticker: the build manifest only refreshes on the poll
+  // interval, so without a 1s tick the elapsed counter would appear frozen at
+  // "0s" while a run is in flight. Re-render once a second while busy.
+  const [, setElapsedTick] = useState(0);
+  const buildStartedAt = run?.manifest.createdAt;
+  useEffect(() => {
+    if (!busy || !buildStartedAt) return;
+    const id = setInterval(() => setElapsedTick((tick) => tick + 1), 1000);
+    return () => clearInterval(id);
+  }, [busy, buildStartedAt]);
+
   const runErrors = run?.manifest.errors.filter(Boolean) ?? [];
   const runFailure = run?.manifest.status === "failed" ? runErrors[0] ?? "Context build failed." : null;
   const visibleError = runFailure ?? (!artifact ? error : null);
@@ -6604,7 +6622,8 @@ function MemWalPanel({
   refreshHistory,
   authToken,
   onRemember,
-  rememberBusy = false
+  rememberBusy = false,
+  notice
 }: {
   artifact: ArtifactManifest;
   run: RunResponse | null;
@@ -6613,6 +6632,7 @@ function MemWalPanel({
   authToken: string;
   onRemember?: () => void;
   rememberBusy?: boolean;
+  notice?: MemWalNotice | null;
 }) {
   const [query, setQuery] = useState("What changed or should the agent remember about this site?");
   const [recall, setRecall] = useState<unknown>(null);
@@ -6734,6 +6754,8 @@ function MemWalPanel({
             </button>
           </div>
         </header>
+
+        {notice ? <MemWalNoticeCard notice={notice} /> : null}
 
         <div className="memoryQuickPrompts" aria-label="Prompt shortcuts">
           {["What changed since the last snapshot?", "What should an agent remember?", "Summarize important docs pages"].map((prompt) => (
@@ -6897,6 +6919,13 @@ function memoryPayloadToText(payload: unknown, kind: "recall" | "query"): string
   if (record.result && record.result !== payload) {
     const resultText: string = memoryPayloadToText(record.result, kind);
     if (resultText.trim()) return resultText;
+  }
+
+  // Grounded-chat envelope: { data: { answer, key_points, confidence } }.
+  // Surface the natural-language answer instead of dumping the raw JSON.
+  if (record.data && typeof record.data === "object" && record.data !== payload) {
+    const dataText: string = memoryPayloadToText(record.data, kind);
+    if (dataText.trim()) return dataText;
   }
 
   // Recall returns { results: [{ text, distance, blob_id }] } (also matches[]/memories[]).

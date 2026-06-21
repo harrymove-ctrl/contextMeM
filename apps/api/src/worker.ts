@@ -58,6 +58,10 @@ export type WorkerEnv = {
   MEMWAL_ACCOUNT_ID?: string;
   MEMWAL_NAMESPACES?: string;
   AI?: WorkersAiBinding;
+  // Optional override for the Workers AI instruct model used by aiChatComplete.
+  // Defaults to DEFAULT_WORKERS_AI_MODEL (the previous default was deprecated by
+  // Cloudflare 2026-05-30). Only consulted when OPENAI_API_KEY is unset.
+  WORKERS_AI_MODEL?: string;
   FIRECRAWL_API_KEY?: string;
   // Optional OpenAI-compatible chat model for grounded chat synthesis. When set,
   // it is preferred over Workers AI (higher quality). OpenRouter works here:
@@ -711,6 +715,8 @@ async function routeWorkerRequest(request: Request, env: WorkerEnv, ctx: WorkerE
     if (request.method === "POST" && hostedRunRoute.action === "share") return shareHostedRun(request, env, hostedRunRoute.runId);
     if (request.method === "POST" && hostedRunRoute.action === "hosted/import") return importHostedRun(request, env, hostedRunRoute.runId);
     if (request.method === "POST" && hostedRunRoute.action === "ai-query") return aiQueryRun(request, env, hostedRunRoute.runId);
+    if (request.method === "POST" && hostedRunRoute.action === "memwal/recall") return memwalRecallRun(request, env, hostedRunRoute.runId);
+    if (request.method === "POST" && hostedRunRoute.action === "memwal/query") return memwalQueryRun(request, env, hostedRunRoute.runId);
   }
   if (request.method === "POST" && url.pathname === "/api/demo/extractions") {
     return createDemoExtraction(request, env, ctx);
@@ -1565,31 +1571,12 @@ async function aiQueryRun(request: Request, env: WorkerEnv, runId: string): Prom
   });
   const systemPrompt = "You are ContextMeM, an assistant that answers questions about a website. Use ONLY the provided context. If the answer is not in the context, say you don't have enough information. Reply with a single short JSON object on the FIRST line containing keys answer (string), key_points (array of 3-6 short strings), and confidence (0-1). After the JSON, write a short human paragraph. Do not invent sources.";
   const userPrompt = `Question: ${input.question}\n\nContext (from extracted Walrus Site pages):\n\n${contextSnippets.join("\n\n---\n\n")}`;
-  let answerText = "";
-  let usedProvider = "workers-ai:@cf/meta/llama-3.1-8b-instruct";
-  if (!env.AI) {
-    usedProvider = "fallback:no-ai-binding";
-    answerText = `{"answer":"This worker is missing the Workers AI binding. Re-deploy with the AI binding configured.","key_points":["No env.AI binding available"],"confidence":0}\n\nAdd the \`ai\` binding to wrangler.jsonc and run \`wrangler deploy\`.`;
-  } else {
-    try {
-      const aiResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        max_tokens: 800,
-        temperature: 0.2
-      });
-      if (typeof aiResponse === "string") answerText = aiResponse;
-      else if (typeof (aiResponse as { response?: string })?.response === "string") answerText = (aiResponse as { response: string }).response;
-      else if (typeof (aiResponse as { result?: { response?: string } })?.result?.response === "string") answerText = (aiResponse as { result: { response: string } }).result.response;
-      else answerText = JSON.stringify(aiResponse);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      usedProvider = `error:${message.slice(0, 80)}`;
-      answerText = `{"answer":"AI call failed: ${message.replace(/[\\"]/g, "")}","key_points":[],"confidence":0}`;
-    }
-  }
+  const completion = await aiChatComplete(env, [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt }
+  ], { maxTokens: 800, temperature: 0.2 });
+  const answerText = completion.text;
+  const usedProvider = completion.usedProvider;
   let parsedData: Record<string, unknown> = { answer: answerText.trim() };
   let confidence = 0.5;
   // Strip a leading ```json ... ``` markdown code-fence if the model wrapped
@@ -2697,37 +2684,99 @@ function scoreCandidateUrl(url: URL, label: string | undefined, fromSitemap: boo
 }
 
 // ----------------------------------------------------------------------------
+// Shared chat completion — single source of truth for AI synthesis across
+// aiQueryRun, the facts extractor, and memwalChat.
+// ----------------------------------------------------------------------------
+
+// Current Workers AI instruct model. The previous default
+// @cf/meta/llama-3.1-8b-instruct was deprecated by Cloudflare on 2026-05-30
+// (error 5028). This -fast variant is the same Llama 3.1 8B instruct family —
+// identical { messages, max_tokens, temperature } -> { response } contract —
+// and remains active. Override per-deployment with WORKERS_AI_MODEL if needed.
+const DEFAULT_WORKERS_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+
+type ChatRole = "system" | "user" | "assistant";
+type ChatMessage = { role: ChatRole; content: string };
+
+/**
+ * Run a chat completion, preferring an OpenAI-compatible endpoint (OpenRouter,
+ * OpenAI, …) when OPENAI_API_KEY is set — higher quality than the on-edge llama
+ * for the same grounded-JSON tasks — and falling back to Workers AI otherwise.
+ * Never throws: on any failure it returns a JSON error-envelope as `text` and a
+ * `usedProvider` prefixed "error:"/"fallback:" so callers can detect failure.
+ */
+async function aiChatComplete(
+  env: WorkerEnv,
+  messages: ChatMessage[],
+  opts: { maxTokens: number; temperature: number }
+): Promise<{ text: string; usedProvider: string }> {
+  const openAiKey = env.OPENAI_API_KEY?.trim();
+  if (openAiKey) {
+    const baseUrl = (env.OPENAI_BASE_URL?.trim() || "https://openrouter.ai/api/v1").replace(/\/$/, "");
+    const model = env.OPENAI_MODEL?.trim() || "openai/gpt-4o-mini";
+    try {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${openAiKey}`,
+          "content-type": "application/json",
+          "HTTP-Referer": "https://contextmem.pages.dev",
+          "X-Title": "ContextMeM"
+        },
+        body: JSON.stringify({ model, messages, max_tokens: opts.maxTokens, temperature: opts.temperature })
+      });
+      if (!response.ok) throw new Error(`${response.status} ${(await response.text()).slice(0, 160)}`);
+      const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+      const text = payload.choices?.[0]?.message?.content ?? "";
+      if (!text.trim()) throw new Error("empty completion");
+      return { text, usedProvider: `openai-compatible:${model}` };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { text: `{"answer":"AI synthesis failed: ${message.replace(/[\\"]/g, "")}","key_points":[],"confidence":0}`, usedProvider: `error:${message.slice(0, 80)}` };
+    }
+  }
+  if (env.AI) {
+    const model = env.WORKERS_AI_MODEL?.trim() || DEFAULT_WORKERS_AI_MODEL;
+    try {
+      const aiResponse = await env.AI.run(model, { messages, max_tokens: opts.maxTokens, temperature: opts.temperature });
+      let text = "";
+      if (typeof aiResponse === "string") text = aiResponse;
+      else if (typeof (aiResponse as { response?: string })?.response === "string") text = (aiResponse as { response: string }).response;
+      else if (typeof (aiResponse as { result?: { response?: string } })?.result?.response === "string") text = (aiResponse as { result: { response: string } }).result.response;
+      else text = JSON.stringify(aiResponse);
+      return { text, usedProvider: `workers-ai:${model}` };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { text: `{"answer":"AI call failed: ${message.replace(/[\\"]/g, "")}","key_points":[],"confidence":0}`, usedProvider: `error:${message.slice(0, 80)}` };
+    }
+  }
+  return { text: `{"answer":"This worker has no chat model configured (set OPENAI_API_KEY or bind Workers AI). Showing grounded facts only.","key_points":[],"confidence":0}`, usedProvider: "fallback:no-ai-binding" };
+}
+
+// ----------------------------------------------------------------------------
 // Facts — env.AI Workers-AI model adapter + grounded llms.txt sections.
 // ----------------------------------------------------------------------------
 
 /**
- * Wrap env.AI (@cf/meta/llama-3.1-8b-instruct) as a FactsModel.complete() that
- * returns parsed JSON or null on ANY failure (never throws). Reuses aiQueryRun's
- * fenced-```json + first-line-JSON parser so the 8b model's fenced output parses.
+ * Wrap the shared aiChatComplete() as a FactsModel.complete() that returns parsed
+ * JSON or null on ANY failure (never throws), so facts degrade to heuristics.
+ * Prefers an OpenAI-compatible endpoint when OPENAI_API_KEY is set, else Workers
+ * AI. Reuses parseFactsJson (fenced-```json + first-line + balanced-span parser).
  */
 function workersAiFactsModel(env: WorkerEnv): FactsModel | undefined {
-  if (!env.AI) return undefined;
+  if (!env.AI && !env.OPENAI_API_KEY?.trim()) return undefined;
   return {
-    provider: "workers-ai",
+    provider: env.OPENAI_API_KEY?.trim() ? "openai-compatible" : "workers-ai",
     complete: async (system: string, user: string): Promise<Record<string, unknown> | null> => {
-      try {
-        const aiResponse = await env.AI!.run("@cf/meta/llama-3.1-8b-instruct", {
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: user }
-          ],
-          max_tokens: 1500,
-          temperature: 0.1
-        });
-        let text = "";
-        if (typeof aiResponse === "string") text = aiResponse;
-        else if (typeof (aiResponse as { response?: string })?.response === "string") text = (aiResponse as { response: string }).response;
-        else if (typeof (aiResponse as { result?: { response?: string } })?.result?.response === "string") text = (aiResponse as { result: { response: string } }).result.response;
-        else text = JSON.stringify(aiResponse);
-        return parseFactsJson(text);
-      } catch {
-        return null;
-      }
+      const completion = await aiChatComplete(env, [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ], { maxTokens: 1500, temperature: 0.1 });
+      // aiChatComplete never throws; on failure it returns an error-envelope JSON
+      // (which would parse as valid facts). Detect that via usedProvider so we
+      // return null and let buildSiteFacts fall back to heuristicFacts.
+      if (completion.usedProvider.startsWith("error:") || completion.usedProvider.startsWith("fallback:")) return null;
+      return parseFactsJson(completion.text);
     }
   };
 }
@@ -3748,8 +3797,31 @@ function listMemwalNamespaces(request: Request, env: WorkerEnv): Response {
 
 // When Walrus Memory recall isn't available (no valid delegate), answer the query
 // from the namespace's verified facts so the Memory tab is never a dead error.
-function factsFallbackRecall(namespace: string, query: string): { results: Array<{ text: string; score: number }> } | null {
-  const facts = SEED_FACTS[namespace];
+// Resolve a namespace's SiteFacts: bundled demo seed first, else the real built
+// facts artifact persisted by the build pipeline (/context/facts.json, with a
+// manifest.facts fallback for older builds). This is what lets recall + chat
+// answer freshly-built namespaces, not only the curated demo:* seeds.
+async function loadNamespaceFacts(env: WorkerEnv, namespace: string, request?: Request): Promise<SiteFacts | undefined> {
+  const seeded = SEED_FACTS[namespace];
+  if (seeded) return seeded;
+  const store = new CloudflareNamespaceStore(env);
+  const auth = await store.authorizeNamespace(namespace, request ? readAccessToken(request) : undefined);
+  if (!auth.ok) return undefined;
+  const factsArtifact = await store.readArtifact(namespace, "/context/facts.json").catch(() => undefined);
+  if (factsArtifact?.encoding === "utf8") {
+    const parsed = safeJsonParse(factsArtifact.content);
+    if (parsed && typeof parsed === "object") return parsed as SiteFacts;
+  }
+  const manifestArtifact = await store.readArtifact(namespace, "/context/manifest.json").catch(() => undefined);
+  const manifest = manifestArtifact?.encoding === "utf8" ? safeJsonParse(manifestArtifact.content) : undefined;
+  if (manifest && typeof manifest === "object") {
+    const facts = (manifest as Record<string, unknown>).facts;
+    if (facts && typeof facts === "object") return facts as SiteFacts;
+  }
+  return undefined;
+}
+
+function factsFallbackRecallFrom(facts: SiteFacts | undefined, query: string): { results: Array<{ text: string; score: number }> } | null {
   if (!facts) return null;
   const candidates: string[] = [];
   if (facts.identity?.oneLiner) candidates.push(`${facts.identity.name}: ${facts.identity.oneLiner}`);
@@ -3859,8 +3931,11 @@ async function memwalRecall(request: Request, env: WorkerEnv): Promise<Response>
       /* fall through to the facts fallback so the Memory tab still answers */
     }
   }
-  // Fallback: answer from the namespace's verified facts (no delegate required).
-  const fallback = factsFallbackRecall(namespace, query);
+  // Fallback: answer from the namespace's verified facts — the curated demo seed
+  // OR the real knowledge graph the build pipeline persisted for this namespace.
+  // No delegate required, so freshly-built namespaces recall immediately.
+  const facts = await loadNamespaceFacts(env, namespace, request);
+  const fallback = factsFallbackRecallFrom(facts, query);
   if (fallback) {
     const payload = { namespace, query, source: "facts" as const, result: fallback };
     return asMarkdown ? markdown(recallToMarkdown(payload)) : json(payload);
@@ -3911,8 +3986,7 @@ function parseChatEnvelope(answerText: string): { data: { answer: string; key_po
 // Build a rich, grounded context block from a namespace's verified knowledge
 // graph: identity + entities (what it's made of) + topics + claims + stats +
 // Q&A. The more grounded material the model sees, the fewer "I don't know"s.
-function factsGroundingBlock(namespace: string): string {
-  const facts = SEED_FACTS[namespace];
+function factsGroundingBlockFrom(facts: SiteFacts | undefined): string {
   if (!facts) return "";
   const lines: string[] = [];
   if (facts.identity?.name) lines.push(`Project: ${facts.identity.name}${facts.identity.oneLiner ? ` — ${facts.identity.oneLiner}` : ""}`);
@@ -3955,6 +4029,10 @@ async function memwalChat(request: Request, env: WorkerEnv): Promise<Response> {
 
   const { url, privateKey, accountId } = resolveMemwalCreds(request, env);
 
+  // Verified facts for this namespace: curated demo seed OR the real knowledge
+  // graph the build pipeline persisted. Used for grounding + the facts fallback.
+  const facts = await loadNamespaceFacts(env, namespace, request);
+
   // 1) Grounding — real Walrus Memory recall when we have a valid delegate.
   let recallHits: Array<{ text: string; distance?: number }> = [];
   if (isMemwalSeed(privateKey) && accountId) {
@@ -3970,7 +4048,7 @@ async function memwalChat(request: Request, env: WorkerEnv): Promise<Response> {
       /* fall through to facts-only grounding so chat still answers */
     }
   }
-  const factsBlock = factsGroundingBlock(namespace);
+  const factsBlock = factsGroundingBlockFrom(facts);
   const hasRecall = recallHits.length > 0;
   const source: "walrus-memory" | "facts" | "mixed" = hasRecall && factsBlock ? "mixed" : hasRecall ? "walrus-memory" : "facts";
 
@@ -3979,69 +4057,59 @@ async function memwalChat(request: Request, env: WorkerEnv): Promise<Response> {
   if (factsBlock) groundingParts.push("[Verified facts — extracted knowledge graph]\n" + factsBlock);
   const grounding = groundingParts.join("\n\n") || "(no stored context available for this namespace yet)";
 
-  const facts = SEED_FACTS[namespace];
   const subject = facts?.identity?.name ?? namespace;
   const systemPrompt = `You are ContextMeM, a helpful assistant that chats naturally about "${subject}". Answer the user's latest message using ONLY the provided context (Walrus Memory recall + the verified knowledge graph: entities, topics, claims, stats, Q&A). Synthesize across ALL of it — the entities and topics describe how it works and what it's made of, so use them to answer "how it works" and "key facts" questions. When the user asks for numbers, metrics, limits, prices, or costs, surface the specific Stat values from the context verbatim — do NOT abstain whenever any relevant Stat or fact is present. Be conversational and specific. Only when NOTHING in the context relates to the question should you say you don't have that detail in memory yet — never invent specifics that aren't in the context. Reply with a single JSON object on the FIRST line with keys: answer (string, a natural conversational reply), key_points (array of 2-5 short strings), confidence (0-1). You may add a short human paragraph after the JSON.\n\nContext for namespace ${namespace}:\n\n${grounding}`;
 
-  let answerText = "";
-  let usedProvider = "";
   const aiMessages = [{ role: "system" as const, content: systemPrompt }, ...messages];
-  const openAiKey = env.OPENAI_API_KEY?.trim();
-  if (openAiKey) {
-    // Prefer an OpenAI-compatible model (OpenRouter, OpenAI, etc.) — higher
-    // quality than the on-edge llama. Set OPENAI_BASE_URL + OPENAI_MODEL to pick.
-    const baseUrl = (env.OPENAI_BASE_URL?.trim() || "https://openrouter.ai/api/v1").replace(/\/$/, "");
-    const model = env.OPENAI_MODEL?.trim() || "openai/gpt-4o-mini";
-    usedProvider = `openai-compatible:${model}`;
-    try {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${openAiKey}`,
-          "content-type": "application/json",
-          "HTTP-Referer": "https://contextmem.pages.dev",
-          "X-Title": "ContextMeM"
-        },
-        body: JSON.stringify({ model, messages: aiMessages, max_tokens: 800, temperature: 0.3 })
-      });
-      if (!response.ok) throw new Error(`${response.status} ${(await response.text()).slice(0, 160)}`);
-      const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
-      answerText = payload.choices?.[0]?.message?.content ?? "";
-      if (!answerText.trim()) throw new Error("empty completion");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      usedProvider = `error:${message.slice(0, 80)}`;
-      answerText = `{"answer":"AI synthesis failed: ${message.replace(/[\\"]/g, "")}","key_points":[],"confidence":0}`;
-    }
-  } else if (env.AI) {
-    usedProvider = "workers-ai:@cf/meta/llama-3.1-8b-instruct";
-    try {
-      const aiResponse = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
-        messages: aiMessages,
-        max_tokens: 800,
-        temperature: 0.3
-      });
-      if (typeof aiResponse === "string") answerText = aiResponse;
-      else if (typeof (aiResponse as { response?: string })?.response === "string") answerText = (aiResponse as { response: string }).response;
-      else if (typeof (aiResponse as { result?: { response?: string } })?.result?.response === "string") answerText = (aiResponse as { result: { response: string } }).result.response;
-      else answerText = JSON.stringify(aiResponse);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      usedProvider = `error:${message.slice(0, 80)}`;
-      answerText = `{"answer":"AI synthesis failed: ${message.replace(/[\\"]/g, "")}","key_points":[],"confidence":0}`;
-    }
-  } else {
-    usedProvider = "fallback:no-ai-binding";
-    answerText = `{"answer":"This worker has no chat model configured (set OPENAI_API_KEY or bind Workers AI). Showing grounded facts only.","key_points":[],"confidence":0}`;
-  }
+  const completion = await aiChatComplete(env, aiMessages, { maxTokens: 800, temperature: 0.3 });
+  const answerText = completion.text;
+  const usedProvider = completion.usedProvider;
 
   const { data, confidence } = parseChatEnvelope(answerText);
   const sources = hasRecall
     ? recallHits.map((h, index) => ({ url: "", routePath: `walrus-memory#${index + 1}`, quote: h.text.slice(0, 280), blobId: typeof h.distance === "number" ? `distance ${h.distance.toFixed(3)}` : undefined }))
-    : (factsFallbackRecall(namespace, query)?.results ?? []).slice(0, 4).map((r, index) => ({ url: "", routePath: `verified-fact#${index + 1}`, quote: r.text.slice(0, 280) }));
+    : (factsFallbackRecallFrom(facts, query)?.results ?? []).slice(0, 4).map((r, index) => ({ url: "", routePath: `verified-fact#${index + 1}`, quote: r.text.slice(0, 280) }));
 
   const payload = { namespace, target: subject, source, data, confidence, usedProvider, sources };
   return wantsMarkdown(request) ? markdown(chatToMarkdown(payload)) : json(payload);
+}
+
+// Per-run memory endpoints. The Memory page calls POST /api/runs/:id/memwal/{recall,query}
+// with a bare { query }. We resolve the run's namespace and proxy to the global
+// memwalRecall/memwalChat handlers so the freshly-built knowledge graph answers.
+async function authorizeRunForMemwal(
+  request: Request,
+  env: WorkerEnv,
+  runId: string
+): Promise<{ job: PublicExtractionJob } | { error: Response }> {
+  const job = await getExtractionJob(env, runId);
+  if (!job) return { error: jsonError("RUN_NOT_FOUND", "Run not found.", 404) };
+  if (!String(job.ownerId).startsWith("demo:") && job.visibility !== "public") {
+    const auth = readHostedRunAuth(request);
+    if (!auth || auth.ownerId !== job.ownerId) {
+      return { error: jsonError("HOSTED_DELEGATE_REQUIRED", "Hosted runs require MemWal SDK delegate headers.", 401, "Import your MemWal credentials in /app/settings to query this run.") };
+    }
+  }
+  return { job };
+}
+
+async function memwalRecallRun(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const resolved = await authorizeRunForMemwal(request, env, runId);
+  if ("error" in resolved) return resolved.error;
+  const body = (await request.json().catch(() => ({}))) as { query?: unknown };
+  const query = typeof body.query === "string" && body.query.trim() ? body.query.trim() : "latest ContextMeM snapshot";
+  const inner = new Request(request.url, { method: "POST", headers: request.headers, body: JSON.stringify({ namespace: resolved.job.namespace, query }) });
+  return memwalRecall(inner, env);
+}
+
+async function memwalQueryRun(request: Request, env: WorkerEnv, runId: string): Promise<Response> {
+  const resolved = await authorizeRunForMemwal(request, env, runId);
+  if ("error" in resolved) return resolved.error;
+  const body = (await request.json().catch(() => ({}))) as { query?: unknown };
+  const query = typeof body.query === "string" ? body.query.trim() : "";
+  if (!query) return json({ error: "query is required." }, 400);
+  const inner = new Request(request.url, { method: "POST", headers: request.headers, body: JSON.stringify({ namespace: resolved.job.namespace, messages: [{ role: "user", content: query }] }) });
+  return memwalChat(inner, env);
 }
 
 function maybeWithMemWalRecall(store: CloudflareNamespaceStore, env: WorkerEnv, request: Request): HostedNamespaceStore {
@@ -5662,23 +5730,45 @@ async function buildDesignSystem(input: { html: string; target: URL; css?: strin
 }
 
 function htmlToText(html: string): string {
-  return decodeHtml(
-    html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/(p|div|section|article|h[1-6]|li)>/gi, "\n")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+\n/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .replace(/[ \t]{2,}/g, " ")
-      .trim()
-  ) ?? "";
+  // Prefer the main content region so site chrome (nav/header/footer/sidebar,
+  // the llms.txt link dump, cookie + copyright boilerplate) is dropped before
+  // we flatten. Falls back to the whole document when there's no <main>/<article>.
+  let scope = html;
+  const mainMatch = scope.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
+  if (mainMatch?.[1]?.trim()) {
+    scope = mainMatch[1];
+  } else {
+    const articleMatch = scope.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
+    if (articleMatch?.[1]?.trim()) scope = articleMatch[1];
+  }
+  const cleaned = scope
+    // Drop non-content blocks entirely, including their inner text.
+    .replace(/<(script|style|noscript|template|svg|nav|header|footer|aside|form)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    // Headings → markdown so document structure survives the flatten.
+    .replace(/<h1\b[^>]*>/gi, "\n\n# ")
+    .replace(/<h2\b[^>]*>/gi, "\n\n## ")
+    .replace(/<h3\b[^>]*>/gi, "\n\n### ")
+    .replace(/<h[4-6]\b[^>]*>/gi, "\n\n#### ")
+    // List items → bullets; explicit line breaks → newlines.
+    .replace(/<li\b[^>]*>/gi, "\n- ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    // Block-level closers → newline so paragraphs don't run together.
+    .replace(/<\/(p|div|section|article|h[1-6]|li|ul|ol|tr|table|pre|blockquote)>/gi, "\n")
+    // Drop every remaining tag.
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return decodeHtml(cleaned) ?? "";
 }
 
 function decodeHtml(value: string): string | undefined {
   if (!value) return undefined;
   return value
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (match, code) => { try { return String.fromCodePoint(Number(code)); } catch { return match; } })
+    .replace(/&#x([0-9a-fA-F]+);/g, (match, code) => { try { return String.fromCodePoint(parseInt(code, 16)); } catch { return match; } })
     .replaceAll("&amp;", "&")
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
